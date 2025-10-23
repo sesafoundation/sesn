@@ -67,7 +67,10 @@ var (
 	//BlockReward = big.NewInt(0).SetString("20000000000000000000", 10) //block reward 20
 
 
-	BlockReward = new(big.Int).Mul(big.NewInt(2e18), big.NewInt(10)) //20 block reward
+	//BlockReward = new(big.Int).Mul(big.NewInt(2e18), big.NewInt(10)) //20 block reward
+	
+	BlockReward = new(big.Int).Mul(big.NewInt(1e18), big.NewInt(10)) //10 block reward
+
 
 
 	validatorContract     = "0x0000000000000000000000000000000000001000"
