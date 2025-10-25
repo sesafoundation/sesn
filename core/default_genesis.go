@@ -21,6 +21,13 @@ const defaultMainnetGenesis = `{
       "period": 3,  
       "epoch": 200
     }
+    "finality": {
+      "type": "hotstuff",
+      "activateAt": 1234567,
+      "committeeSize": 0,      // 0 = all active validators
+      "timeoutMs": 120,        // target ~100ms; allow a little slack
+      "bls": true
+    }
   },
   "nonce": "0x0",
   "timestamp": "0x65CA9E9A",
@@ -64,6 +71,13 @@ const defaultTestnetGenesis = `{
       "period": 3,  
       "epoch": 200
     }
+    "finality": {
+      "type": "hotstuff",
+      "activateAt": 1234567,
+      "committeeSize": 0,      // 0 = all active validators
+      "timeoutMs": 120,        // target ~100ms; allow a little slack
+      "bls": true
+    }
   },
   "nonce": "0x0",
   "timestamp": "0x65CA9E9A",
@@ -106,4 +120,26 @@ func DefaultTestnetGenesis(genesis *Genesis) error {
 
 func DefaultMainnetGenesis(genesis *Genesis) error {
 	return loadDefaultGenesis(genesis, false)
+}
+
+
+
+
+///addon below
+{
+  "config": {
+    "chainId": 2250,
+    "homesteadBlock": 0,
+    "eip150Block": 0,
+    "eip155Block": 0,
+    "eip158Block": 0,
+    "istanbulBlock": 0,
+    "finality": {
+      "type": "hotstuff",
+      "activateAt": 1234567,
+      "committeeSize": 0,      // 0 = all active validators
+      "timeoutMs": 120,        // target ~100ms; allow a little slack
+      "bls": true
+    }
+  }
 }

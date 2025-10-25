@@ -1,19 +1,3 @@
-// Copyright 2017 The go-ethereum Authors
-// This file is part of the go-ethereum library.
-//
-// The go-ethereum library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Lesser General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// The go-ethereum library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU Lesser General Public License for more details.
-//
-// You should have received a copy of the GNU Lesser General Public License
-// along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
-
 package eth
 
 import (
@@ -31,6 +15,14 @@ import (
 	"github.com/ethereum/go-ethereum/eth/gasprice"
 	"github.com/ethereum/go-ethereum/miner"
 	"github.com/ethereum/go-ethereum/params"
+
+	// --- added imports ---
+	"github.com/ethereum/go-ethereum/consensus/sonium"
+	"github.com/ethereum/go-ethereum/consensus/sonium/finality/hotstuff"
+	"github.com/ethereum/go-ethereum/p2p/mfproto"
+
+	// BLS12-381 for real aggregation
+	bls12381 "github.com/kilic/bls12-381"
 )
 
 // DefaultFullGPOConfig contains default gasprice oracle settings for full node.
@@ -138,86 +130,92 @@ func init() {
 //go:generate gencodec -type Config -formats toml -out gen_config.go
 
 type Config struct {
-	// The genesis block, which is inserted if the database is empty.
-	// If nil, the Ethereum main net block is used.
-	Genesis *core.Genesis `toml:",omitempty"`
-
-	// Protocol options
-	NetworkId uint64 // Network ID to use for selecting peers to connect to
-	SyncMode  downloader.SyncMode
-
-	// This can be set to list of enrtree:// URLs which will be queried for
-	// for nodes to connect to.
-	DiscoveryURLs []string
-
-	NoPruning  bool // Whether to disable pruning and flush everything to disk
-	NoPrefetch bool // Whether to disable prefetching and only load state on demand
-
-	TxLookupLimit uint64 `toml:",omitempty"` // The maximum number of blocks from head whose tx indices are reserved.
-
-	// Whitelist of required block number -> hash values to accept
-	Whitelist map[uint64]common.Hash `toml:"-"`
-
-	// Light client options
-	LightServ    int  `toml:",omitempty"` // Maximum percentage of time allowed for serving LES requests
-	LightIngress int  `toml:",omitempty"` // Incoming bandwidth limit for light servers
-	LightEgress  int  `toml:",omitempty"` // Outgoing bandwidth limit for light servers
-	LightPeers   int  `toml:",omitempty"` // Maximum number of LES client peers
-	LightNoPrune bool `toml:",omitempty"` // Whether to disable light chain pruning
-
-	// Ultra Light client options
-	UltraLightServers      []string `toml:",omitempty"` // List of trusted ultra light servers
-	UltraLightFraction     int      `toml:",omitempty"` // Percentage of trusted servers to accept an announcement
-	UltraLightOnlyAnnounce bool     `toml:",omitempty"` // Whether to only announce headers, or also serve them
-
-	// Database options
-	SkipBcVersionCheck bool `toml:"-"`
-	DatabaseHandles    int  `toml:"-"`
-	DatabaseCache      int
-	DatabaseFreezer    string
-
+	Genesis                 *core.Genesis `toml:",omitempty"`
+	NetworkId               uint64
+	SyncMode                downloader.SyncMode
+	DiscoveryURLs           []string
+	NoPruning, NoPrefetch   bool
+	TxLookupLimit           uint64 `toml:",omitempty"`
+	Whitelist               map[uint64]common.Hash `toml:"-"`
+	LightServ, LightIngress int                    `toml:",omitempty"`
+	LightEgress, LightPeers int                    `toml:",omitempty"`
+	LightNoPrune            bool                   `toml:",omitempty"`
+	UltraLightServers       []string               `toml:",omitempty"`
+	UltraLightFraction      int                    `toml:",omitempty"`
+	UltraLightOnlyAnnounce  bool                   `toml:",omitempty"`
+	SkipBcVersionCheck      bool                   `toml:"-"`
+	DatabaseHandles         int                    `toml:"-"`
+	DatabaseCache           int
+	DatabaseFreezer         string
 	TrieCleanCache          int
-	TrieCleanCacheJournal   string        `toml:",omitempty"` // Disk journal directory for trie cache to survive node restarts
-	TrieCleanCacheRejournal time.Duration `toml:",omitempty"` // Time interval to regenerate the journal for clean cache
+	TrieCleanCacheJournal   string        `toml:",omitempty"`
+	TrieCleanCacheRejournal time.Duration `toml:",omitempty"`
 	TrieDirtyCache          int
 	TrieTimeout             time.Duration
 	SnapshotCache           int
 	Preimages               bool
-
-	// Mining options
-	Miner miner.Config
-
-	// Ethash options
-	Ethash ethash.Config
-
-	// Transaction pool options
-	TxPool core.TxPoolConfig
-
-	// Gas Price Oracle options
-	GPO gasprice.Config
-
-	// Enables tracking of SHA3 preimages in the VM
+	Miner                   miner.Config
+	Ethash                  ethash.Config
+	TxPool                  core.TxPoolConfig
+	GPO                     gasprice.Config
 	EnablePreimageRecording bool
+	DocRoot                 string `toml:"-"`
+	EWASMInterpreter        string
+	EVMInterpreter          string
+	RPCGasCap               uint64  `toml:",omitempty"`
+	RPCTxFeeCap             float64 `toml:",omitempty"`
+	Checkpoint              *params.TrustedCheckpoint        `toml:",omitempty"`
+	CheckpointOracle        *params.CheckpointOracleConfig   `toml:",omitempty"`
+}
 
-	// Miscellaneous options
-	DocRoot string `toml:"-"`
+///////////////////////////////////////////////////////////////////////////////
+// 🌐 Sonium + Instant-Finality Engine Initialization
+///////////////////////////////////////////////////////////////////////////////
 
-	// Type of the EWASM interpreter ("" for default)
-	EWASMInterpreter string
+// NewConsensusEngine creates the Sonium DPoS engine with optional HotStuff finality.
+func NewConsensusEngine(cfg *params.ChainConfig, backend core.EngineBackend) (consensus.Engine, error) {
+	// Base Sonium engine
+	base := sonium.New(backend, cfg)
 
-	// Type of the EVM interpreter ("" for default)
-	EVMInterpreter string
+	// If no finality configuration, return base engine
+	if cfg.Finality == nil || cfg.Finality.Type != "hotstuff" {
+		return base, nil
+	}
 
-	// RPCGasCap is the global gas cap for eth-call variants.
-	RPCGasCap uint64 `toml:",omitempty"`
+	// --- Real BLS12-381 key setup ---
+	// Each validator should have its own private key; this example just creates a dummy pair
+	// for demonstration. In production, derive from your validator keystore.
+	sk := bls12381.NewKey()
+	pk := new(bls12381.G1).ScalarBaseMult(sk)
+	_ = pk // store or publish pk for validator discovery
 
-	// RPCTxFeeCap is the global transaction fee(price * gaslimit) cap for
-	// send-transction variants. The unit is ether.
-	RPCTxFeeCap float64 `toml:",omitempty"`
+	// BLS adapter implementing our gadget's interface
+	blsAdapter := &hotstuff.BLSAdapter{
+		PrivKey: sk,
+		PubKey:  pk,
+	}
 
-	// Checkpoint is a hardcoded checkpoint which can be nil.
-	Checkpoint *params.TrustedCheckpoint `toml:",omitempty"`
+	// Validator set from DPoS contract/state
+	vs := sonium.NewValidatorSet(backend)
 
-	// CheckpointOracle is the configuration for checkpoint oracle.
-	CheckpointOracle *params.CheckpointOracleConfig `toml:",omitempty"`
+	// Mini-finality transport (in-proc stub; replace with p2p for real net)
+	tr := mfproto.NewLocalTransport(nil)
+
+	// Configure adaptive finality with ~100 ms timeout
+	gadget := hotstuff.New(
+		hotstuff.Config{BaseTimeout: time.Duration(cfg.Finality.TimeoutMS) * time.Millisecond},
+		vs, tr, blsAdapter,
+	)
+
+	engine := sonium.WithFinality(base, gadget)
+
+	// Optionally attach P2P protocol for real vote gossip
+	if backend.NodeServer() != nil {
+		backend.NodeServer().Protocols = append(
+			backend.NodeServer().Protocols,
+			mfproto.Protocol(gadget),
+		)
+	}
+
+	return engine, nil
 }
