@@ -115,18 +115,48 @@ var (
 	//
 	// This configuration is intentionally not using keyed fields to force anyone
 	// adding flags to the config to also have to set these fields.
-	AllEthashProtocolChanges = &ChainConfig{big.NewInt(1337), big.NewInt(0), nil, false, big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), nil, nil, nil, new(EthashConfig), nil, nil}
+	//AllEthashProtocolChanges = &ChainConfig{big.NewInt(1337), big.NewInt(0), nil, false, big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), nil, nil, nil, new(EthashConfig), nil, nil}
+	AllEthashProtocolChanges = &ChainConfig{
+	ChainID: big.NewInt(1337),
+	HomesteadBlock: big.NewInt(0),
+	EIP150Block:    big.NewInt(0),
+	EIP155Block:    big.NewInt(0),
+	EIP158Block:    big.NewInt(0),
 
+	Engine: "ethash",
+	Ethash: &EthashConfig{},
+	}
 	// AllSoniumProtocolChanges copies from sonium protocol.
 	//AllSoniumProtocolChanges = &ChainConfig{big.NewInt(2250), big.NewInt(0), nil, false, big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), nil, nil, nil, nil, nil, &SoniumConfig{Period: 3, Epoch: 200}}
 
 	AllSoniumProtocolChanges = &ChainConfig{
-    ChainID: big.NewInt(2250),
-    Sonium:  &SoniumConfig{Period: 3, Epoch: 200},
-    AllEthashProtocolChanges: nil,
-    AllSoniumProtocolChanges: nil,
-    AllCliqueProtocolChanges: nil,
-    TestChainConfig:          nil,
+	ChainID: big.NewInt(2250),
+	HomesteadBlock: big.NewInt(0),
+	EIP150Block:    big.NewInt(0),
+	EIP155Block:    big.NewInt(0),
+	EIP158Block:    big.NewInt(0),
+	IstanbulBlock:  big.NewInt(0),
+	LondonBlock:    big.NewInt(0),
+
+	Engine: "sonium",
+
+	Sonium: &SoniumConfig{
+		Period: 3,
+		Epoch:  200,
+	},
+
+	Finality: &FinalityConfig{
+		Type:          "hotstuff",
+		ActivateAt:    0,
+		CommitteeSize: 0,
+		TimeoutMS:     100,
+		BLS:           true,
+	},
+		AllEthashProtocolChanges: nil,
+		AllSoniumProtocolChanges: nil,
+		AllCliqueProtocolChanges: nil,
+		TestChainConfig:          nil,
+	
 	}
 
 	// AllCliqueProtocolChanges contains every protocol change (EIPs) introduced
@@ -134,9 +164,50 @@ var (
 	//
 	// This configuration is intentionally not using keyed fields to force anyone
 	// adding flags to the config to also have to set these fields.
-	AllCliqueProtocolChanges = &ChainConfig{big.NewInt(1337), big.NewInt(0), nil, false, big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), nil, nil, nil, nil, &CliqueConfig{Period: 0, Epoch: 30000}, nil}
+	//AllCliqueProtocolChanges = &ChainConfig{big.NewInt(1337), big.NewInt(0), nil, false, big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), nil, nil, nil, nil, &CliqueConfig{Period: 0, Epoch: 30000}, nil}
+	AllCliqueProtocolChanges = &ChainConfig{
+	ChainID: big.NewInt(1338),
+	HomesteadBlock: big.NewInt(0),
+	EIP150Block:    big.NewInt(0),
+	EIP155Block:    big.NewInt(0),
+	EIP158Block:    big.NewInt(0),
 
-	TestChainConfig = &ChainConfig{big.NewInt(2249), big.NewInt(0), nil, false, big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), nil, nil, nil, nil, nil, &SoniumConfig{Period: 3, Epoch: 200}}
+	Engine: "clique",
+	Clique: &CliqueConfig{},
+	}
+
+	TestChainConfig = &ChainConfig{
+	ChainID: big.NewInt(2249),
+
+	HomesteadBlock: big.NewInt(0),
+	EIP150Block:    big.NewInt(0),
+	EIP155Block:    big.NewInt(0),
+	EIP158Block:    big.NewInt(0),
+	IstanbulBlock:  big.NewInt(0),
+	LondonBlock:    big.NewInt(0),
+
+	Engine: "sonium",
+
+	Sonium: &SoniumConfig{
+		Period: 3,  // 3-second blocks
+		Epoch:  200, // same as mainnet
+	},
+
+	Finality: &FinalityConfig{
+		Type:          "hotstuff",
+		ActivateAt:    0,    // enable from genesis
+		CommitteeSize: 0,    // all active validators
+		TimeoutMS:     100,  // 100 ms instant finality
+		BLS:           true, // BLS aggregation
+	},
+
+	AllEthashProtocolChanges: AllEthashProtocolChanges,
+	AllSoniumProtocolChanges: AllSoniumProtocolChanges,
+	AllCliqueProtocolChanges: AllCliqueProtocolChanges,
+	TestChainConfig:          nil,
+	},
+
+	//TestChainConfig = &ChainConfig{big.NewInt(2249), big.NewInt(0), nil, false, big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), nil, nil, nil, nil, nil, &SoniumConfig{Period: 3, Epoch: 200}}
 	TestRules       = TestChainConfig.Rules(new(big.Int))
 )
 
@@ -190,10 +261,9 @@ type CheckpointOracleConfig struct {
 // ChainConfig defines the blockchain configuration for a network (mainnet/testnet/private).
 // For Sesa Network: uses Sonium (DPoS) + HotStuff finality gadget.
 type ChainConfig struct {
-	// Chain identity
+	// Base EVM fork rules
 	ChainID *big.Int `json:"chainId"`
 
-	// Homestead, DAO, Tangerine, Spurious, Byzantium, Constantinople, Istanbul, Berlin, London, etc.
 	HomesteadBlock      *big.Int `json:"homesteadBlock,omitempty"`
 	DAOForkBlock        *big.Int `json:"daoForkBlock,omitempty"`
 	DAOForkSupport      bool     `json:"daoForkSupport,omitempty"`
@@ -207,37 +277,22 @@ type ChainConfig struct {
 	IstanbulBlock       *big.Int `json:"istanbulBlock,omitempty"`
 	MuirGlacierBlock    *big.Int `json:"muirGlacierBlock,omitempty"`
 	LondonBlock         *big.Int `json:"londonBlock,omitempty"`
-	ArrowGlacierBlock   *big.Int `json:"arrowGlacierBlock,omitempty"`
 	GrayGlacierBlock    *big.Int `json:"grayGlacierBlock,omitempty"`
 
-	//old
-	YoloV2Block *big.Int `json:"yoloV2Block,omitempty"` // YOLO v2: Gas repricings TODO @holiman add EIP references
-	EWASMBlock  *big.Int `json:"ewasmBlock,omitempty"`  // EWASM switch block (nil = no fork, 0 = already activated)
+	// Consensus engines
+	Engine  string         `json:"engine,omitempty"`
 	Ethash  *EthashConfig  `json:"ethash,omitempty"`
 	Clique  *CliqueConfig  `json:"clique,omitempty"`
-
-	// Sonium consensus (DPoS) configuration
-	Sonium *SoniumConfig `json:"sonium,omitempty"`
-
-	// Finality gadget (HotStuff) configuration
+	Sonium  *SoniumConfig  `json:"sonium,omitempty"`
 	Finality *FinalityConfig `json:"finality,omitempty"`
 
-	// Optional fork-specific protocol pointers (used by unified testnets)
+	// Optional pointers for cross-protocol compatibility
 	AllEthashProtocolChanges *ChainConfig `json:"-"`
 	AllSoniumProtocolChanges *ChainConfig `json:"-"`
 	AllCliqueProtocolChanges *ChainConfig `json:"-"`
 	TestChainConfig          *ChainConfig `json:"-"`
-
-	// Misc optional transitions (future use)
-	ShanghaiBlock  *big.Int `json:"shanghaiBlock,omitempty"`
-	CancunBlock    *big.Int `json:"cancunBlock,omitempty"`
-	PragueBlock    *big.Int `json:"pragueBlock,omitempty"`
-	VerkleBlock    *big.Int `json:"verkleBlock,omitempty"`
-	TerminalTotalDifficulty *big.Int `json:"terminalTotalDifficulty,omitempty"`
-
-	// Engine can be "ethash", "clique", "sonium", etc.
-	Engine string `json:"engine,omitempty"`
 }
+
 
 
 // EthashConfig is the consensus engine configs for proof-of-work based sealing.
