@@ -258,11 +258,6 @@ type SoniumConfig struct {
 	Epoch  uint64 `json:"epoch"`  // Epoch length to update validatorSet
 }
 
-type FinalityConfig struct {
-	Type      string `json:"type"`      // "hotstuff" or ""
-	TimeoutMS uint64 `json:"timeoutMs"` // base round timeout in milliseconds
-}
-
 // String implements the stringer interface, returning the consensus engine details.
 func (c *SoniumConfig) String() string {
 	return "sonium"
