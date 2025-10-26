@@ -59,6 +59,14 @@ var (
 			Period: 3,
 			Epoch:  200,
 		},
+		Finality: &params.FinalityConfig{
+		Type:      "hotstuff",
+		TimeoutMS: 100,
+		},
+		AllEthashProtocolChanges: nil,
+		AllSoniumProtocolChanges: nil,
+		AllCliqueProtocolChanges: nil,
+		TestChainConfig:          nil,
 	}
 
 	// TestnetChainConfig is the chain parameters to run a node on the main network.
@@ -80,6 +88,14 @@ var (
 			Period: 3,
 			Epoch:  200,
 		},
+		Finality: &params.FinalityConfig{
+		Type:      "hotstuff",
+		TimeoutMS: 100,
+		},
+		AllEthashProtocolChanges: nil,
+		AllSoniumProtocolChanges: nil,
+		AllCliqueProtocolChanges: nil,
+		TestChainConfig:          nil,
 	}
 
 	// MainnetTrustedCheckpoint contains the light client trusted checkpoint for the main network.
@@ -165,38 +181,58 @@ type CheckpointOracleConfig struct {
 // ChainConfig is stored in the database on a per block basis. This means
 // that any network, identified by its genesis block, can have its own
 // set of configuration options.
+// ChainConfig defines the blockchain configuration for a network (mainnet/testnet/private).
+// For Sesa Network: uses Sonium (DPoS) + HotStuff finality gadget.
 type ChainConfig struct {
-	ChainID *big.Int `json:"chainId"` // chainId identifies the current chain and is used for replay protection
+	// Chain identity
+	ChainID *big.Int `json:"chainId"`
 
-	HomesteadBlock *big.Int `json:"homesteadBlock,omitempty"` // Homestead switch block (nil = no fork, 0 = already homestead)
+	// Homestead, DAO, Tangerine, Spurious, Byzantium, Constantinople, Istanbul, Berlin, London, etc.
+	HomesteadBlock      *big.Int `json:"homesteadBlock,omitempty"`
+	DAOForkBlock        *big.Int `json:"daoForkBlock,omitempty"`
+	DAOForkSupport      bool     `json:"daoForkSupport,omitempty"`
+	EIP150Block         *big.Int `json:"eip150Block,omitempty"`
+	EIP150Hash          string   `json:"eip150Hash,omitempty"`
+	EIP155Block         *big.Int `json:"eip155Block,omitempty"`
+	EIP158Block         *big.Int `json:"eip158Block,omitempty"`
+	ByzantiumBlock      *big.Int `json:"byzantiumBlock,omitempty"`
+	ConstantinopleBlock *big.Int `json:"constantinopleBlock,omitempty"`
+	PetersburgBlock     *big.Int `json:"petersburgBlock,omitempty"`
+	IstanbulBlock       *big.Int `json:"istanbulBlock,omitempty"`
+	MuirGlacierBlock    *big.Int `json:"muirGlacierBlock,omitempty"`
+	LondonBlock         *big.Int `json:"londonBlock,omitempty"`
+	ArrowGlacierBlock   *big.Int `json:"arrowGlacierBlock,omitempty"`
+	GrayGlacierBlock    *big.Int `json:"grayGlacierBlock,omitempty"`
 
-	DAOForkBlock   *big.Int `json:"daoForkBlock,omitempty"`   // TheDAO hard-fork switch block (nil = no fork)
-	DAOForkSupport bool     `json:"daoForkSupport,omitempty"` // Whether the nodes supports or opposes the DAO hard-fork
-
-	// EIP150 implements the Gas price changes (https://github.com/ethereum/EIPs/issues/150)
-	EIP150Block *big.Int    `json:"eip150Block,omitempty"` // EIP150 HF block (nil = no fork)
-	EIP150Hash  common.Hash `json:"eip150Hash,omitempty"`  // EIP150 HF hash (needed for header only clients as only gas pricing changed)
-
-	EIP155Block *big.Int `json:"eip155Block,omitempty"` // EIP155 HF block
-	EIP158Block *big.Int `json:"eip158Block,omitempty"` // EIP158 HF block
-
-	ByzantiumBlock      *big.Int `json:"byzantiumBlock,omitempty"`      // Byzantium switch block (nil = no fork, 0 = already on byzantium)
-	ConstantinopleBlock *big.Int `json:"constantinopleBlock,omitempty"` // Constantinople switch block (nil = no fork, 0 = already activated)
-	PetersburgBlock     *big.Int `json:"petersburgBlock,omitempty"`     // Petersburg switch block (nil = same as Constantinople)
-	IstanbulBlock       *big.Int `json:"istanbulBlock,omitempty"`       // Istanbul switch block (nil = no fork, 0 = already on istanbul)
-	MuirGlacierBlock    *big.Int `json:"muirGlacierBlock,omitempty"`    // Eip-2384 (bomb delay) switch block (nil = no fork, 0 = already activated)
-
+	//old
 	YoloV2Block *big.Int `json:"yoloV2Block,omitempty"` // YOLO v2: Gas repricings TODO @holiman add EIP references
 	EWASMBlock  *big.Int `json:"ewasmBlock,omitempty"`  // EWASM switch block (nil = no fork, 0 = already activated)
-
-	// Various consensus engines
 	Ethash  *EthashConfig  `json:"ethash,omitempty"`
 	Clique  *CliqueConfig  `json:"clique,omitempty"`
+
+	// Sonium consensus (DPoS) configuration
 	Sonium *SoniumConfig `json:"sonium,omitempty"`
 
+	// Finality gadget (HotStuff) configuration
 	Finality *FinalityConfig `json:"finality,omitempty"`
 
+	// Optional fork-specific protocol pointers (used by unified testnets)
+	AllEthashProtocolChanges *ChainConfig `json:"-"`
+	AllSoniumProtocolChanges *ChainConfig `json:"-"`
+	AllCliqueProtocolChanges *ChainConfig `json:"-"`
+	TestChainConfig          *ChainConfig `json:"-"`
+
+	// Misc optional transitions (future use)
+	ShanghaiBlock  *big.Int `json:"shanghaiBlock,omitempty"`
+	CancunBlock    *big.Int `json:"cancunBlock,omitempty"`
+	PragueBlock    *big.Int `json:"pragueBlock,omitempty"`
+	VerkleBlock    *big.Int `json:"verkleBlock,omitempty"`
+	TerminalTotalDifficulty *big.Int `json:"terminalTotalDifficulty,omitempty"`
+
+	// Engine can be "ethash", "clique", "sonium", etc.
+	Engine string `json:"engine,omitempty"`
 }
+
 
 // EthashConfig is the consensus engine configs for proof-of-work based sealing.
 type EthashConfig struct{}
@@ -220,6 +256,11 @@ func (c *CliqueConfig) String() string {
 type SoniumConfig struct {
 	Period uint64 `json:"period"` // Number of seconds between blocks to enforce
 	Epoch  uint64 `json:"epoch"`  // Epoch length to update validatorSet
+}
+
+type FinalityConfig struct {
+	Type      string `json:"type"`      // "hotstuff" or ""
+	TimeoutMS uint64 `json:"timeoutMs"` // base round timeout in milliseconds
 }
 
 // String implements the stringer interface, returning the consensus engine details.
