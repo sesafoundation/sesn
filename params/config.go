@@ -96,7 +96,16 @@ var (
 	AllEthashProtocolChanges = &ChainConfig{big.NewInt(1337), big.NewInt(0), nil, false, big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), nil, nil, nil, new(EthashConfig), nil, nil}
 
 	// AllSoniumProtocolChanges copies from sonium protocol.
-	AllSoniumProtocolChanges = &ChainConfig{big.NewInt(2250), big.NewInt(0), nil, false, big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), nil, nil, nil, nil, nil, &SoniumConfig{Period: 3, Epoch: 200}}
+	//AllSoniumProtocolChanges = &ChainConfig{big.NewInt(2250), big.NewInt(0), nil, false, big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), nil, nil, nil, nil, nil, &SoniumConfig{Period: 3, Epoch: 200}}
+
+	var AllSoniumProtocolChanges = &ChainConfig{
+    ChainID: big.NewInt(2250),
+    Sonium:  &SoniumConfig{Period: 3, Epoch: 200},
+    AllEthashProtocolChanges: nil,
+    AllSoniumProtocolChanges: nil,
+    AllCliqueProtocolChanges: nil,
+    TestChainConfig:          nil,
+	}
 
 	// AllCliqueProtocolChanges contains every protocol change (EIPs) introduced
 	// and accepted by the Ethereum core developers into the Clique consensus.
