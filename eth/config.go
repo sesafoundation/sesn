@@ -17,9 +17,13 @@ import (
 	"github.com/ethereum/go-ethereum/params"
 
 	// --- added imports ---
-	"github.com/ethereum/go-ethereum/consensus/sonium"
-	"github.com/ethereum/go-ethereum/consensus/sonium/finality/hotstuff"
-	"github.com/ethereum/go-ethereum/p2p/mfproto"
+	//"github.com/ethereum/go-ethereum/consensus/sonium"
+	//"github.com/ethereum/go-ethereum/consensus/sonium/finality/hotstuff"
+	//"github.com/ethereum/go-ethereum/p2p/mfproto"
+
+	"github.com/sesafoundation/sesn/consensus/sonium/"
+	"github.com/sesafoundation/sesn/consensus/sonium/finality/hotstuff"
+	"github.com/sesafoundation/sesn/p2p/mfproto"
 
 	// BLS12-381 for real aggregation
 	bls12381 "github.com/kilic/bls12-381"
