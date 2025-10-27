@@ -54,38 +54,16 @@ func NewBLSAdapter() *BLSAdapter {
 
 // ──────────────────────────────────────────────────────────────
 // Sign a message (BLS signature over G1)
-// ──────────────────────────────────────────────────────────────
+
+
 func (a *BLSAdapter) Sign(msg []byte) []byte {
-	h, err := a.g1.HashToCurve(msg, []byte("sesa-domain"))
+	h, err := a.g2.HashToCurve(msg, []byte("sesa-domain"))
 	if err != nil {
 		return nil
 	}
-	sig := a.g1.New()
-	a.g1.MulScalar(sig, h, a.PrivKey)
-	return a.g1.ToCompressed(sig)
-}
-
-// ──────────────────────────────────────────────────────────────
-// Verify a single BLS signature
-// ──────────────────────────────────────────────────────────────
-func (a *BLSAdapter) Verify(pubBytes []byte, msg []byte, sigBytes []byte) bool {
-	pk, err := a.g1.FromCompressed(pubBytes)
-	if err != nil {
-		return false
-	}
-	sig, err := a.g1.FromCompressed(sigBytes)
-	if err != nil {
-		return false
-	}
-	h, err := a.g1.HashToCurve(msg, []byte("sesa-domain"))
-	if err != nil {
-		return false
-	}
-
-	engine := bls.NewEngine()
-	engine.AddPair(sig, a.g2.One())
-	engine.AddPairInv(h, pk)
-	return engine.Check()
+	sig := a.g2.New()
+	a.g2.MulScalar(sig, h, a.PrivKey)
+	return a.g2.ToCompressed(sig)
 }
 
 // ──────────────────────────────────────────────────────────────
@@ -106,9 +84,27 @@ func (a *BLSAdapter) Aggregate(sigs [][]byte) []byte {
 	return a.g1.ToCompressed(sum)
 }
 
-// ──────────────────────────────────────────────────────────────
+// Verify a single BLS signature (PK in G1, SIG in G2)
+func (a *BLSAdapter) Verify(pubBytes []byte, msg []byte, sigBytes []byte) bool {
+	pk, err := a.g1.FromCompressed(pubBytes)
+	if err != nil {
+		return false
+	}
+	sig, err := a.g2.FromCompressed(sigBytes)
+	if err != nil {
+		return false
+	}
+	h, err := a.g2.HashToCurve(msg, []byte("sesa-domain"))
+	if err != nil {
+		return false
+	}
+	engine := bls.NewEngine()
+	engine.AddPair(pk, h)
+	engine.AddPairInv(a.g1.One(), sig)
+	return engine.Check()
+}
+
 // Verify aggregate signature (same message for all)
-// ──────────────────────────────────────────────────────────────
 func (a *BLSAdapter) VerifyAggregate(pubKeys [][]byte, msg []byte, aggSig []byte) bool {
 	if len(pubKeys) == 0 {
 		return false
@@ -123,18 +119,17 @@ func (a *BLSAdapter) VerifyAggregate(pubKeys [][]byte, msg []byte, aggSig []byte
 		a.g1.Add(aggPK, aggPK, tmp)
 	}
 
-	sig, err := a.g1.FromCompressed(aggSig)
+	sig, err := a.g2.FromCompressed(aggSig)
 	if err != nil {
 		return false
 	}
-
-	h, err := a.g1.HashToCurve(msg, []byte("sesa-domain"))
+	h, err := a.g2.HashToCurve(msg, []byte("sesa-domain"))
 	if err != nil {
 		return false
 	}
 
 	engine := bls.NewEngine()
-	engine.AddPair(sig, a.g2.One())
-	engine.AddPairInv(h, aggPK)
+	engine.AddPair(aggPK, h)
+	engine.AddPairInv(a.g1.One(), sig)
 	return engine.Check()
 }
