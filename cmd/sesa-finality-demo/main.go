@@ -317,6 +317,7 @@ func main() {
 
 	// Shared validator set
 	vset := &LocalValidatorSet{Vals: validators}
+	cfg := hotstuff.Config{BaseTimeout: 100 * time.Millisecond}
 
 	// Engines + listeners
 	for _, v := range validators {
@@ -326,7 +327,7 @@ func main() {
 		v.Engine = hotstuff.New(cfg, vset, tr, blsAdapter)
 		//
 		//blsAdapter := &hotstuff.BLSAdapter{PrivKey: v.PrivKey, PubKey: v.PubKey}
-		cfg := hotstuff.Config{BaseTimeout: 100 * time.Millisecond}
+		//cfg := hotstuff.Config{BaseTimeout: 100 * time.Millisecond}
 		//v.Engine = hotstuff.New(cfg, vset, tr, blsAdapter)
 
 		go func(v *DemoValidator) {
