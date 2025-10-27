@@ -85,7 +85,8 @@ func (a *BLSAdapter) Verify(pubBytes []byte, msg []byte, sigBytes []byte) bool {
 	}
 
 	h := a.g1.HashToCurve(msg, []byte("sesa-domain"))
-
 	engine := bls.NewEngine()
-	engine.AddPair(sig, a.g2.
-
+	engine.AddPair(sig, a.g2.One())
+	engine.AddPairInv(h, aggPK)
+	return engine.Check()
+}
