@@ -29,12 +29,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/p2p/discover/v4wire"
-	"github.com/ethereum/go-ethereum/p2p/enode"
-	"github.com/ethereum/go-ethereum/p2p/netutil"
-	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/sesafoundation/sesn/crypto"
+	"github.com/sesafoundation/sesn/log"
+	"github.com/sesafoundation/sesn/p2p/discover/v4wire"
+	"github.com/sesafoundation/sesn/p2p/enode"
+	"github.com/sesafoundation/sesn/p2p/netutil"
+	"github.com/sesafoundation/sesn/rlp"
 )
 
 // Errors

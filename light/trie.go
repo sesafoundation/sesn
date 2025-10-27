@@ -21,13 +21,13 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/rawdb"
-	"github.com/ethereum/go-ethereum/core/state"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/ethdb"
-	"github.com/ethereum/go-ethereum/trie"
+	"github.com/sesafoundation/sesn/common"
+	"github.com/sesafoundation/sesn/core/rawdb"
+	"github.com/sesafoundation/sesn/core/state"
+	"github.com/sesafoundation/sesn/core/types"
+	"github.com/sesafoundation/sesn/crypto"
+	"github.com/sesafoundation/sesn/ethdb"
+	"github.com/sesafoundation/sesn/trie"
 )
 
 var (

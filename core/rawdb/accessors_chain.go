@@ -21,13 +21,13 @@ import (
 	"encoding/binary"
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/ethdb"
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/params"
-	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/sesafoundation/sesn/common"
+	"github.com/sesafoundation/sesn/core/types"
+	"github.com/sesafoundation/sesn/crypto"
+	"github.com/sesafoundation/sesn/ethdb"
+	"github.com/sesafoundation/sesn/log"
+	"github.com/sesafoundation/sesn/params"
+	"github.com/sesafoundation/sesn/rlp"
 )
 
 // ReadCanonicalHash retrieves the hash assigned to a canonical block number.

@@ -23,13 +23,13 @@ import (
 	"io/ioutil"
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/accounts"
-	"github.com/ethereum/go-ethereum/accounts/external"
-	"github.com/ethereum/go-ethereum/accounts/keystore"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/log"
+	"github.com/sesafoundation/sesn/accounts"
+	"github.com/sesafoundation/sesn/accounts/external"
+	"github.com/sesafoundation/sesn/accounts/keystore"
+	"github.com/sesafoundation/sesn/common"
+	"github.com/sesafoundation/sesn/core/types"
+	"github.com/sesafoundation/sesn/crypto"
+	"github.com/sesafoundation/sesn/log"
 )
 
 // ErrNoChainID is returned whenever the user failed to specify a chain id.

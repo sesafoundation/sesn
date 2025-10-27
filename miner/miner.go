@@ -22,16 +22,16 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/consensus"
-	"github.com/ethereum/go-ethereum/core"
-	"github.com/ethereum/go-ethereum/core/state"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/eth/downloader"
-	"github.com/ethereum/go-ethereum/event"
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/params"
+	"github.com/sesafoundation/sesn/common"
+	"github.com/sesafoundation/sesn/common/hexutil"
+	"github.com/sesafoundation/sesn/consensus"
+	"github.com/sesafoundation/sesn/core"
+	"github.com/sesafoundation/sesn/core/state"
+	"github.com/sesafoundation/sesn/core/types"
+	"github.com/sesafoundation/sesn/eth/downloader"
+	"github.com/sesafoundation/sesn/event"
+	"github.com/sesafoundation/sesn/log"
+	"github.com/sesafoundation/sesn/params"
 )
 
 // Backend wraps all methods required for mining.

@@ -23,14 +23,14 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ethereum/go-ethereum"
-	"github.com/ethereum/go-ethereum/accounts/abi"
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/sesafoundation/sesn"
+	"github.com/sesafoundation/sesn/accounts/abi"
+	"github.com/sesafoundation/sesn/accounts/abi/bind"
+	"github.com/sesafoundation/sesn/common"
+	"github.com/sesafoundation/sesn/common/hexutil"
+	"github.com/sesafoundation/sesn/core/types"
+	"github.com/sesafoundation/sesn/crypto"
+	"github.com/sesafoundation/sesn/rlp"
 )
 
 type mockCaller struct {

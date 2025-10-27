@@ -20,10 +20,10 @@ import (
 	"bytes"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/rawdb"
-	"github.com/ethereum/go-ethereum/ethdb"
-	"github.com/ethereum/go-ethereum/log"
+	"github.com/sesafoundation/sesn/common"
+	"github.com/sesafoundation/sesn/core/rawdb"
+	"github.com/sesafoundation/sesn/ethdb"
+	"github.com/sesafoundation/sesn/log"
 )
 
 // wipeSnapshot starts a goroutine to iterate over the entire key-value database

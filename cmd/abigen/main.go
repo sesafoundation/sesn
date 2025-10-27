@@ -25,13 +25,13 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/ethereum/go-ethereum/accounts/abi"
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/ethereum/go-ethereum/cmd/utils"
-	"github.com/ethereum/go-ethereum/common/compiler"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/internal/flags"
-	"github.com/ethereum/go-ethereum/log"
+	"github.com/sesafoundation/sesn/accounts/abi"
+	"github.com/sesafoundation/sesn/accounts/abi/bind"
+	"github.com/sesafoundation/sesn/cmd/utils"
+	"github.com/sesafoundation/sesn/common/compiler"
+	"github.com/sesafoundation/sesn/crypto"
+	"github.com/sesafoundation/sesn/internal/flags"
+	"github.com/sesafoundation/sesn/log"
 	"gopkg.in/urfave/cli.v1"
 )
 

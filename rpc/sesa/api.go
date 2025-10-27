@@ -2,8 +2,8 @@ package sesa
 
 import (
 	"context"
-	fin "github.com/ethereum/go-ethereum/internal/finality"
-	"github.com/ethereum/go-ethereum/core/types"
+	fin "github.com/sesafoundation/sesn/internal/finality"
+	"github.com/sesafoundation/sesn/core/types"
 )
 
 type API struct { /* accessor to chain */ }

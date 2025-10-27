@@ -27,17 +27,17 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/ethereum/go-ethereum/accounts"
-	"github.com/ethereum/go-ethereum/accounts/external"
-	"github.com/ethereum/go-ethereum/accounts/keystore"
-	"github.com/ethereum/go-ethereum/accounts/scwallet"
-	"github.com/ethereum/go-ethereum/accounts/usbwallet"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/p2p"
-	"github.com/ethereum/go-ethereum/p2p/enode"
-	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/sesafoundation/sesn/accounts"
+	"github.com/sesafoundation/sesn/accounts/external"
+	"github.com/sesafoundation/sesn/accounts/keystore"
+	"github.com/sesafoundation/sesn/accounts/scwallet"
+	"github.com/sesafoundation/sesn/accounts/usbwallet"
+	"github.com/sesafoundation/sesn/common"
+	"github.com/sesafoundation/sesn/crypto"
+	"github.com/sesafoundation/sesn/log"
+	"github.com/sesafoundation/sesn/p2p"
+	"github.com/sesafoundation/sesn/p2p/enode"
+	"github.com/sesafoundation/sesn/rpc"
 )
 
 const (

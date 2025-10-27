@@ -24,17 +24,17 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/mclock"
-	"github.com/ethereum/go-ethereum/core/rawdb"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/les/flowcontrol"
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/p2p"
-	"github.com/ethereum/go-ethereum/p2p/enode"
-	"github.com/ethereum/go-ethereum/params"
-	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/sesafoundation/sesn/common"
+	"github.com/sesafoundation/sesn/common/mclock"
+	"github.com/sesafoundation/sesn/core/rawdb"
+	"github.com/sesafoundation/sesn/core/types"
+	"github.com/sesafoundation/sesn/crypto"
+	"github.com/sesafoundation/sesn/les/flowcontrol"
+	"github.com/sesafoundation/sesn/log"
+	"github.com/sesafoundation/sesn/p2p"
+	"github.com/sesafoundation/sesn/p2p/enode"
+	"github.com/sesafoundation/sesn/params"
+	"github.com/sesafoundation/sesn/rlp"
 )
 
 // requestBenchmark is an interface for different randomized request generators

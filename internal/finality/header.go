@@ -2,7 +2,7 @@ package finality
 
 import (
 	"bytes"
-	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/sesafoundation/sesn/rlp"
 )
 
 type Payload struct {

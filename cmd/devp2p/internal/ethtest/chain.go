@@ -26,11 +26,11 @@ import (
 	"os"
 	"strings"
 
-	"github.com/ethereum/go-ethereum/core"
-	"github.com/ethereum/go-ethereum/core/forkid"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/params"
-	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/sesafoundation/sesn/core"
+	"github.com/sesafoundation/sesn/core/forkid"
+	"github.com/sesafoundation/sesn/core/types"
+	"github.com/sesafoundation/sesn/params"
+	"github.com/sesafoundation/sesn/rlp"
 )
 
 type Chain struct {

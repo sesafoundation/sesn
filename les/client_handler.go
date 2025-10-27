@@ -23,15 +23,15 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/mclock"
-	"github.com/ethereum/go-ethereum/core/forkid"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/eth/downloader"
-	"github.com/ethereum/go-ethereum/light"
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/p2p"
-	"github.com/ethereum/go-ethereum/params"
+	"github.com/sesafoundation/sesn/common"
+	"github.com/sesafoundation/sesn/common/mclock"
+	"github.com/sesafoundation/sesn/core/forkid"
+	"github.com/sesafoundation/sesn/core/types"
+	"github.com/sesafoundation/sesn/eth/downloader"
+	"github.com/sesafoundation/sesn/light"
+	"github.com/sesafoundation/sesn/log"
+	"github.com/sesafoundation/sesn/p2p"
+	"github.com/sesafoundation/sesn/params"
 )
 
 // clientHandler is responsible for receiving and processing all incoming server

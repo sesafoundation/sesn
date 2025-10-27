@@ -41,24 +41,24 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ethereum/go-ethereum/accounts"
-	"github.com/ethereum/go-ethereum/accounts/abi"
-	"github.com/ethereum/go-ethereum/accounts/keystore"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/eth"
-	"github.com/ethereum/go-ethereum/eth/downloader"
-	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/ethereum/go-ethereum/ethstats"
-	"github.com/ethereum/go-ethereum/les"
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/node"
-	"github.com/ethereum/go-ethereum/p2p"
-	"github.com/ethereum/go-ethereum/p2p/discv5"
-	"github.com/ethereum/go-ethereum/p2p/enode"
-	"github.com/ethereum/go-ethereum/p2p/nat"
-	"github.com/ethereum/go-ethereum/params"
+	"github.com/sesafoundation/sesn/accounts"
+	"github.com/sesafoundation/sesn/accounts/abi"
+	"github.com/sesafoundation/sesn/accounts/keystore"
+	"github.com/sesafoundation/sesn/common"
+	"github.com/sesafoundation/sesn/core"
+	"github.com/sesafoundation/sesn/core/types"
+	"github.com/sesafoundation/sesn/eth"
+	"github.com/sesafoundation/sesn/eth/downloader"
+	"github.com/sesafoundation/sesn/ethclient"
+	"github.com/sesafoundation/sesn/ethstats"
+	"github.com/sesafoundation/sesn/les"
+	"github.com/sesafoundation/sesn/log"
+	"github.com/sesafoundation/sesn/node"
+	"github.com/sesafoundation/sesn/p2p"
+	"github.com/sesafoundation/sesn/p2p/discv5"
+	"github.com/sesafoundation/sesn/p2p/enode"
+	"github.com/sesafoundation/sesn/p2p/nat"
+	"github.com/sesafoundation/sesn/params"
 	"github.com/gorilla/websocket"
 )
 
@@ -534,7 +534,7 @@ func (f *faucet) apiHandler(w http.ResponseWriter, r *http.Request) {
 			username, avatar, address, err = authNoAuth(msg.URL)
 		default:
 			//lint:ignore ST1005 This error is to be displayed in the browser
-			err = errors.New("Something funky happened, please open an issue at https://github.com/ethereum/go-ethereum/issues")
+			err = errors.New("Something funky happened, please open an issue at https://github.com/sesafoundation/sesn/issues")
 		}
 		if err != nil {
 			if err = sendError(conn, err); err != nil {

@@ -21,9 +21,9 @@ import (
 	"errors"
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/core/state"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/params"
+	"github.com/sesafoundation/sesn/core/state"
+	"github.com/sesafoundation/sesn/core/types"
+	"github.com/sesafoundation/sesn/params"
 )
 
 var (

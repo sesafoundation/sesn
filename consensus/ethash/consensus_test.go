@@ -23,9 +23,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/ethereum/go-ethereum/common/math"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/params"
+	"github.com/sesafoundation/sesn/common/math"
+	"github.com/sesafoundation/sesn/core/types"
+	"github.com/sesafoundation/sesn/params"
 )
 
 type diffTest struct {

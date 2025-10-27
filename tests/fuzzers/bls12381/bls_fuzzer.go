@@ -20,8 +20,8 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/vm"
+	"github.com/sesafoundation/sesn/common"
+	"github.com/sesafoundation/sesn/core/vm"
 )
 
 const (

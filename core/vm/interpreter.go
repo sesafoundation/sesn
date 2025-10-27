@@ -20,9 +20,9 @@ import (
 	"hash"
 	"sync/atomic"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/math"
-	"github.com/ethereum/go-ethereum/log"
+	"github.com/sesafoundation/sesn/common"
+	"github.com/sesafoundation/sesn/common/math"
+	"github.com/sesafoundation/sesn/log"
 )
 
 // Config are the configuration options for the Interpreter

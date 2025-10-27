@@ -27,12 +27,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/internal/testlog"
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/p2p/enode"
-	"github.com/ethereum/go-ethereum/p2p/enr"
-	"github.com/ethereum/go-ethereum/p2p/rlpx"
+	"github.com/sesafoundation/sesn/crypto"
+	"github.com/sesafoundation/sesn/internal/testlog"
+	"github.com/sesafoundation/sesn/log"
+	"github.com/sesafoundation/sesn/p2p/enode"
+	"github.com/sesafoundation/sesn/p2p/enr"
+	"github.com/sesafoundation/sesn/p2p/rlpx"
 )
 
 type testTransport struct {
