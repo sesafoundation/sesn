@@ -13,8 +13,11 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 
 	// Your finality gadget imports
-	"github.com/ethereum/go-ethereum/consensus/sonium/finality/hotstuff"
-	"github.com/ethereum/go-ethereum/p2p/mfproto"
+	"github.com/sesafoundation/sesn/consensus/sonium/finality/hotstuff"
+	"github.com/sesafoundation/sesn/p2p/mfproto"
+
+	//"github.com/ethereum/go-ethereum/consensus/sonium/finality/hotstuff"
+	//"github.com/ethereum/go-ethereum/p2p/mfproto"
 
 	bls "github.com/kilic/bls12-381"
 )
