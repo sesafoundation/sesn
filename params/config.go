@@ -59,7 +59,7 @@ var (
 			Period: 3,
 			Epoch:  200,
 		},
-		Finality: &params.FinalityConfig{
+		Finality: &FinalityConfig{
 		Type:               "hotstuff",
 		ActivateAt:       	0,
 		CommitteeSize:		0,
@@ -91,7 +91,7 @@ var (
 			Period: 3,
 			Epoch:  200,
 		},
-		Finality: &params.FinalityConfig{
+		Finality: &FinalityConfig{
 		Type:               "hotstuff",
 		ActivateAt:       	0,
 		CommitteeSize:		0,
@@ -319,6 +319,14 @@ func (c *CliqueConfig) String() string {
 type SoniumConfig struct {
 	Period uint64 `json:"period"` // Number of seconds between blocks to enforce
 	Epoch  uint64 `json:"epoch"`  // Epoch length to update validatorSet
+}
+
+type FinalityConfig struct {
+	Type          string `json:"type"`          // "hotstuff"
+	ActivateAt    uint64 `json:"activateAt"`    // block where gadget turns on
+	CommitteeSize uint64 `json:"committeeSize"` // 0 = all active
+	TimeoutMS     uint64 `json:"timeoutMs"`     // 100–200ms
+	BLS           bool   `json:"bls"`           // true
 }
 
 // String implements the stringer interface, returning the consensus engine details.
