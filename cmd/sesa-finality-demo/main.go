@@ -321,9 +321,13 @@ func main() {
 	// Engines + listeners
 	for _, v := range validators {
 		tr := &GossipTransport{v: v}
-		blsAdapter := &hotstuff.BLSAdapter{PrivKey: v.PrivKey, PubKey: v.PubKey}
-		cfg := hotstuff.Config{BaseTimeout: 100 * time.Millisecond}
+		//
+		blsAdapter := hotstuff.NewBLSAdapter()
 		v.Engine = hotstuff.New(cfg, vset, tr, blsAdapter)
+		//
+		//blsAdapter := &hotstuff.BLSAdapter{PrivKey: v.PrivKey, PubKey: v.PubKey}
+		cfg := hotstuff.Config{BaseTimeout: 100 * time.Millisecond}
+		//v.Engine = hotstuff.New(cfg, vset, tr, blsAdapter)
 
 		go func(v *DemoValidator) {
 			for msg := range v.RecvCh {
