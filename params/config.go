@@ -276,6 +276,8 @@ type ChainConfig struct {
 	PetersburgBlock     *big.Int `json:"petersburgBlock,omitempty"`
 	IstanbulBlock       *big.Int `json:"istanbulBlock,omitempty"`
 	MuirGlacierBlock    *big.Int `json:"muirGlacierBlock,omitempty"`
+	YoloV2Block 		*big.Int `json:"yoloV2Block,omitempty"`
+	EWASMBlock  		*big.Int `json:"ewasmBlock,omitempty"`
 	LondonBlock         *big.Int `json:"londonBlock,omitempty"`
 	GrayGlacierBlock    *big.Int `json:"grayGlacierBlock,omitempty"`
 
