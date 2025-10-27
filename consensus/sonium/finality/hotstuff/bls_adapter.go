@@ -7,7 +7,7 @@ import (
 	bls "github.com/kilic/bls12-381"
 )
 
-// BLSAdapter provides a simple key pair for HotStuff finality.
+// BLSAdapter provides a simple BLS key pair for HotStuff finality.
 type BLSAdapter struct {
 	PrivKey *bls.Fr
 	PubKey  *bls.PointG1
@@ -25,10 +25,10 @@ func NewBLSAdapter() *BLSAdapter {
 	}
 
 	// 2. Convert bytes → scalar (Fr element)
-	sk := fr.Zero()
-	if err := fr.FromBytes(sk, skBytes); err != nil {
-		// fallback if bytes are out of range
-		fr.One(sk)
+	sk := fr.FromBytes(skBytes)
+	if sk == nil {
+		// fallback if bytes are invalid
+		sk = fr.One()
 	}
 
 	// 3. Compute pk = G1 generator * sk
@@ -40,4 +40,5 @@ func NewBLSAdapter() *BLSAdapter {
 		PubKey:  pk,
 	}
 }
+
 
