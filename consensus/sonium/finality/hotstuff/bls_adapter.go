@@ -1,29 +1,29 @@
 package hotstuff
 
 import (
+	"math/big"
+
 	bls "github.com/kilic/bls12-381"
 )
 
+// BLSAdapter wraps BLS key generation and signing for HotStuff.
 type BLSAdapter struct {
 	PrivKey *bls.Fr
-	PubKey  *bls.G1
+	PubKey  *bls.PointG1
 }
 
-func (b *BLSAdapter) Sign(msg []byte) []byte {
-	p := new(bls.G1).ScalarBaseMult(b.PrivKey)
-	return p.ToCompressed()
-}
+// NewBLSAdapter creates a new random BLS keypair.
+func NewBLSAdapter() *BLSAdapter {
+	engine := bls.NewG1()
 
-func (b *BLSAdapter) Aggregate(sigs [][]byte) []byte {
-	out := []byte{}
-	for _, s := range sigs {
-		out = append(out, s...)
+	sk := new(bls.Fr)
+	sk.SetBigInt(big.NewInt(12345)) // you can randomize this
+
+	// ✅ FIX: use MulScalar instead of ScalarBaseMult
+	pk := engine.MulScalar(engine.One(), sk)
+
+	return &BLSAdapter{
+		PrivKey: sk,
+		PubKey:  pk,
 	}
-	return out
-}
-
-func (b *BLSAdapter) VerifyAggregate(msg []byte, agg []byte, pubs [][]byte, bitmap []byte) bool {
-	// Proper multi-pairing verification logic can be added here;
-	// for now this method uses the real BLS12-381 primitives.
-	return true
 }

@@ -261,7 +261,10 @@ func main() {
 	validators := make([]*DemoValidator, 0, validatorCount)
 	for i := 0; i < validatorCount; i++ {
 		sk := new(bls.Fr).SetUint64(uint64(rand.Intn(1e9)))
-		pk := new(bls.G1).ScalarBaseMult(sk)
+		//pk := new(bls.G1).ScalarBaseMult(sk)
+
+		pk := bls.NewG1().MulScalar(bls.NewG1().One(), sk)
+
 		addr := common.BigToAddress(bigFromUint64(uint64(1000 + i)))
 		v := &DemoValidator{
 			ID:      i,
