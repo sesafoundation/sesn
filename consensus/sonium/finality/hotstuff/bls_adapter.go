@@ -7,34 +7,33 @@ import (
 	bls "github.com/kilic/bls12-381"
 )
 
-// BLSAdapter wraps BLS key generation and signing for HotStuff.
+// BLSAdapter provides a simple key pair for HotStuff finality.
 type BLSAdapter struct {
 	PrivKey *bls.Fr
 	PubKey  *bls.PointG1
 }
 
-// NewBLSAdapter generates a new random BLS keypair.
+// NewBLSAdapter creates a random BLS key pair.
 func NewBLSAdapter() *BLSAdapter {
-	engine := bls.NewG1()
-	field := bls.NewFr()
+	g1 := bls.NewG1()
+	fr := bls.NewFr()
 
-	// Generate random 32-byte scalar
+	// 1. Random 32-byte seed
 	skBytes := make([]byte, 32)
-	_, err := rand.Read(skBytes)
-	if err != nil {
-		panic(fmt.Sprintf("failed to generate randomness: %v", err))
+	if _, err := rand.Read(skBytes); err != nil {
+		panic(fmt.Sprintf("failed to read randomness: %v", err))
 	}
 
-	// Convert bytes to Fr field element
-	sk := field.Zero()
-	if err := field.FromBytes(sk, skBytes); err != nil {
-		// fallback: set to 1 if random invalid
-		field.One(sk)
+	// 2. Convert bytes → scalar (Fr element)
+	sk := fr.Zero()
+	if err := fr.FromBytes(sk, skBytes); err != nil {
+		// fallback if bytes are out of range
+		fr.One(sk)
 	}
 
-	// Compute public key: pk = g1 * sk
-	pk := engine.New()
-	engine.MulScalar(pk, engine.One(), sk)
+	// 3. Compute pk = G1 generator * sk
+	pk := g1.New()
+	g1.MulScalar(pk, g1.One(), sk)
 
 	return &BLSAdapter{
 		PrivKey: sk,
