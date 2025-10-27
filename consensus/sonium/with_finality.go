@@ -6,9 +6,15 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/consensus"
-	"github.com/ethereum/go-ethereum/consensus/sonium/finality/hotstuff"
-	fin "github.com/ethereum/go-ethereum/internal/finality"
+	//"github.com/ethereum/go-ethereum/consensus/sonium/finality/hotstuff"
+	"github.com/sesafoundation/sesn/consensus/sonium/finality/hotstuff"
+
+	//fin "github.com/ethereum/go-ethereum/internal/finality"
+	fin "github.com/sesafoundation/sesn/internal/finality"
+
 	"github.com/ethereum/go-ethereum/core/types"
+
+
 )
 
 type withFinality struct {
