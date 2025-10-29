@@ -2,6 +2,9 @@ syntax = "proto3";
 
 package wire;
 
+option go_package = "github.com/sesafoundation/sesn/consensus/sonium/finality/hotstuff/wire;wire";
+
+
 // ──────────────────────────────────────────────────────────────
 // HotStuff wire-level message schema
 // ──────────────────────────────────────────────────────────────

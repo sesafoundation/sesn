@@ -17,7 +17,7 @@
 package misc
 
 import (
-	"fmt"
+	//"fmt"
 
 	"github.com/sesafoundation/sesn/common"
 	"github.com/sesafoundation/sesn/core/types"
@@ -35,10 +35,9 @@ func VerifyForkHashes(config *params.ChainConfig, header *types.Header, uncle bo
 	// If the homestead reprice hash is set, validate it
 	if config.EIP150Block != nil && config.EIP150Block.Cmp(header.Number) == 0 {
 
-		if config.EIP150Hash != "" {
-		    if common.HexToHash(config.EIP150Hash) != header.Hash() {
-        		return false
-    		}
+		if config.EIP150Hash != "" &&
+   			common.HexToHash(config.EIP150Hash) != header.Hash() {
+    		return fmt.Errorf("EIP150Hash mismatch")
 		}
 
 
