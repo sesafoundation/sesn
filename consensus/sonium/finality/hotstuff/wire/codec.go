@@ -4,8 +4,15 @@ import (
 	"fmt"
 
 	"google.golang.org/protobuf/proto"
+	"github.com/sesafoundation/sesn/consensus/sonium/finality/hotstuff"
 )
 
+type (
+    Propose    = hotstuff.ProposeMsg
+    Vote       = hotstuff.VoteMsg
+    Commit     = hotstuff.CommitMsg
+    QuorumCert = hotstuff.QuorumCert
+)
 // Topics (versioned)
 const (
 	TopicBase       = "sesa/hotstuff/1"
