@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"google.golang.org/protobuf/proto"
-	//"github.com/sesafoundation/sesn/consensus/sonium/finality/hotstuff"
+	"github.com/sesafoundation/sesn/consensus/sonium/finality/hotstuff"
 )
 
 type (
