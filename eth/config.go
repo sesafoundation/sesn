@@ -177,49 +177,74 @@ type Config struct {
 ///////////////////////////////////////////////////////////////////////////////
 
 // NewConsensusEngine creates the Sonium DPoS engine with optional HotStuff finality.
+//func NewConsensusEngine(cfg *params.ChainConfig, backend core.EngineBackend) (consensus.Engine, error) {
+//	// Base Sonium engine
+//	base := sonium.New(backend, cfg)
+//
+//	// If no finality configuration, return base engine
+//	if cfg.Finality == nil || cfg.Finality.Type != "hotstuff" {
+//		return base, nil
+//	}
+//
+//	// --- Real BLS12-381 key setup ---
+//	// Each validator should have its own private key; this example just creates a dummy pair
+//	// for demonstration. In production, derive from your validator keystore.
+//	sk := bls12381.NewKey()
+//	pk := new(bls12381.G1).ScalarBaseMult(sk)
+//	_ = pk // store or publish pk for validator discovery
+//
+//	// BLS adapter implementing our gadget's interface
+//	blsAdapter := &hotstuff.BLSAdapter{
+//		PrivKey: sk,
+//		PubKey:  pk,
+//	}
+//
+//	// Validator set from DPoS contract/state
+//	vs := sonium.NewValidatorSet(backend)
+//
+//	// Mini-finality transport (in-proc stub; replace with p2p for real net)
+//	tr := mfproto.NewLocalTransport(nil)
+//
+//	// Configure adaptive finality with ~100 ms timeout
+//	gadget := hotstuff.New(
+//		hotstuff.Config{BaseTimeout: time.Duration(cfg.Finality.TimeoutMS) * time.Millisecond},
+//		vs, tr, blsAdapter,
+//	)
+//
+//	engine := sonium.WithFinality(base, gadget)
+//
+//	// Optionally attach P2P protocol for real vote gossip
+//	if backend.NodeServer() != nil {
+//		backend.NodeServer().Protocols = append(
+//			backend.NodeServer().Protocols,
+//			mfproto.Protocol(gadget),
+//		)
+//	}
+//
+//	return engine, nil
+//}
+
 func NewConsensusEngine(cfg *params.ChainConfig, backend core.EngineBackend) (consensus.Engine, error) {
-	// Base Sonium engine
-	base := sonium.New(backend, cfg)
+    base := sonium.New(backend, cfg)
 
-	// If no finality configuration, return base engine
-	if cfg.Finality == nil || cfg.Finality.Type != "hotstuff" {
-		return base, nil
-	}
+    if cfg.Finality == nil || cfg.Finality.Type != "hotstuff" {
+        return base, nil
+    }
+    hsCfg := hotstuff.Config{
+        BaseTimeout:  time.Duration(cfg.Finality.TimeoutMS) * time.Millisecond,
+        MaxTimeout:   5 * time.Second,
+        ActivateAt:   cfg.Finality.ActivateAt,
+        CommitteeSize:int(cfg.Finality.CommitteeSize),
+        GossipTopic:  "sesa/hotstuff/1",
+        Domain:       []byte("sesa-hotstuff-vote-v1"),
+        StoragePath:  filepath.Join(backend.DataDir(), "finality"),
+    }
 
-	// --- Real BLS12-381 key setup ---
-	// Each validator should have its own private key; this example just creates a dummy pair
-	// for demonstration. In production, derive from your validator keystore.
-	sk := bls12381.NewKey()
-	pk := new(bls12381.G1).ScalarBaseMult(sk)
-	_ = pk // store or publish pk for validator discovery
+    vset := hotstuff.NewContractVSet(backend, DPoSRegistryAddr) // reorg-safe cache
+    tr   := hotstuff.NewDevp2pTransport(backend.P2P())
+    bls  := hotstuff.NewBLSAdapter() // or &hotstuff.BLSStub{} for dry-runs
+    st   := hotstuff.NewBadgerStore(hsCfg.StoragePath)
 
-	// BLS adapter implementing our gadget's interface
-	blsAdapter := &hotstuff.BLSAdapter{
-		PrivKey: sk,
-		PubKey:  pk,
-	}
-
-	// Validator set from DPoS contract/state
-	vs := sonium.NewValidatorSet(backend)
-
-	// Mini-finality transport (in-proc stub; replace with p2p for real net)
-	tr := mfproto.NewLocalTransport(nil)
-
-	// Configure adaptive finality with ~100 ms timeout
-	gadget := hotstuff.New(
-		hotstuff.Config{BaseTimeout: time.Duration(cfg.Finality.TimeoutMS) * time.Millisecond},
-		vs, tr, blsAdapter,
-	)
-
-	engine := sonium.WithFinality(base, gadget)
-
-	// Optionally attach P2P protocol for real vote gossip
-	if backend.NodeServer() != nil {
-		backend.NodeServer().Protocols = append(
-			backend.NodeServer().Protocols,
-			mfproto.Protocol(gadget),
-		)
-	}
-
-	return engine, nil
+    eng  := hotstuff.New(hsCfg, vset, tr, bls, st)
+    return sonium.WithFinality(base, eng), nil
 }

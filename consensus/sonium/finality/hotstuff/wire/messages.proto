@@ -1,0 +1,45 @@
+syntax = "proto3";
+
+package sesa.hotstuff.v1;
+
+// Go options
+option go_package = "github.com/sesafoundation/sesn/consensus/sonium/finality/hotstuff/wire;wire";
+
+// ----------------------------------------------------------------------
+// Core wire types (versioned)
+// ----------------------------------------------------------------------
+
+message Propose {
+  uint64 chain_id   = 1;
+  uint64 height     = 2;
+  uint64 view       = 3;
+  bytes  header_rlp = 4; // RLP of types.Header
+  bytes  justify_qc = 5; // marshaled QuorumCert (proto)
+}
+
+message Vote {
+  uint64 chain_id = 1;
+  uint64 height   = 2;
+  uint64 view     = 3;
+  bytes  block_id = 4;  // 32-byte hash
+  uint32 voter_ix = 5;  // index in active set
+  bytes  sig_g2   = 6;  // compressed signature (G2)
+}
+
+message Commit {
+  uint64 chain_id = 1;
+  uint64 height   = 2;
+  uint64 view     = 3;
+  bytes  block_id = 4;
+  bytes  qc       = 5;  // QuorumCert (proto)
+}
+
+message QuorumCert {
+  uint64 chain_id = 1;
+  uint64 height   = 2;
+  uint64 view     = 3;
+  bytes  block_id = 4;
+  bytes  agg_sig  = 5;  // aggregated signature (G2)
+  bytes  bitmap   = 6;  // optional; else pass pubkeys array out-of-band
+  uint32 quorum   = 7;  // threshold used when built
+}

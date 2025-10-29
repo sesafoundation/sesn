@@ -23,14 +23,18 @@ const defaultMainnetGenesis = `{
     }
     "finality": {
       "type": "hotstuff",
-      "activateAt": 1234567,
-      "committeeSize": 0,      // 0 = all active validators
-      "timeoutMs": 120,        // target ~100ms; allow a little slack
+      "activateAt": 0,
+      "committeeSize": 0,    
+      "timeoutMs": 100,        
       "bls": true
     }
+    "allEthashProtocolChanges": null,
+    "allSoniumProtocolChanges": null,
+    "allCliqueProtocolChanges": null,
+    "testChainConfig": null
   },
   "nonce": "0x0",
-  "timestamp": "0x65CA9E9A",
+  "timestamp": "0x0",
   "extraData": "0x0000000000000000000000000000000000000000000000000000000000000000f3a42f681D6070afD77Cd206E79ef6Dbdf5604Eb0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
   "gasLimit": "0x280de80",
   "difficulty": "0x1",
@@ -73,14 +77,18 @@ const defaultTestnetGenesis = `{
     }
     "finality": {
       "type": "hotstuff",
-      "activateAt": 1234567,
-      "committeeSize": 0,      // 0 = all active validators
-      "timeoutMs": 120,        // target ~100ms; allow a little slack
+      "activateAt": 0,
+      "committeeSize": 0, 
+      "timeoutMs": 100,        
       "bls": true
     }
+    "allEthashProtocolChanges": null,
+    "allSoniumProtocolChanges": null,
+    "allCliqueProtocolChanges": null,
+    "testChainConfig": null
   },
   "nonce": "0x0",
-  "timestamp": "0x65CA9E9A",
+  "timestamp": "0x0",
   "extraData": "0x00000000000000000000000000000000000000000000000000000000000000008451B0a735296A5c962df61AFf8226f9f2588E030000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",  
   "gasLimit": "0x280de80",
   "difficulty": "0x1",
@@ -120,26 +128,4 @@ func DefaultTestnetGenesis(genesis *Genesis) error {
 
 func DefaultMainnetGenesis(genesis *Genesis) error {
 	return loadDefaultGenesis(genesis, false)
-}
-
-
-
-
-///addon below
-{
-  "config": {
-    "chainId": 2250,
-    "homesteadBlock": 0,
-    "eip150Block": 0,
-    "eip155Block": 0,
-    "eip158Block": 0,
-    "istanbulBlock": 0,
-    "finality": {
-      "type": "hotstuff",
-      "activateAt": 1234567,
-      "committeeSize": 0,      // 0 = all active validators
-      "timeoutMs": 120,        // target ~100ms; allow a little slack
-      "bls": true
-    }
-  }
 }
