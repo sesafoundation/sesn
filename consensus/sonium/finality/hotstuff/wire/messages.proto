@@ -1,45 +1,40 @@
 syntax = "proto3";
 
-package sesa.hotstuff.v1;
+package wire;
 
-// Go options
-option go_package = "github.com/sesafoundation/sesn/consensus/sonium/finality/hotstuff/wire;wire";
+// ──────────────────────────────────────────────────────────────
+// HotStuff wire-level message schema
+// ──────────────────────────────────────────────────────────────
 
-// ----------------------------------------------------------------------
-// Core wire types (versioned)
-// ----------------------------------------------------------------------
-
+// Proposal for a new block or view
 message Propose {
-  uint64 chain_id   = 1;
-  uint64 height     = 2;
-  uint64 view       = 3;
-  bytes  header_rlp = 4; // RLP of types.Header
-  bytes  justify_qc = 5; // marshaled QuorumCert (proto)
+  uint64 round     = 1;
+  uint64 height    = 2;
+  bytes  hash      = 3;   // block hash
+  bytes  payload   = 4;   // optional extra data (RLP / JSON etc.)
+  bytes  proposer  = 5;   // proposer address
 }
 
+// Vote from a validator for a proposal
 message Vote {
-  uint64 chain_id = 1;
-  uint64 height   = 2;
-  uint64 view     = 3;
-  bytes  block_id = 4;  // 32-byte hash
-  uint32 voter_ix = 5;  // index in active set
-  bytes  sig_g2   = 6;  // compressed signature (G2)
+  uint64 round       = 1;
+  uint64 height      = 2;
+  uint32 voterIndex  = 3;
+  bytes  voter       = 4;   // validator address
+  bytes  signature   = 5;
 }
 
+// Commit notification carrying a quorum certificate
 message Commit {
-  uint64 chain_id = 1;
-  uint64 height   = 2;
-  uint64 view     = 3;
-  bytes  block_id = 4;
-  bytes  qc       = 5;  // QuorumCert (proto)
+  uint64 round   = 1;
+  uint64 height  = 2;
+  bytes  qc      = 3;      // marshaled QuorumCert
 }
 
+// Aggregated Quorum Certificate
 message QuorumCert {
-  uint64 chain_id = 1;
-  uint64 height   = 2;
-  uint64 view     = 3;
-  bytes  block_id = 4;
-  bytes  agg_sig  = 5;  // aggregated signature (G2)
-  bytes  bitmap   = 6;  // optional; else pass pubkeys array out-of-band
-  uint32 quorum   = 7;  // threshold used when built
+  uint64 height   = 1;
+  uint64 round    = 2;
+  repeated uint32 signers = 3;
+  bytes  aggSig   = 4;
 }
