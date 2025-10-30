@@ -330,6 +330,43 @@ The validator.create command creates a new validator.
 		Description: ``,
 	}
 
+	blockrewardAPRQueryCommand = cli.Command{
+		Action:    utils.MigrateFlags(queryBlockRewardAPRInfo),
+		Name:      "block.reward.apr",
+		Usage:     "get block reward apr",
+		ArgsUsage: "",
+		Category:    "VALIDATOR",
+		Description: ``,
+	}
+
+	valstakingrewardAPRQueryCommand = cli.Command{
+		Action:    utils.MigrateFlags(queryValStakingRewardAPRInfo),
+		Name:      "valstaking.reward.apr",
+		Usage:     "get valstaking reward apr",
+		ArgsUsage: "",
+		Category:    "VALIDATOR",
+		Description: ``,
+	}
+
+	delstakingrewardAPRQueryCommand = cli.Command{
+		Action:    utils.MigrateFlags(queryDelStakingRewardAPRInfo),
+		Name:      "delstaking.reward.apr",
+		Usage:     "get delstaking reward apr",
+		ArgsUsage: "",
+		Category:    "VALIDATOR",
+		Description: ``,
+	}
+
+	delgoldrewardAPRQueryCommand = cli.Command{
+		Action:    utils.MigrateFlags(queryDelGoldRewardAPRInfo),
+		Name:      "delgold.reward.apr",
+		Usage:     "get delgold reward apr",
+		ArgsUsage: "",
+		Category:    "VALIDATOR",
+		Description: ``,
+	}
+
+
 	defaultGasPrice = big.NewInt(params.MinimalGasPrice.Int64()) // 100GWEI
 )
 
@@ -363,6 +400,10 @@ const (
 	GetValidatorCandidatesMethod  = "getValidatorCandidate"
 	GetActivatedValidatorsMethod  = "getActivatedValidators"
 	GetValidatorSlashRecordMethod = "getSlashRecord"
+	GetBlockRewardAPRMethod		  = "getBlockRewardAPR"
+	GetValStakingAPRMethod		  = "getValidatorStarAPR"
+	GetDelStakingAPRMethod	      = "getDelegatorStarAPR"
+	GetDelGoldAPRMethd			  = "getDelegatorGoldAPR"
 )
 
 const (
@@ -1100,5 +1141,149 @@ func querySlashRecord(ctx *cli.Context) error {
 		utils.Fatalf("Unpack staking info err: %v\n", err)
 	}
 	fmt.Printf("Validator: %v, missed block counter: %v\n", validatorAddress, missedBlocksCounter.String())
+	return nil
+}
+
+func queryBlockRewardAPRInfo (ctx *cli.Context) error {
+	validatorABIstr := sonium.ValidatorContractABI()
+	valABI, err := abi.JSON(strings.NewReader(validatorABIstr))
+	if err != nil {
+		utils.Fatalf("validator abi load error: %v\n", err)
+	}
+
+	validatorContractAddr := sonium.ValidatorContratAddress()
+	data, err := valABI.Pack(GetBlockRewardAPRMethod)
+	if err != nil {
+		utils.Fatalf("query BlockRewardAprInfo pack err: %v\n", err)
+	}
+	msg := ethereum.CallMsg{
+		To:   &validatorContractAddr,
+		Data: data,
+	}
+	result, err := queryHandler(ctx, &msg)
+	if err != nil {
+		utils.Fatalf("Get BlockRewardAPRInfo err: %v\n", err)
+	}
+	var (
+		blockrewardapr  = new(*big.Int)
+	)
+
+	out := &[]interface{}{
+		blockrewardapr,
+	
+	}
+	err = valABI.UnpackIntoInterface(out, GetBlockRewardAPRMethod, result)
+	if err != nil {
+		utils.Fatalf("Unpack BlockRewardAPR err: %v\n", err)
+	}
+	fmt.Printf(" Block Reward APR : %v\n", blockrewardapr)
+	return nil
+}
+
+func queryValStakingRewardAPRInfo (ctx *cli.Context) error {
+	validatorABIstr := sonium.ValidatorContractABI()
+	valABI, err := abi.JSON(strings.NewReader(validatorABIstr))
+	if err != nil {
+		utils.Fatalf("validator abi load error: %v\n", err)
+	}
+
+	validatorContractAddr := sonium.ValidatorContratAddress()
+	data, err := valABI.Pack(GetValStakingAPRMethod)
+	if err != nil {
+		utils.Fatalf("query ValStakingAPRInfo pack err: %v\n", err)
+	}
+	msg := ethereum.CallMsg{
+		To:   &validatorContractAddr,
+		Data: data,
+	}
+	result, err := queryHandler(ctx, &msg)
+	if err != nil {
+		utils.Fatalf("Get ValStakingAPR err: %v\n", err)
+	}
+	var (
+		valstakingapr  = new(*big.Int)
+	)
+
+	out := &[]interface{}{
+		valstakingapr,
+	
+	}
+	err = valABI.UnpackIntoInterface(out, GetValStakingAPRMethod, result)
+	if err != nil {
+		utils.Fatalf("Unpack ValStakingRewardAPR err: %v\n", err)
+	}
+	fmt.Printf(" Validator Staking APR : %v\n",valstakingapr)
+	return nil
+}
+
+func queryDelStakingRewardAPRInfo (ctx *cli.Context) error {
+	validatorABIstr := sonium.ValidatorContractABI()
+	valABI, err := abi.JSON(strings.NewReader(validatorABIstr))
+	if err != nil {
+		utils.Fatalf("validator abi load error: %v\n", err)
+	}
+
+	validatorContractAddr := sonium.ValidatorContratAddress()
+	data, err := valABI.Pack(GetDelStakingAPRMethod)
+	if err != nil {
+		utils.Fatalf("query DelStakingRewardAprInfo pack err: %v\n", err)
+	}
+	msg := ethereum.CallMsg{
+		To:   &validatorContractAddr,
+		Data: data,
+	}
+	result, err := queryHandler(ctx, &msg)
+	if err != nil {
+		utils.Fatalf("Get DelStakingRewardAPRInfo err: %v\n", err)
+	}
+	var (
+		delstakingrewardapr  = new(*big.Int)
+	)
+
+	out := &[]interface{}{
+		delstakingrewardapr,
+	
+	}
+	err = valABI.UnpackIntoInterface(out, GetDelStakingAPRMethod, result)
+	if err != nil {
+		utils.Fatalf("Unpack DelStakingRewardAPR err: %v\n", err)
+	}
+	fmt.Printf(" Delegator Staking Reward APR : %v\n", delstakingrewardapr)
+	return nil
+}
+
+func queryDelGoldRewardAPRInfo (ctx *cli.Context) error {
+	validatorABIstr := sonium.ValidatorContractABI()
+	valABI, err := abi.JSON(strings.NewReader(validatorABIstr))
+	if err != nil {
+		utils.Fatalf("validator abi load error: %v\n", err)
+	}
+
+	validatorContractAddr := sonium.ValidatorContratAddress()
+	data, err := valABI.Pack(GetDelGoldAPRMethd)
+	if err != nil {
+		utils.Fatalf("query DelGoldRewardAprInfo pack err: %v\n", err)
+	}
+	msg := ethereum.CallMsg{
+		To:   &validatorContractAddr,
+		Data: data,
+	}
+	result, err := queryHandler(ctx, &msg)
+	if err != nil {
+		utils.Fatalf("Get DelGoldRewardAPRInfo err: %v\n", err)
+	}
+	var (
+		delgoldrewardapr  = new(*big.Int)
+	)
+
+	out := &[]interface{}{
+		delgoldrewardapr,
+	
+	}
+	err = valABI.UnpackIntoInterface(out, GetDelGoldAPRMethd, result)
+	if err != nil {
+		utils.Fatalf("Unpack DelGoldRewardAPR err: %v\n", err)
+	}
+	fmt.Printf(" Delegator Gold Reward APR : %v\n", delgoldrewardapr)
 	return nil
 }

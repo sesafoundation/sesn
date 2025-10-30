@@ -273,6 +273,10 @@ func init() {
 		starInfoQueryCommand,
 		goldInfoQueryCommand,
 		slashRecordQueryCommand,
+		blockrewardAPRQueryCommand,
+		valstakingrewardAPRQueryCommand,
+		delstakingrewardAPRQueryCommand,
+		delgoldrewardAPRQueryCommand,
 		// See config.go
 		dumpConfigCommand,
 		// See cmd/utils/flags_legacy.go
