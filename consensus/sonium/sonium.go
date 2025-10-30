@@ -69,7 +69,10 @@ var (
 
 	//BlockReward = new(big.Int).Mul(big.NewInt(2e18), big.NewInt(10)) //20 block reward
 	
-	BlockReward = new(big.Int).Mul(big.NewInt(1e18), big.NewInt(10)) //10 block reward
+	//BlockReward 	= new(big.Int).Mul(big.NewInt(1e18), big.NewInt(10)) //10 block reward
+
+	BlockReward 	= new(big.Int).Mul(big.NewInt(1e18), big.NewInt(12)) //12 block reward
+
 
 
 
