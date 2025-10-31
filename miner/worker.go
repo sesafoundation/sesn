@@ -35,6 +35,7 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/trie"
+	preconf "github.com/sesafoundation/internal/preconfclient"
 )
 
 const (
@@ -185,6 +186,10 @@ type worker struct {
 	skipSealHook func(*task) bool                   // Method to decide whether skipping the sealing.
 	fullTaskHook func()                             // Method to call before pushing the full sealing task.
 	resubmitHook func(time.Duration, time.Duration) // Method to call upon updating resubmitting interval.
+
+	preconfClient *preconf.Client
+    evidenceLog   *preconf.EvidenceLogger
+
 }
 
 func newWorker(config *Config, chainConfig *params.ChainConfig, engine consensus.Engine, eth Backend, mux *event.TypeMux, isLocalBlock func(*types.Block) bool, init bool) *worker {
@@ -211,6 +216,18 @@ func newWorker(config *Config, chainConfig *params.ChainConfig, engine consensus
 		resubmitIntervalCh: make(chan time.Duration),
 		resubmitAdjustCh:   make(chan *intervalAdjust, resubmitAdjustChanSize),
 	}
+
+	// QuantM start 
+	url := os.Getenv("PRECONF_URL")
+	if url != "" {
+    w.preconfClient = preconf.New(url)
+	}
+	evPath := os.Getenv("PRECONF_EVIDENCE")
+	if evPath != "" {
+    w.evidenceLog = preconf.NewEvidenceLogger(evPath)
+	}
+	/// QuantM end
+
 	// Subscribe NewTxsEvent for tx pool
 	worker.txsSub = eth.TxPool().SubscribeNewTxsEvent(worker.txsCh)
 	// Subscribe events for blockchain
@@ -737,6 +754,18 @@ func (w *worker) commitTransaction(tx *types.Transaction, coinbase common.Addres
 }
 
 func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coinbase common.Address, interrupt *int32) bool {
+	/// QuantM start
+	miniTxs := getMiniBlockTxs()
+	for _, h := range miniTxs {
+    tx := w.eth.TxPool().Get(h)
+    if tx == nil { recordEvidenceMissing(h); continue }
+    if !passesConstraints(tx, w.current.state) { recordEvidenceConstraint(h); continue }
+    w.commitTransaction(tx, coinbase)
+	}
+	// QuantM end
+	
+	
+	
 	// Short circuit if current is nil
 	if w.current == nil {
 		return true
@@ -747,7 +776,56 @@ func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coin
 	}
 
 	var coalescedLogs []*types.Log
+	// QuantM start
+	// === [PRECONF / MINI-BLOCK INTEGRATION] ===
+	if w.preconfClient != nil {
+    if mb, err := w.preconfClient.LatestMiniBlock(); err == nil && mb != nil {
+        log.Info("Including preconf txs", "count", len(mb.TxHashes))
+        for _, h := range mb.TxHashes {
+            tx := w.eth.TxPool().Get(h)
+            if tx == nil {
+                log.Warn("Preconf tx missing", "hash", h)
+                if w.evidenceLog != nil {
+                    _ = w.evidenceLog.Append(preconf.Evidence{
+                        Proposer: w.coinbase, // or current proposer address
+                        TxHash:   h,
+                        Reason:   "missing",
+                        PayWei:   "0",
+                    })
+                }
+                continue
+            }
+            // Basic validity check
+            if w.current.gasPool.Gas() < params.TxGas {
+                log.Warn("Not enough gas for preconf tx", "hash", h)
+                break
+            }
+            w.current.state.Prepare(h, common.Hash{}, w.current.tcount)
+            logs, err := w.commitTransaction(tx, coinbase)
+            if err != nil {
+                log.Warn("Preconf tx failed", "hash", h, "err", err)
+                if w.evidenceLog != nil {
+                    _ = w.evidenceLog.Append(preconf.Evidence{
+                        Proposer: w.coinbase,
+                        TxHash:   h,
+                        Reason:   "constraint",
+                        PayWei:   "0",
+                    })
+                }
+                continue
+            }
+            coalescedLogs = append(coalescedLogs, logs...)
+            w.current.tcount++
+        }
+    } else if err != nil {
+        log.Warn("Failed to fetch mini-block", "err", err)
+    }
+	}
+// === [END PRECONF / MINI-BLOCK INTEGRATION] ===
 
+
+
+	// QuantM end
 	for {
 		// In the following three cases, we will interrupt the execution of the transaction.
 		// (1) new head block event arrival, the interrupt signal is 1
