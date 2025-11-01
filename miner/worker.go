@@ -217,16 +217,27 @@ func newWorker(config *Config, chainConfig *params.ChainConfig, engine consensus
 		resubmitAdjustCh:   make(chan *intervalAdjust, resubmitAdjustChanSize),
 	}
 
-	// QuantM start 
+			// QuantM start -------------------------------
 	url := os.Getenv("PRECONF_URL")
 	if url != "" {
-    w.preconfClient = preconf.New(url)
+    worker.preconfClient = preconf.New(url)
 	}
+
+	// Determine evidence log file path
 	evPath := os.Getenv("PRECONF_EVIDENCE")
-	if evPath != "" {
-    w.evidenceLog = preconf.NewEvidenceLogger(evPath)
+	if evPath == "" {
+    // Fallback to a safe location under datadir
+    dataDir := config.Ethash.DatasetDir
+    if dataDir == "" {
+        dataDir = "./" // fallback if Ethash is nil (e.g., PoS/DPoS chains)
+    }
+    evPath = filepath.Join(dataDir, "evidence.json")
 	}
-	/// QuantM end
+
+	// Initialize evidence logger
+	worker.evidenceLog = preconf.NewEvidenceLogger(evPath)
+			// QuantM end ---------------------------------
+
 
 	// Subscribe NewTxsEvent for tx pool
 	worker.txsSub = eth.TxPool().SubscribeNewTxsEvent(worker.txsCh)

@@ -13,14 +13,14 @@ import (
 
 func main() {
 	cfg := BuilderConfig{
-		Cadence:       150 * time.Millisecond,
-		MaxTxPerSlice: 1500,
-		GasSlice:      3_000_000,          // tune to parentGasLimit / slices
-		IPCPath:       "/path/to/geth.ipc",// <-- set me
-		WSListen:      ":8556",
-		HTTPListen:    ":8557",            // for JSON-RPC getReceipt
-		NetworkID:     2250,               // your chainId
-	}
+    Cadence:       100 * time.Millisecond, 
+    MaxTxPerSlice: 1500,
+    GasSlice:      3_000_000,
+    IPCPath:       "/path/to/geth.ipc",
+    WSListen:      ":8556",
+    HTTPListen:    ":8557",
+    NetworkID:     2250,
+}
 
 	ipc, err := gethrpc.Dial(cfg.IPCPath)
 	if err != nil { log.Fatalf("attach IPC: %v", err) }
