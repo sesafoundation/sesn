@@ -5,6 +5,8 @@ import (
 	"log"
 	"net/http"
 	"sync"
+	"encoding/hex"
+	"strings"
 
 	"github.com/gorilla/websocket"
 	//"github.com/sesafoundation/sesn/preconf-builder"
@@ -55,12 +57,12 @@ func NewWSHub(b *Builder) *WSHub {
 func (h *WSHub) handleWS(w http.ResponseWriter, r *http.Request) {
 	c, err := h.upgrader.Upgrade(w, r, nil)
 	if err != nil { log.Println("ws upgrade:", err); return }
-	b.mu.Lock(); h.conns[c] = struct{}{}; b.mu.Unlock()
+	h.mu.Lock(); h.conns[c] = struct{}{}; h.mu.Unlock()
 
 	// read loop (simple RPC over WS)
 	go func() {
 		defer func() {
-			b.mu.Lock(); delete(h.conns, c); b.mu.Unlock()
+			h.mu.Lock(); delete(h.conns, c); h.mu.Unlock()
 			c.Close()
 		}()
 		for {
@@ -89,7 +91,7 @@ func (h *WSHub) handleWS(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *WSHub) Broadcast(mb *MiniBlock) {
-	b.mu.RLock(); defer b.mu.RUnlock()
+	h.mu.RLock(); defer h.mu.RUnlock()
 	data, _ := json.Marshal(mb)
 	for c := range h.conns {
 		_ = c.WriteMessage(websocket.TextMessage, data)
@@ -98,22 +100,22 @@ func (h *WSHub) Broadcast(mb *MiniBlock) {
 
 // small helper
 func hexToHash(s string) (h [32]byte) {
-	b := []byte{}
-	if len(s) >= 2 && s[:2] == "0x" { s = s[2:] }
-	if len(s)%2 == 1 { s = "0" + s }
-	bz := make([]byte, len(s)/2)
-	for i := 0; i < len(bz); i++ {
-		var v byte
-		for _, ch := range []byte{s[2*i], s[2*i+1]} {
-			v <<= 4
-			switch {
-			case ch >= '0' && ch <= '9': v |= ch - '0'
-			case ch >= 'a' && ch <= 'f': v |= ch - 'a' + 10
-			case ch >= 'A' && ch <= 'F': v |= ch - 'A' + 10
-			}
-		}
-		bz[i] = v
+	s = strings.TrimPrefix(s, "0x")
+
+	// If the hex string has odd length, pad it
+	if len(s)%2 == 1 {
+		s = "0" + s
 	}
+
+	// Decode the string into bytes
+	bz, err := hex.DecodeString(s)
+	if err != nil {
+		// Return zero hash if decoding fails
+		return
+	}
+
+	// Copy up to 32 bytes into the hash
 	copy(h[:], bz)
+
 	return
 }
