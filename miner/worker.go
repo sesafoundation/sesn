@@ -26,6 +26,10 @@ import (
 	"os"
 	"path/filepath"
 	//"context"
+	"encoding/json"
+    "io"
+    "net/http"
+ 
 
 	mapset "github.com/deckarep/golang-set"
 	"github.com/sesafoundation/sesn/common"
@@ -123,6 +127,18 @@ type intervalAdjust struct {
 	ratio float64
 	inc   bool
 }
+
+
+type MiniBlockResponse struct {
+    ID          uint64          `json:"id"`
+    ParentBlock common.Hash     `json:"parentBlock"`
+    TimestampMs int64           `json:"timestampMs"`
+    TxHashes    []common.Hash   `json:"txHashes"`
+    GasPlanned  uint64          `json:"gasPlanned"`
+    Signer      common.Address  `json:"signer"`
+    Signature   []byte          `json:"signature"`
+}
+
 
 // worker is the main object which takes care of submitting new work to consensus engine
 // and gathering the sealing result.
@@ -1148,3 +1164,51 @@ func recordEvidenceConstraint(h common.Hash) {
     log.Warn("preconf tx failed constraint", "hash", h)
 }
 
+
+// getMiniBlockTxs contacts the local sidecar builder and fetches the latest mini-block.
+func getMiniBlockTxs() []common.Hash {
+    sidecarURL := os.Getenv("PRECONF_URL")
+    if sidecarURL == "" {
+        sidecarURL = "http://127.0.0.1:8556" // default
+    }
+
+    client := &http.Client{Timeout: 200 * time.Millisecond}
+    req, err := http.NewRequest("GET", sidecarURL+"/latest", nil)
+    if err != nil {
+        log.Warn("preconf: cannot create request", "err", err)
+        return nil
+    }
+
+    resp, err := client.Do(req)
+    if err != nil {
+        log.Warn("preconf: cannot reach sidecar", "url", sidecarURL, "err", err)
+        return nil
+    }
+    defer resp.Body.Close()
+
+    if resp.StatusCode != 200 {
+        if resp.StatusCode != 204 {
+            log.Warn("preconf: bad status from sidecar", "code", resp.StatusCode)
+        }
+        return nil
+    }
+
+    body, err := io.ReadAll(resp.Body)
+    if err != nil {
+        log.Warn("preconf: read error", "err", err)
+        return nil
+    }
+
+    var mb MiniBlockResponse
+    if err := json.Unmarshal(body, &mb); err != nil {
+        log.Warn("preconf: decode error", "err", err)
+        return nil
+    }
+
+    if len(mb.TxHashes) == 0 {
+        return nil
+    }
+
+    log.Info("preconf: received mini-block", "id", mb.ID, "count", len(mb.TxHashes), "signer", mb.Signer)
+    return mb.TxHashes
+}
