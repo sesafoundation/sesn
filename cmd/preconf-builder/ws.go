@@ -57,12 +57,12 @@ func NewWSHub(b *Builder) *WSHub {
 func (h *WSHub) handleWS(w http.ResponseWriter, r *http.Request) {
 	c, err := h.upgrader.Upgrade(w, r, nil)
 	if err != nil { log.Println("ws upgrade:", err); return }
-	h.mu.Lock(); h.conns[c] = struct{}{}; h.mu.Unlock()
+	h.builder.mu.Lock(); h.conns[c] = struct{}{}; h.builder.mu.Unlock()
 
 	// read loop (simple RPC over WS)
 	go func() {
 		defer func() {
-			h.mu.Lock(); delete(h.conns, c); h.mu.Unlock()
+			h.builder.mu.Lock(); delete(h.conns, c); h.builder.mu.Unlock()
 			c.Close()
 		}()
 		for {
@@ -91,7 +91,7 @@ func (h *WSHub) handleWS(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *WSHub) Broadcast(mb *MiniBlock) {
-	h.mu.RLock(); defer h.mu.RUnlock()
+	h.builder.mu.RLock(); defer h.builder.mu.RUnlock()
 	data, _ := json.Marshal(mb)
 	for c := range h.conns {
 		_ = c.WriteMessage(websocket.TextMessage, data)
