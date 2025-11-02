@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"crypto/ecdsa"
-	"log"
+	//"log"
 	"flag"
 	"net/http"
 	"os"
@@ -11,7 +11,7 @@ import (
 	"sync"
 
 	gethrpc "github.com/sesafoundation/sesn/rpc"
-	//"github.com/sesafoundation/sesn/log"
+	"github.com/sesafoundation/sesn/log"
 	"github.com/sesafoundation/sesn/common"
 )
 
@@ -31,6 +31,7 @@ import (
 // loadConfig loads from file or uses defaultBuilderConfig (default_config.go).
 func loadConfig(path string) (*BuilderConfig, error) {
 	cfg := &BuilderConfig{}
+
 	if path != "" {
 		data, err := os.ReadFile(path)
 		if err != nil {
@@ -39,18 +40,16 @@ func loadConfig(path string) (*BuilderConfig, error) {
 		if err := toml.Unmarshal(data, cfg); err != nil {
 			return nil, err
 		}
-		log.Info("Loaded config from file", "path", path)
+		log.Info("Loaded preconf-builder config from file", "path", path)
 		return cfg, nil
 	}
-	// fallback to default TOML string
-	var def BuilderConfig
-	if err := loadDefaultConfig(&def); err != nil {
+
+	if err := loadDefaultConfig(cfg); err != nil {
 		return nil, err
 	}
-	log.Info("Loaded default preconf-builder config")
-	return &def, nil
+	log.Info("Loaded embedded default preconf-builder config")
+	return cfg, nil
 }
-
 
 func main() {
 	var configPath = flag.String("config", "", "Path to TOML config for preconf-builder")
