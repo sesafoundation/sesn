@@ -15,7 +15,7 @@ import (
 	"github.com/sesafoundation/sesn/common"
 )
 
-var configPath = flag.String("config", "", "TOML config file for preconf-builder")
+//var configPath = flag.String("config", "", "TOML config file for preconf-builder")
 
 // BuilderConfig holds runtime configuration.
 //type BuilderConfig struct {
@@ -51,33 +51,42 @@ func loadConfig(path string) (*BuilderConfig, error) {
 	return &def, nil
 }
 
+
 func main() {
 	var configPath = flag.String("config", "", "Path to TOML config for preconf-builder")
 	flag.Parse()
 
-	// Load config
-	cfg, err := loadConfig(*configPath)
-	if err != nil {
-		log.Crit("Failed to load config", "err", err)
+	// Load config (from file or defaults)
+	var cfg BuilderConfig
+	if *configPath != "" {
+		data, err := os.ReadFile(*configPath)
+		if err != nil {
+			log.Crit("Failed to read config", "err", err)
+		}
+		if err := toml.Unmarshal(data, &cfg); err != nil {
+			log.Crit("Invalid TOML config", "err", err)
+		}
+		log.Info("Loaded preconf-builder config from file", "path", *configPath)
+	} else {
+		if err := loadDefaultConfig(&cfg); err != nil {
+			log.Crit("Failed to load default config", "err", err)
+		}
+		log.Info("Loaded default preconf-builder config")
 	}
 
-	// Connect to Geth IPC
 	ipc, err := gethrpc.Dial(cfg.IPCPath)
 	if err != nil {
 		log.Crit("Attach IPC failed", "err", err)
 	}
 	defer ipc.Close()
 
-	// Load proposer key (you can replace with HSM/keystore)
-	var propKey *ecdsa.PrivateKey = loadProposerKey()
+	propKey := loadProposerKey()
 	propAddr := deriveAddress(propKey)
 
-	// Initialize builder + websocket hub
-	builder := NewBuilder(ipc, propAddr, propKey, *cfg)
+	builder := NewBuilder(ipc, propAddr, propKey, cfg)
 	hub := NewWSHub(builder)
 	builder.subs = hub
 
-	// WebSocket server (health endpoint included)
 	go func() {
 		log.Info("preconf WS", "url", "ws://"+cfg.WSListen+"/ws", "healthz", "/healthz")
 		if err := http.ListenAndServe(cfg.WSListen, nil); err != nil {
@@ -85,10 +94,8 @@ func main() {
 		}
 	}()
 
-	// HTTP JSON-RPC (preconf_getReceipt)
 	go ServeHTTPJSON(builder, cfg.HTTPListen)
 
-	// Start builder loop
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	builder.Run(ctx)
