@@ -1144,11 +1144,7 @@ func totalFees(block *types.Block, receipts []*types.Receipt) *big.Float {
 
 // ==== QuantM preconfirmation helpers (temporary stubs) ====
 
-func getMiniBlockTxs() []common.Hash {
-    // TODO: Connect to your sidecar HTTP endpoint /latest to fetch mini-block hashes.
-    // For now, return empty slice to keep build passing.
-    return nil
-}
+
 
 func recordEvidenceMissing(h common.Hash) {
     log.Warn("preconf tx missing", "hash", h)
