@@ -7,7 +7,7 @@ import (
 	"sync"
 
 	"github.com/gorilla/websocket"
-	"github.com/sesafoundation/sesn/preconf/builder"
+	"github.com/sesafoundation/sesn/preconf-builder"
 )
 
 type WSHub struct {
