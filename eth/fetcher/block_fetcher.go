@@ -22,13 +22,13 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/prque"
-	"github.com/ethereum/go-ethereum/consensus"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/metrics"
-	"github.com/ethereum/go-ethereum/trie"
+	"github.com/sesafoundation/sesn/common"
+	"github.com/sesafoundation/sesn/common/prque"
+	"github.com/sesafoundation/sesn/consensus"
+	"github.com/sesafoundation/sesn/core/types"
+	"github.com/sesafoundation/sesn/log"
+	"github.com/sesafoundation/sesn/metrics"
+	"github.com/sesafoundation/sesn/trie"
 )
 
 const (

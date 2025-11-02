@@ -26,13 +26,13 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/ethereum/go-ethereum/accounts"
-	"github.com/ethereum/go-ethereum/core/rawdb"
-	"github.com/ethereum/go-ethereum/ethdb"
-	"github.com/ethereum/go-ethereum/event"
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/p2p"
-	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/sesafoundation/sesn/accounts"
+	"github.com/sesafoundation/sesn/core/rawdb"
+	"github.com/sesafoundation/sesn/ethdb"
+	"github.com/sesafoundation/sesn/event"
+	"github.com/sesafoundation/sesn/log"
+	"github.com/sesafoundation/sesn/p2p"
+	"github.com/sesafoundation/sesn/rpc"
 	"github.com/prometheus/tsdb/fileutil"
 )
 

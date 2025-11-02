@@ -21,13 +21,13 @@ import (
 	"errors"
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core"
-	"github.com/ethereum/go-ethereum/core/bloombits"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/ethdb"
-	"github.com/ethereum/go-ethereum/event"
-	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/sesafoundation/sesn/common"
+	"github.com/sesafoundation/sesn/core"
+	"github.com/sesafoundation/sesn/core/bloombits"
+	"github.com/sesafoundation/sesn/core/types"
+	"github.com/sesafoundation/sesn/ethdb"
+	"github.com/sesafoundation/sesn/event"
+	"github.com/sesafoundation/sesn/rpc"
 )
 
 type Backend interface {

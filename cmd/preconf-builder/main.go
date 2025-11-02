@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
-	gethrpc "github.com/ethereum/go-ethereum/rpc"
+	"github.com/sesafoundation/sesn/common"
+	gethrpc "github.com/sesafoundation/sesn/rpc"
 )
 
 func main() {

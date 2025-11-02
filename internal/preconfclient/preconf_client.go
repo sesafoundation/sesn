@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
+	"github.com/sesafoundation/sesn/common"
 )
 
 type MiniBlock struct {

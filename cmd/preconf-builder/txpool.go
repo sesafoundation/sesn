@@ -6,9 +6,9 @@ import (
 	"sort"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
-	gethrpc "github.com/ethereum/go-ethereum/rpc"
+	"github.com/sesafoundation/sesn/common"
+	"github.com/sesafoundation/sesn/core/types"
+	gethrpc "github.com/sesafoundation/sesn/rpc"
 )
 
 // minimal interfaces to call geth over IPC

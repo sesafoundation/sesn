@@ -4,8 +4,8 @@ import (
 	"crypto/ecdsa"
 	"encoding/binary"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/sesafoundation/sesn/common"
+	"github.com/sesafoundation/sesn/crypto"
 )
 
 func deriveAddress(k *ecdsa.PrivateKey) common.Address {

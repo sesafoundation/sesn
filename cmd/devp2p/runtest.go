@@ -19,9 +19,9 @@ package main
 import (
 	"os"
 
-	"github.com/ethereum/go-ethereum/cmd/devp2p/internal/v4test"
-	"github.com/ethereum/go-ethereum/internal/utesting"
-	"github.com/ethereum/go-ethereum/log"
+	"github.com/sesafoundation/sesn/cmd/devp2p/internal/v4test"
+	"github.com/sesafoundation/sesn/internal/utesting"
+	"github.com/sesafoundation/sesn/log"
 	"gopkg.in/urfave/cli.v1"
 )
 

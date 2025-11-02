@@ -26,12 +26,12 @@ import (
 
 	"gopkg.in/urfave/cli.v1"
 
-	"github.com/ethereum/go-ethereum/cmd/utils"
-	"github.com/ethereum/go-ethereum/eth"
-	"github.com/ethereum/go-ethereum/internal/ethapi"
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/node"
-	"github.com/ethereum/go-ethereum/params"
+	"github.com/sesafoundation/sesn/cmd/utils"
+	"github.com/sesafoundation/sesn/eth"
+	"github.com/sesafoundation/sesn/internal/ethapi"
+	"github.com/sesafoundation/sesn/log"
+	"github.com/sesafoundation/sesn/node"
+	"github.com/sesafoundation/sesn/params"
 	"github.com/naoina/toml"
 )
 

@@ -25,8 +25,8 @@ import (
 	"time"
 
 	"github.com/docker/docker/pkg/reexec"
-	"github.com/ethereum/go-ethereum/internal/cmdtest"
-	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/sesafoundation/sesn/internal/cmdtest"
+	"github.com/sesafoundation/sesn/rpc"
 )
 
 func tmpdir(t *testing.T) string {

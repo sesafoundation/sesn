@@ -24,13 +24,13 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/consensus/ethash"
-	"github.com/ethereum/go-ethereum/core"
-	"github.com/ethereum/go-ethereum/eth/downloader"
-	"github.com/ethereum/go-ethereum/eth/gasprice"
+	"github.com/sesafoundation/sesn/common"
+	"github.com/sesafoundation/sesn/consensus/ethash"
+	"github.com/sesafoundation/sesn/core"
+	"github.com/sesafoundation/sesn/eth/downloader"
+	"github.com/sesafoundation/sesn/eth/gasprice"
 	"github.com/sesafoundation/sesn/miner"
-	"github.com/ethereum/go-ethereum/params"
+	"github.com/sesafoundation/sesn/params"
 )
 
 // DefaultFullGPOConfig contains default gasprice oracle settings for full node.

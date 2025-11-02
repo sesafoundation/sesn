@@ -20,11 +20,11 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/ethereum/go-ethereum/cmd/devp2p/internal/ethtest"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/p2p"
-	"github.com/ethereum/go-ethereum/p2p/rlpx"
-	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/sesafoundation/sesn/cmd/devp2p/internal/ethtest"
+	"github.com/sesafoundation/sesn/crypto"
+	"github.com/sesafoundation/sesn/p2p"
+	"github.com/sesafoundation/sesn/p2p/rlpx"
+	"github.com/sesafoundation/sesn/rlp"
 	"gopkg.in/urfave/cli.v1"
 )
 
