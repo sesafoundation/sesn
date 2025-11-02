@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
-	"sync"
+//	"sync"
 	"encoding/hex"
 	"strings"
 
