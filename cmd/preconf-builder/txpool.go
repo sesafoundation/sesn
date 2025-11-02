@@ -8,7 +8,7 @@ import (
 
 	"github.com/sesafoundation/sesn/common"
 	"github.com/sesafoundation/sesn/core/types"
-	gethrpc "github.com/sesafoundation/sesn/rpc"
+	//gethrpc "github.com/sesafoundation/sesn/rpc"
 )
 
 // minimal interfaces to call geth over IPC
