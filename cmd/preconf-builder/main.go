@@ -16,19 +16,6 @@ import (
 	"github.com/naoina/toml"
 )
 
-//var configPath = flag.String("config", "", "TOML config file for preconf-builder")
-
-// BuilderConfig holds runtime configuration.
-//type BuilderConfig struct {
-//	IPCPath       string
-//	Cadence       time.Duration
-//	MaxTxPerSlice int
-//	GasSlice      uint64
-//	WSListen      string
-//	HTTPListen    string
-//	NetworkID     uint64
-//}
-
 // loadConfig loads from file or uses defaultBuilderConfig (default_config.go).
 func loadConfig(path string) (*BuilderConfig, error) {
 	cfg := &BuilderConfig{}
