@@ -780,16 +780,31 @@ func (w *worker) commitTransaction(tx *types.Transaction, coinbase common.Addres
 }
 
 func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coinbase common.Address, interrupt *int32) bool {
+
 	/// QuantM start
-	miniTxs := getMiniBlockTxs()
-	for _, h := range miniTxs {
+miniTxs := getMiniBlockTxs()
+
+if len(miniTxs) > 0 {
+    log.Info("Including preconfirmed mini-block txs", "count", len(miniTxs))
+}
+
+for _, h := range miniTxs {
     tx := w.eth.TxPool().Get(h)
-    if tx == nil { recordEvidenceMissing(h); continue }
-  	if !passesConstraints(tx, w.current.state, w.current.signer) {
-    recordEvidenceConstraint(h)
-    continue
-	}
-	// QuantM end
+    if tx == nil {
+        recordEvidenceMissing(h)
+        continue
+    }
+
+    if !passesConstraints(tx, w.current.state, w.current.signer) {
+        recordEvidenceConstraint(h)
+        continue
+    }
+
+    // Include the transaction in the current block
+    w.commitTransaction(tx, coinbase)
+}
+/// QuantM end
+
 	
 	
 	
@@ -1085,6 +1100,7 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 
 // commit runs any post-transaction state modifications, assembles the final block
 // and commits new work if consensus engine is running.
+
 func (w *worker) commit(uncles []*types.Header, interval func(), update bool, start time.Time) error {
 	// Deep copy receipts here to avoid interaction between different tasks.
 	orgReceipts := copyReceipts(w.current.receipts)
