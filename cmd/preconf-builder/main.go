@@ -13,6 +13,7 @@ import (
 	gethrpc "github.com/sesafoundation/sesn/rpc"
 	"github.com/sesafoundation/sesn/log"
 	"github.com/sesafoundation/sesn/common"
+	"github.com/naoina/toml"
 )
 
 //var configPath = flag.String("config", "", "TOML config file for preconf-builder")
