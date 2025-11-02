@@ -4,29 +4,18 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"log"
-	"net/http"
-	"time"
-	"sync"
-
-	"github.com/sesafoundation/sesn/common"
-	gethrpc "github.com/sesafoundation/sesn/rpc"
-)
-
-var configPath = flag.String("config", "", "TOML config file for preconf-builder")
-
-package main
-
-import (
-	"context"
-	"crypto/ecdsa"
 	"flag"
 	"net/http"
 	"os"
 	"time"
+	"syn"
 
 	gethrpc "github.com/sesafoundation/sesn/rpc"
 	"github.com/sesafoundation/sesn/log"
+	"github.com/sesafoundation/sesn/common"
 )
+
+var configPath = flag.String("config", "", "TOML config file for preconf-builder")
 
 // BuilderConfig holds runtime configuration.
 type BuilderConfig struct {
