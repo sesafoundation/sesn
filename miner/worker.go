@@ -785,8 +785,9 @@ func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coin
 	for _, h := range miniTxs {
     tx := w.eth.TxPool().Get(h)
     if tx == nil { recordEvidenceMissing(h); continue }
-    if !passesConstraints(tx, w.current.state) { recordEvidenceConstraint(h); continue }
-    w.commitTransaction(tx, coinbase)
+  	if !passesConstraints(tx, w.current.state, w.current.signer) {
+    recordEvidenceConstraint(h)
+    continue
 	}
 	// QuantM end
 	
@@ -1203,8 +1204,9 @@ func getMiniBlockTxs() []common.Hash {
     return mb.TxHashes
 }
 
-func passesConstraints(tx *types.Transaction, state *state.StateDB) bool {
-    from, err := types.Sender(w.current.signer, tx)
+// passesConstraints ensures that a tx is still executable in the current state.
+func passesConstraints(tx *types.Transaction, state *state.StateDB, signer types.Signer) bool {
+    from, err := types.Sender(signer, tx)
     if err != nil {
         log.Warn("preconf constraint: invalid sender", "hash", tx.Hash(), "err", err)
         return false
@@ -1212,16 +1214,12 @@ func passesConstraints(tx *types.Transaction, state *state.StateDB) bool {
 
     // Nonce check
     currentNonce := state.GetNonce(from)
-    if tx.Nonce() < currentNonce {
-        log.Warn("preconf constraint: nonce too low", "sender", from, "txNonce", tx.Nonce(), "current", currentNonce)
-        return false
-    }
-    if tx.Nonce() > currentNonce {
-        log.Warn("preconf constraint: nonce too high", "sender", from, "txNonce", tx.Nonce(), "current", currentNonce)
+    if tx.Nonce() != currentNonce {
+        log.Warn("preconf constraint: nonce mismatch", "sender", from, "txNonce", tx.Nonce(), "current", currentNonce)
         return false
     }
 
-    // Balance check: enough to cover value + gas*price
+    // Balance check
     gasCost := new(big.Int).Mul(new(big.Int).SetUint64(tx.Gas()), tx.GasPrice())
     total := new(big.Int).Add(tx.Value(), gasCost)
     balance := state.GetBalance(from)
@@ -1230,8 +1228,8 @@ func passesConstraints(tx *types.Transaction, state *state.StateDB) bool {
         return false
     }
 
-    // Intrinsic gas check
-    intrinsic, err := core.IntrinsicGas(tx.Data(), tx.AccessList(), tx.To() == nil, true, false, true)
+    // Intrinsic gas check (old Geth signature)
+    intrinsic, err := core.IntrinsicGas(tx.Data(), tx.To() == nil, true, false)
     if err != nil {
         log.Warn("preconf constraint: intrinsic gas error", "hash", tx.Hash(), "err", err)
         return false
