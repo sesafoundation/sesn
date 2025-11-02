@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"time"
+	"sync"
 
 	"github.com/sesafoundation/sesn/common"
 	gethrpc "github.com/sesafoundation/sesn/rpc"
@@ -55,6 +56,7 @@ type Builder struct {
 	key      *ecdsa.PrivateKey
 	cfg      BuilderConfig
 
+	mu       sync.RWMutex
 	lastMini  *MiniBlock
 	receipts  map[common.Hash]*PreconfReceipt
 	subs      *WSHub

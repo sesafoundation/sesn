@@ -12,7 +12,7 @@ import (
 
 type WSHub struct {
 	upgrader websocket.Upgrader
-	mu       sync.RWMutex
+	//mu       sync.RWMutex
 	conns    map[*websocket.Conn]struct{}
 	builder  *Builder
 }
@@ -26,9 +26,8 @@ func NewWSHub(b *Builder) *WSHub {
 		builder: b,
 	}
 
-	// register HTTP endpoints
+	// === HTTP routes ===
 	http.HandleFunc("/latest", func(w http.ResponseWriter, r *http.Request) {
-		// safely read the latest mini-block from the builder
 		b.mu.RLock()
 		defer b.mu.RUnlock()
 
@@ -50,6 +49,7 @@ func NewWSHub(b *Builder) *WSHub {
 
 	return h
 }
+
 
 
 func (h *WSHub) handleWS(w http.ResponseWriter, r *http.Request) {
