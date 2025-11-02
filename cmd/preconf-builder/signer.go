@@ -3,7 +3,7 @@ package main
 import (
 	"crypto/ecdsa"
 	"encoding/binary"
-	"golang.org/x/crypto/sha3"
+	//"golang.org/x/crypto/sha3"
 	//"github.com/sesafoundation/sesn/preconf/builder"
 
 
@@ -20,7 +20,7 @@ func miniBlockDigest(mb *MiniBlock) []byte {
 	// keccak256( 0x01 || parentHash || id || ts || gasPlanned || signer || keccak256(txHashes...) )
 	txh := make([]byte, 0, 32*len(mb.TxHashes))
 	//hasher := crypto.NewKeccakState()
-	hasher := crypto.NewKeccakState()
+//	hasher := crypto.NewKeccakState()
 
 	for _, h := range mb.TxHashes {
 		txh = append(txh, h.Bytes()...)

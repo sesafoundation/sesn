@@ -25,20 +25,32 @@ func NewWSHub(b *Builder) *WSHub {
 		conns:   make(map[*websocket.Conn]struct{}),
 		builder: b,
 	}
-	// add after NewWSHub(builder) is created and before ListenAndServe:
-	http.HandleFunc("/latest", func(w http.ResponseWriter, r *http.Request){
-    h := builder // capture builder
-    h.mu.RLock()
-    mb := h.lastMini
-    h.mu.RUnlock()
-    if mb == nil { w.WriteHeader(204); return }
-    _ = json.NewEncoder(w).Encode(mb)
+
+	// register HTTP endpoints
+	http.HandleFunc("/latest", func(w http.ResponseWriter, r *http.Request) {
+		// safely read the latest mini-block from the builder
+		b.mu.RLock()
+		defer b.mu.RUnlock()
+
+		mb := b.lastMini
+		if mb == nil {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(mb); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 	})
 
 	http.HandleFunc("/ws", h.handleWS)
-	http.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(200) })
+	http.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
 	return h
 }
+
 
 func (h *WSHub) handleWS(w http.ResponseWriter, r *http.Request) {
 	c, err := h.upgrader.Upgrade(w, r, nil)
