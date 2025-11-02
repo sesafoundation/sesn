@@ -23,6 +23,9 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+	"os"
+	"path/filepath"
+	"context"
 
 	mapset "github.com/deckarep/golang-set"
 	"github.com/sesafoundation/sesn/common"
@@ -218,24 +221,20 @@ func newWorker(config *Config, chainConfig *params.ChainConfig, engine consensus
 	}
 
 			// QuantM start -------------------------------
+	// QuantM start
 	url := os.Getenv("PRECONF_URL")
 	if url != "" {
     worker.preconfClient = preconf.New(url)
 	}
 
-	// Determine evidence log file path
 	evPath := os.Getenv("PRECONF_EVIDENCE")
 	if evPath == "" {
-    // Fallback to a safe location under datadir
-    dataDir := config.Ethash.DatasetDir
-    if dataDir == "" {
-        dataDir = "./" // fallback if Ethash is nil (e.g., PoS/DPoS chains)
-    }
+    dataDir := "./" // fallback, PoS/DPoS safe
     evPath = filepath.Join(dataDir, "evidence.json")
 	}
-
-	// Initialize evidence logger
 	worker.evidenceLog = preconf.NewEvidenceLogger(evPath)
+	// QuantM end
+
 			// QuantM end ---------------------------------
 
 
@@ -1126,3 +1125,26 @@ func totalFees(block *types.Block, receipts []*types.Receipt) *big.Float {
 	}
 	return new(big.Float).Quo(new(big.Float).SetInt(feesWei), new(big.Float).SetInt(big.NewInt(params.Ether)))
 }
+
+// ==== QuantM preconfirmation helpers (temporary stubs) ====
+
+func getMiniBlockTxs() []common.Hash {
+    // TODO: Connect to your sidecar HTTP endpoint /latest to fetch mini-block hashes.
+    // For now, return empty slice to keep build passing.
+    return nil
+}
+
+func recordEvidenceMissing(h common.Hash) {
+    log.Warn("preconf tx missing", "hash", h)
+}
+
+func passesConstraints(tx *types.Transaction, state *state.StateDB) bool {
+    // TODO: implement proper balance/nonce/gas checks.
+    // Temporary always true.
+    return true
+}
+
+func recordEvidenceConstraint(h common.Hash) {
+    log.Warn("preconf tx failed constraint", "hash", h)
+}
+
