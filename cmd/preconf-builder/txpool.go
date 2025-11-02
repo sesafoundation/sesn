@@ -7,8 +7,9 @@ import (
 	"time"
 
 	"github.com/sesafoundation/sesn/common"
-	"github.com/sesafoundation/sesn/core/types"
+	//"github.com/sesafoundation/sesn/core/types"
 	//gethrpc "github.com/sesafoundation/sesn/rpc"
+	"github.com/sesafoundation/sesn/log"
 )
 
 // minimal interfaces to call geth over IPC
@@ -47,16 +48,15 @@ type RPCTransaction struct {
 //	}
 //	return head.Hash()
 //}
-
 func (b *Builder) currentHead(ctx context.Context) common.Hash {
-	var head struct {
+	var block struct {
 		Hash common.Hash `json:"hash"`
 	}
-	if err := b.client.CallContext(ctx, &head, "eth_getBlockByNumber", "latest", false); err != nil {
+	if err := b.rpc.CallContext(ctx, &block, "eth_getBlockByNumber", "latest", false); err != nil {
 		log.Warn("eth_getBlockByNumber RPC failed", "err", err)
 		return common.Hash{}
 	}
-	return head.Hash
+	return block.Hash
 }
 
 type txMeta struct {
