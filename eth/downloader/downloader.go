@@ -25,7 +25,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/ethereum/go-ethereum"
+	"github.com/sesafoundation/sesn"
 	"github.com/sesafoundation/sesn/common"
 	"github.com/sesafoundation/sesn/core/rawdb"
 	"github.com/sesafoundation/sesn/core/types"

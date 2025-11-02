@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ethereum/go-ethereum"
+	"github.com/sesafoundation/sesn"
 	"github.com/sesafoundation/sesn/accounts"
 	"github.com/sesafoundation/sesn/accounts/abi"
 	"github.com/sesafoundation/sesn/accounts/keystore"

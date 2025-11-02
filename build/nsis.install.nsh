@@ -5,7 +5,7 @@ OutFile "${OUTPUTFILE}" # set through command line arguments
 # Links for "Add/Remove Programs"
 !define HELPURL "https://github.com/sesafoundation/sesn/issues"
 !define UPDATEURL "https://github.com/sesafoundation/sesn/releases"
-!define ABOUTURL "https://github.com/ethereum/go-ethereum#ethereum-go"
+!define ABOUTURL "https://github.com/sesafoundation/sesn#ethereum-go"
 !define /date NOW "%Y%m%d"
 
 PageEx license

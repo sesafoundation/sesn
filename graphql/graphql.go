@@ -22,7 +22,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/ethereum/go-ethereum"
+	"github.com/sesafoundation/sesn"
 	"github.com/sesafoundation/sesn/common"
 	"github.com/sesafoundation/sesn/common/hexutil"
 	"github.com/sesafoundation/sesn/core/rawdb"

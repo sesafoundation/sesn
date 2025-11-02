@@ -26,7 +26,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ethereum/go-ethereum"
+	"github.com/sesafoundation/sesn"
 	"github.com/sesafoundation/sesn/accounts/abi"
 	"github.com/sesafoundation/sesn/accounts/abi/bind"
 	"github.com/sesafoundation/sesn/common"

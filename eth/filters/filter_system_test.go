@@ -25,7 +25,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ethereum/go-ethereum"
+	"github.com/sesafoundation/sesn"
 	"github.com/sesafoundation/sesn/common"
 	"github.com/sesafoundation/sesn/consensus/ethash"
 	"github.com/sesafoundation/sesn/core"
