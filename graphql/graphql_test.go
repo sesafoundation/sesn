@@ -28,7 +28,7 @@ import (
 	"github.com/ethereum/go-ethereum/consensus/ethash"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/eth"
-	"github.com/ethereum/go-ethereum/miner"
+	"github.com/sesafoundation/sesn/miner"
 	"github.com/ethereum/go-ethereum/node"
 	"github.com/stretchr/testify/assert"
 )
