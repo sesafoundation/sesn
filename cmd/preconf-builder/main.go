@@ -12,38 +12,94 @@ import (
 	gethrpc "github.com/sesafoundation/sesn/rpc"
 )
 
-func main() {
-	cfg := BuilderConfig{
-    Cadence:       100 * time.Millisecond, 
-    MaxTxPerSlice: 1500,
-    GasSlice:      3_000_000,
-    IPCPath:       "/path/to/geth.ipc",
-    WSListen:      ":8556",
-    HTTPListen:    ":8557",
-    NetworkID:     2250,
+var configPath = flag.String("config", "", "TOML config file for preconf-builder")
+
+package main
+
+import (
+	"context"
+	"crypto/ecdsa"
+	"flag"
+	"net/http"
+	"os"
+	"time"
+
+	gethrpc "github.com/sesafoundation/sesn/rpc"
+	"github.com/sesafoundation/sesn/log"
+)
+
+// BuilderConfig holds runtime configuration.
+type BuilderConfig struct {
+	IPCPath       string
+	Cadence       time.Duration
+	MaxTxPerSlice int
+	GasSlice      uint64
+	WSListen      string
+	HTTPListen    string
+	NetworkID     uint64
 }
 
+// loadConfig loads from file or uses defaultBuilderConfig (default_config.go).
+func loadConfig(path string) (*BuilderConfig, error) {
+	cfg := &BuilderConfig{}
+	if path != "" {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return nil, err
+		}
+		if err := toml.Unmarshal(data, cfg); err != nil {
+			return nil, err
+		}
+		log.Info("Loaded config from file", "path", path)
+		return cfg, nil
+	}
+	// fallback to default TOML string
+	var def BuilderConfig
+	if err := loadDefaultConfig(&def); err != nil {
+		return nil, err
+	}
+	log.Info("Loaded default preconf-builder config")
+	return &def, nil
+}
+
+func main() {
+	var configPath = flag.String("config", "", "Path to TOML config for preconf-builder")
+	flag.Parse()
+
+	// Load config
+	cfg, err := loadConfig(*configPath)
+	if err != nil {
+		log.Crit("Failed to load config", "err", err)
+	}
+
+	// Connect to Geth IPC
 	ipc, err := gethrpc.Dial(cfg.IPCPath)
-	if err != nil { log.Fatalf("attach IPC: %v", err) }
+	if err != nil {
+		log.Crit("Attach IPC failed", "err", err)
+	}
 	defer ipc.Close()
 
-	// TODO: replace with proper keystore/HSM loader
+	// Load proposer key (you can replace with HSM/keystore)
 	var propKey *ecdsa.PrivateKey = loadProposerKey()
 	propAddr := deriveAddress(propKey)
 
-	builder := NewBuilder(ipc, propAddr, propKey, cfg)
+	// Initialize builder + websocket hub
+	builder := NewBuilder(ipc, propAddr, propKey, *cfg)
 	hub := NewWSHub(builder)
 	builder.subs = hub
 
-	// Health + WS
+	// WebSocket server (health endpoint included)
 	go func() {
-		log.Printf("preconf WS at ws://%s/ws  (healthz at /healthz)", cfg.WSListen)
-		log.Fatal(http.ListenAndServe(cfg.WSListen, nil))
+		log.Info("preconf WS", "url", "ws://"+cfg.WSListen+"/ws", "healthz", "/healthz")
+		if err := http.ListenAndServe(cfg.WSListen, nil); err != nil {
+			log.Crit("WS server failed", "err", err)
+		}
 	}()
 
-	// Minimal HTTP JSON-RPC for preconf_getReceipt
-	ServeHTTPJSON(builder, cfg.HTTPListen)
+	// HTTP JSON-RPC (preconf_getReceipt)
+	go ServeHTTPJSON(builder, cfg.HTTPListen)
 
+	// Start builder loop
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	builder.Run(ctx)
