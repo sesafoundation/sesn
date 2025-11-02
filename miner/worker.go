@@ -35,7 +35,7 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/trie"
-	preconf "github.com/sesafoundation/internal/preconfclient"
+	preconf "github.com/sesafoundation/sesn/internal/preconfclient"
 )
 
 const (
