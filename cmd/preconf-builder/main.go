@@ -166,41 +166,64 @@ func NewBuilder(rpc *gethrpc.Client, addr common.Address, key *ecdsa.PrivateKey,
 }
 
 func (b *Builder) Run(ctx context.Context) {
-    ticker := time.NewTicker(b.cfg.Cadence)
-    defer ticker.Stop()
+	ticker := time.NewTicker(b.cfg.Cadence)
+	defer ticker.Stop()
 
-    for {
-        select {
-        case <-ticker.C:
-            b.EmitMiniBlock()
-        case <-ctx.Done():
-            log.Info("builder stopped")
-            return
-        }
-    }
+	log.Info("Builder running", "cadence", b.cfg.Cadence)
+
+	for {
+		select {
+		case <-ticker.C:
+			b.emitMiniBlock(ctx)
+		case <-ctx.Done():
+			log.Info("Builder stopped")
+			return
+		}
+	}
 }
 
 
 func (b *Builder) emitMiniBlock(ctx context.Context) {
-	pending := b.pickPendingTXs(ctx, b.cfg.MaxTxPerSlice, b.cfg.GasSlice)
+	txs := b.pickPendingTXs(ctx, b.cfg.MaxTxPerSlice, b.cfg.GasSlice)
+	if len(txs) == 0 {
+		return // nothing to emit this cycle
+	}
+
 	b.mbCounter++
 	mb := &MiniBlock{
 		ID:          b.mbCounter,
 		ParentBlock: b.currentHead(ctx),
 		TimestampMs: time.Now().UnixMilli(),
-		TxHashes:    pending,
+		TxHashes:    txs,
 		GasPlanned:  b.cfg.GasSlice,
 		Signer:      b.addr,
 	}
+
 	mb.Signature = signMiniBlock(b.key, mb)
 
-	for _, h := range pending {
-		b.receipts[h] = &PreconfReceipt{TxHash: h, MiniBlockID: mb.ID, Signer: b.addr, Signature: mb.Signature}
+	// Record receipts
+	for _, h := range txs {
+		b.receipts[h] = &PreconfReceipt{
+			TxHash:      h,
+			MiniBlockID: mb.ID,
+			Signer:      b.addr,
+			Signature:   mb.Signature,
+		}
 	}
+
+	b.mu.Lock()
 	b.lastMini = mb
-	if b.subs != nil { b.subs.Broadcast(mb) }
+	b.mu.Unlock()
+
+	if b.subs != nil {
+		b.subs.Broadcast(mb)
+	}
+
+	log.Info("Emitted mini-block", "id", mb.ID, "txs", len(mb.TxHashes))
 }
+
 
 func (b *Builder) GetReceipt(tx common.Hash) *PreconfReceipt {
 	return b.receipts[tx]
 }
+
