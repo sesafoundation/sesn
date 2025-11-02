@@ -7,8 +7,12 @@ import (
 	"flag"
 	"net/http"
 	"os"
+	"os/signal"
+	"path/filepath"
 	"time"
 	"sync"
+	"strings"
+	"syscall"
 
 	gethrpc "github.com/sesafoundation/sesn/rpc"
 	"github.com/sesafoundation/sesn/log"
