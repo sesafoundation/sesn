@@ -1150,12 +1150,6 @@ func recordEvidenceMissing(h common.Hash) {
     log.Warn("preconf tx missing", "hash", h)
 }
 
-func passesConstraints(tx *types.Transaction, state *state.StateDB) bool {
-    // TODO: implement proper balance/nonce/gas checks.
-    // Temporary always true.
-    return true
-}
-
 func recordEvidenceConstraint(h common.Hash) {
     log.Warn("preconf tx failed constraint", "hash", h)
 }
@@ -1207,4 +1201,45 @@ func getMiniBlockTxs() []common.Hash {
 
     log.Info("preconf: received mini-block", "id", mb.ID, "count", len(mb.TxHashes), "signer", mb.Signer)
     return mb.TxHashes
+}
+
+func passesConstraints(tx *types.Transaction, state *state.StateDB) bool {
+    from, err := types.Sender(w.current.signer, tx)
+    if err != nil {
+        log.Warn("preconf constraint: invalid sender", "hash", tx.Hash(), "err", err)
+        return false
+    }
+
+    // Nonce check
+    currentNonce := state.GetNonce(from)
+    if tx.Nonce() < currentNonce {
+        log.Warn("preconf constraint: nonce too low", "sender", from, "txNonce", tx.Nonce(), "current", currentNonce)
+        return false
+    }
+    if tx.Nonce() > currentNonce {
+        log.Warn("preconf constraint: nonce too high", "sender", from, "txNonce", tx.Nonce(), "current", currentNonce)
+        return false
+    }
+
+    // Balance check: enough to cover value + gas*price
+    gasCost := new(big.Int).Mul(new(big.Int).SetUint64(tx.Gas()), tx.GasPrice())
+    total := new(big.Int).Add(tx.Value(), gasCost)
+    balance := state.GetBalance(from)
+    if balance.Cmp(total) < 0 {
+        log.Warn("preconf constraint: insufficient balance", "sender", from, "need", total, "have", balance)
+        return false
+    }
+
+    // Intrinsic gas check
+    intrinsic, err := core.IntrinsicGas(tx.Data(), tx.AccessList(), tx.To() == nil, true, false, true)
+    if err != nil {
+        log.Warn("preconf constraint: intrinsic gas error", "hash", tx.Hash(), "err", err)
+        return false
+    }
+    if tx.Gas() < intrinsic {
+        log.Warn("preconf constraint: gas too low", "hash", tx.Hash(), "need", intrinsic, "have", tx.Gas())
+        return false
+    }
+
+    return true
 }
