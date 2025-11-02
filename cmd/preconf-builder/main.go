@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"os"
 	"time"
-	"syn"
+	"sync"
 
 	gethrpc "github.com/sesafoundation/sesn/rpc"
 	"github.com/sesafoundation/sesn/log"
