@@ -166,24 +166,24 @@ func NewBuilder(rpc *gethrpc.Client, addr common.Address, key *ecdsa.PrivateKey,
 }
 
 func (b *Builder) Run(ctx context.Context) {
-	ticker := time.NewTicker(b.cfg.Cadence)
-	defer ticker.Stop()
+    ticker := time.NewTicker(b.cfg.Cadence)
+    defer ticker.Stop()
 
-	log.Info("Builder running", "cadence", b.cfg.Cadence)
+    log.Info("Builder running", "cadence", b.cfg.Cadence)
 
-	for {
-		select {
-		case <-ticker.C:
-			b.emitMiniBlock(ctx)
-		case <-ctx.Done():
-			log.Info("Builder stopped")
-			return
-		}
-	}
+    for {
+        select {
+        case <-ticker.C:
+            b.emitMiniBlock(ctx)
+        case <-ctx.Done():
+            log.Info("Builder stopped")
+            return
+        }
+    }
 }
 
 
-func (b *Builder) emitMiniBlock(ctx context.Context) {
+func (b *Builder) xemitMiniBlock(ctx context.Context) {
 	txs := b.pickPendingTXs(ctx, b.cfg.MaxTxPerSlice, b.cfg.GasSlice)
 	if len(txs) == 0 {
 		return // nothing to emit this cycle
@@ -220,6 +220,12 @@ func (b *Builder) emitMiniBlock(ctx context.Context) {
 	}
 
 	log.Info("Emitted mini-block", "id", mb.ID, "txs", len(mb.TxHashes))
+}
+
+func (b *Builder) emitMiniBlock(ctx context.Context) {
+    // You can replace this with your real miniblock creation logic later.
+    b.mbCounter++
+    log.Info("Emitted mini-block", "id", b.mbCounter, "timestamp", time.Now().UnixMilli())
 }
 
 
