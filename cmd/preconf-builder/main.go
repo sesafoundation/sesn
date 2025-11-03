@@ -115,7 +115,8 @@ func main() {
 	// ---- Connect to Geth IPC ----
 	ipc, err := gethrpc.Dial(cfg.IPCPath)
 	if err != nil {
-		log.Crit("Attach IPC failed", "err", err)
+		//log.Crit("Attach IPC failed", "err", err)
+		 log.Error("Attach IPC failed", "err", err)
 	}
 	defer ipc.Close()
 
