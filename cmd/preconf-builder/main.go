@@ -13,7 +13,7 @@ import (
 	"sync"
 	"strings"
 	"syscall"
-	"encoding/json"
+	//"encoding/json"
 
 	gethrpc "github.com/sesafoundation/sesn/rpc"
 	"github.com/sesafoundation/sesn/log"
