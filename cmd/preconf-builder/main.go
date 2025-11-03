@@ -231,35 +231,33 @@ log.Info("newbuilder")
     }
 }
 func (b *Builder) Run(ctx context.Context) {
-	log.Info("runloop")
+    // If cadence is missing, use default 100ms
     cadence := b.cfg.Cadence
     if cadence == 0 {
-        cadence = 100 * time.Millisecond // fallback if unset
+        cadence = 100 * time.Millisecond
     }
 
-    // ✅ 'b' is defined here, so this compiles fine:
-    log.Info("Ticker cadence check", "cfg.Cadence", cadence)
+    log.Info("Builder loop starting", "cadence", cadence)
 
     ticker := time.NewTicker(cadence)
     defer ticker.Stop()
 
-    log.Info("🚀 Builder loop started", "cadence", cadence)
-
+    // 🔥 This loop blocks forever until cancel() is called
     for {
         select {
         case <-ticker.C:
             b.emitMiniBlock(ctx)
         case <-ctx.Done():
-            log.Info("🛑 Builder loop stopped")
+            log.Info("Builder loop stopped (context cancelled)")
             return
         }
     }
 }
 
-// emitMiniBlock simply logs a fake miniblock every cadence interval.
+// emitMiniBlock creates dummy miniblocks for test
 func (b *Builder) emitMiniBlock(ctx context.Context) {
     b.mbCounter++
-    log.Info("⛓️  Emitted mini-block",
+    log.Info("🧱 Emitted mini-block",
         "id", b.mbCounter,
         "timestamp", time.Now().Format(time.RFC3339Nano))
 }
