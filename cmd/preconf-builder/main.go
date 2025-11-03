@@ -225,9 +225,9 @@ func (b *Builder) xemitMiniBlock(ctx context.Context) {
 }
 
 func NewBuilder(ipc *gethrpc.Client, addr common.Address, key *ecdsa.PrivateKey, cfg BuilderConfig) *Builder {
+log.Info("newbuilder")
     return &Builder{
-		log.Info("newbuilder")
-        cfg: cfg,
+		    cfg: cfg,
     }
 }
 func (b *Builder) Run(ctx context.Context) {
