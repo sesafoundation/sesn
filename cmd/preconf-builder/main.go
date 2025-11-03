@@ -157,8 +157,8 @@ func main() {
 	builder.Run(ctx)
 
 	// ---- Wait until context is done ----
-	<-ctx.Done()
-	log.Info("Preconf-builder stopped cleanly")
+	//<-ctx.Done()
+	//log.Info("Preconf-builder stopped cleanly")
 }
 func xNewBuilder(rpc *gethrpc.Client, addr common.Address, key *ecdsa.PrivateKey, cfg BuilderConfig) *Builder {
 	return &Builder{rpc: rpc, addr: addr, key: key, cfg: cfg, receipts: make(map[common.Hash]*PreconfReceipt)}
@@ -228,27 +228,33 @@ func NewBuilder(ipc *gethrpc.Client, addr common.Address, key *ecdsa.PrivateKey,
 }
 
 func (b *Builder) Run(ctx context.Context) {
-    ticker := time.NewTicker(b.cfg.Cadence)
+    cadence := b.cfg.Cadence
+    if cadence == 0 {
+        cadence = 100 * time.Millisecond // fallback if unset
+    }
+
+    ticker := time.NewTicker(cadence)
     defer ticker.Stop()
 
-    log.Info("Builder loop started", "cadence", b.cfg.Cadence)
+    log.Info("🚀 Builder loop started", "cadence", cadence)
 
     for {
         select {
         case <-ticker.C:
             b.emitMiniBlock(ctx)
         case <-ctx.Done():
-            log.Info("Builder loop stopped")
+            log.Info("🛑 Builder loop stopped")
             return
         }
     }
 }
 
+// emitMiniBlock simply logs a fake miniblock every cadence interval.
 func (b *Builder) emitMiniBlock(ctx context.Context) {
     b.mbCounter++
-    log.Info("Emitted mini-block",
+    log.Info("⛓️  Emitted mini-block",
         "id", b.mbCounter,
-        "timestamp", time.Now().UnixMilli())
+        "timestamp", time.Now().Format(time.RFC3339Nano))
 }
 
 func (b *Builder) GetReceipt(tx common.Hash) *PreconfReceipt {
