@@ -138,6 +138,8 @@ func main() {
 		}
 	}()
 
+	log.Info("Ticker cadence check", "cfg.Cadence", b.cfg.Cadence)
+
 	// ---- Start HTTP JSON-RPC (async) ----
 	go ServeHTTPJSON(builder, cfg.HTTPListen)
 
