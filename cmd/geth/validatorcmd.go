@@ -335,6 +335,9 @@ The validator.create command creates a new validator.
 		Name:      "block.reward.apr",
 		Usage:     "get block reward apr",
 		ArgsUsage: "",
+		Flags: []cli.Flag{
+			utils.NodeEndpointFlag,
+		},
 		Category:    "VALIDATOR",
 		Description: ``,
 	}
@@ -344,6 +347,9 @@ The validator.create command creates a new validator.
 		Name:      "valstaking.reward.apr",
 		Usage:     "get valstaking reward apr",
 		ArgsUsage: "",
+		Flags: []cli.Flag{
+			utils.NodeEndpointFlag,
+		},
 		Category:    "VALIDATOR",
 		Description: ``,
 	}
@@ -353,6 +359,9 @@ The validator.create command creates a new validator.
 		Name:      "delstaking.reward.apr",
 		Usage:     "get delstaking reward apr",
 		ArgsUsage: "",
+		Flags: []cli.Flag{
+			utils.NodeEndpointFlag,
+		},
 		Category:    "VALIDATOR",
 		Description: ``,
 	}
@@ -362,6 +371,9 @@ The validator.create command creates a new validator.
 		Name:      "delgold.reward.apr",
 		Usage:     "get delgold reward apr",
 		ArgsUsage: "",
+		Flags: []cli.Flag{
+			utils.NodeEndpointFlag,
+		},
 		Category:    "VALIDATOR",
 		Description: ``,
 	}
