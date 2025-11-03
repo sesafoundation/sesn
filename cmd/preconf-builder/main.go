@@ -20,6 +20,20 @@ import (
 	"github.com/naoina/toml"
 )
 
+// ------------ Builder impl (from earlier) ------------
+type Builder struct {
+	rpc      *gethrpc.Client
+	addr     common.Address
+	key      *ecdsa.PrivateKey
+	cfg      BuilderConfig
+
+	mu       sync.RWMutex
+	lastMini  *MiniBlock
+	receipts  map[common.Hash]*PreconfReceipt
+	subs      *WSHub
+	mbCounter uint64
+}
+
 // loadConfig loads from file or uses defaultBuilderConfig (default_config.go).
 func expandHome(path string) string {
 	if strings.HasPrefix(path, "~") {
@@ -59,7 +73,8 @@ func loadConfig(path string) (*BuilderConfig, error) {
 	// --- Normalize and post-process ---
 	cfg.IPCPath = expandHome(cfg.IPCPath)
 	if cfg.Cadence == 0 {
-		cfg.Cadence = 100_000_000 // fallback: 100ms
+		//cfg.Cadence = 100_000_000 // fallback: 100ms
+		  cfg.Cadence = 100 * time.Millisecond
 	}
 
 	return cfg, nil
@@ -145,27 +160,11 @@ func main() {
 	<-ctx.Done()
 	log.Info("Preconf-builder stopped cleanly")
 }
-
-
-// ------------ Builder impl (from earlier) ------------
-type Builder struct {
-	rpc      *gethrpc.Client
-	addr     common.Address
-	key      *ecdsa.PrivateKey
-	cfg      BuilderConfig
-
-	mu       sync.RWMutex
-	lastMini  *MiniBlock
-	receipts  map[common.Hash]*PreconfReceipt
-	subs      *WSHub
-	mbCounter uint64
-}
-
-func NewBuilder(rpc *gethrpc.Client, addr common.Address, key *ecdsa.PrivateKey, cfg BuilderConfig) *Builder {
+func xNewBuilder(rpc *gethrpc.Client, addr common.Address, key *ecdsa.PrivateKey, cfg BuilderConfig) *Builder {
 	return &Builder{rpc: rpc, addr: addr, key: key, cfg: cfg, receipts: make(map[common.Hash]*PreconfReceipt)}
 }
 
-func (b *Builder) Run(ctx context.Context) {
+func (b *Builder) xRun(ctx context.Context) {
     ticker := time.NewTicker(b.cfg.Cadence)
     defer ticker.Stop()
 
@@ -222,12 +221,35 @@ func (b *Builder) xemitMiniBlock(ctx context.Context) {
 	log.Info("Emitted mini-block", "id", mb.ID, "txs", len(mb.TxHashes))
 }
 
-func (b *Builder) emitMiniBlock(ctx context.Context) {
-    // You can replace this with your real miniblock creation logic later.
-    b.mbCounter++
-    log.Info("Emitted mini-block", "id", b.mbCounter, "timestamp", time.Now().UnixMilli())
+func NewBuilder(ipc *gethrpc.Client, addr common.Address, key *ecdsa.PrivateKey, cfg BuilderConfig) *Builder {
+    return &Builder{
+        cfg: cfg,
+    }
 }
 
+func (b *Builder) Run(ctx context.Context) {
+    ticker := time.NewTicker(b.cfg.Cadence)
+    defer ticker.Stop()
+
+    log.Info("Builder loop started", "cadence", b.cfg.Cadence)
+
+    for {
+        select {
+        case <-ticker.C:
+            b.emitMiniBlock(ctx)
+        case <-ctx.Done():
+            log.Info("Builder loop stopped")
+            return
+        }
+    }
+}
+
+func (b *Builder) emitMiniBlock(ctx context.Context) {
+    b.mbCounter++
+    log.Info("Emitted mini-block",
+        "id", b.mbCounter,
+        "timestamp", time.Now().UnixMilli())
+}
 
 func (b *Builder) GetReceipt(tx common.Hash) *PreconfReceipt {
 	return b.receipts[tx]
