@@ -82,6 +82,7 @@ func loadConfig(path string) (*BuilderConfig, error) {
 
 
 func main() {
+	log.info("mainloop")
 	var configPath = flag.String("config", "", "Path to TOML config for preconf-builder")
 	flag.Parse()
 
@@ -225,10 +226,12 @@ func (b *Builder) xemitMiniBlock(ctx context.Context) {
 
 func NewBuilder(ipc *gethrpc.Client, addr common.Address, key *ecdsa.PrivateKey, cfg BuilderConfig) *Builder {
     return &Builder{
+		log.info("newbuilder")
         cfg: cfg,
     }
 }
 func (b *Builder) Run(ctx context.Context) {
+	log.info("runloop")
     cadence := b.cfg.Cadence
     if cadence == 0 {
         cadence = 100 * time.Millisecond // fallback if unset
