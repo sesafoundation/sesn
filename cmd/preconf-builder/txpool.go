@@ -144,6 +144,40 @@ func (b *Builder) pickPendingTXs(ctx context.Context, maxCount int, gasBudget ui
 	return out
 }
 
+func (b *Builder) newpickPendingTXs(ctx context.Context, maxCount int, gasBudget uint64) []common.Hash {
+    var content struct {
+        Pending map[string]map[string]*struct {
+            Hash                common.Hash `json:"hash"`
+            Gas                 uint64      `json:"gas"`
+            GasPrice            *big.Int    `json:"gasPrice"`
+            MaxPriorityFeePerGas *big.Int   `json:"maxPriorityFeePerGas"`
+        } `json:"pending"`
+    }
+
+    if err := b.rpc.CallContext(ctx, &content, "txpool_content"); err != nil {
+        log.Warn("txpool_content RPC failed", "err", err)
+        return nil
+    }
+
+    var txs []common.Hash
+    var usedGas uint64
+
+    for _, nonces := range content.Pending {
+        for _, t := range nonces {
+            if len(txs) >= maxCount {
+                return txs
+            }
+            if usedGas+t.Gas > gasBudget {
+                return txs
+            }
+            txs = append(txs, t.Hash)
+            usedGas += t.Gas
+        }
+    }
+    return txs
+}
+
+
 // small helper for timeouts
 func ctxTimeout(d time.Duration) (context.Context, context.CancelFunc) {
 	return context.WithTimeout(context.Background(), d)

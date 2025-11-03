@@ -43,13 +43,24 @@ func miniBlockDigest(mb *MiniBlock) []byte {
 	return sum
 }
 
-func signMiniBlock(priv *ecdsa.PrivateKey, mb *MiniBlock) []byte {
+func oldsignMiniBlock(priv *ecdsa.PrivateKey, mb *MiniBlock) []byte {
 	d := miniBlockDigest(mb)
 	sig, err := crypto.Sign(d, priv)
 	if err != nil {
 		panic(err)
 	}
 	return sig // 65 bytes (R||S||V)
+}
+
+func signMiniBlock(key *ecdsa.PrivateKey, mb *MiniBlock) []byte {
+    data := append(mb.ParentBlock[:], byte(mb.ID))
+    hash := crypto.Keccak256Hash(data)
+    sig, err := crypto.Sign(hash.Bytes(), key)
+    if err != nil {
+        log.Warn("Failed to sign mini-block", "err", err)
+        return nil
+    }
+    return sig
 }
 
 // ---- demo key loader (replace with keystore/HSM) ----
