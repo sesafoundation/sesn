@@ -1,15 +1,25 @@
 package main
 
+
 import (
-    "context"
-    "os"
-    "os/signal"
-    "syscall"
-    "time"
+	"context"
+	"crypto/ecdsa"
+	//"log"
+	"flag"
+	"net/http"
+	"os"
+	"os/signal"
+	"path/filepath"
+	"time"
+	"sync"
+	"strings"
+	"syscall"
 
-    "github.com/sesafoundation/sesn/log"
+	gethrpc "github.com/sesafoundation/sesn/rpc"
+	"github.com/sesafoundation/sesn/log"
+	"github.com/sesafoundation/sesn/common"
+	"github.com/naoina/toml"
 )
-
 type Builder struct {
 	rpc      *gethrpc.Client
 	addr     common.Address
@@ -58,4 +68,8 @@ func main() {
 
     builder := &Builder{}
     builder.Run(ctx)
+}
+
+func (b *Builder) GetReceipt(tx common.Hash) *PreconfReceipt {
+	return b.receipts[tx]
 }
