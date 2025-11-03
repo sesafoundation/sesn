@@ -11,10 +11,16 @@ import (
 )
 
 type Builder struct {
-    mbCounter uint64
-    cfg struct {
-        Cadence time.Duration
-    }
+	rpc      *gethrpc.Client
+	addr     common.Address
+	key      *ecdsa.PrivateKey
+	cfg      BuilderConfig
+
+	mu       sync.RWMutex
+	lastMini  *MiniBlock
+	receipts  map[common.Hash]*PreconfReceipt
+	subs      *WSHub
+	mbCounter uint64
 }
 
 func (b *Builder) Run(ctx context.Context) {
