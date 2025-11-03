@@ -13,6 +13,7 @@ import (
 	"sync"
 	"strings"
 	"syscall"
+	"encoding/json"
 
 	gethrpc "github.com/sesafoundation/sesn/rpc"
 	"github.com/sesafoundation/sesn/log"
@@ -170,7 +171,7 @@ func xNewBuilder(rpc *gethrpc.Client, addr common.Address, key *ecdsa.PrivateKey
 	return &Builder{rpc: rpc, addr: addr, key: key, cfg: cfg, receipts: make(map[common.Hash]*PreconfReceipt)}
 }
 
-func (b *Builder) xRun(ctx context.Context) {
+func (b *Builder) Run(ctx context.Context) {
     ticker := time.NewTicker(b.cfg.Cadence)
     defer ticker.Stop()
 
@@ -280,58 +281,8 @@ log.Info("newbuilder")
 		    cfg: cfg,
     }
 }
-func (b *Builder) testRun(ctx context.Context) {
-    // If cadence is missing, use default 100ms
-    cadence := b.cfg.Cadence
-    if cadence == 0 {
-        cadence = 100 * time.Millisecond
-    }
-
-    log.Info("Builder loop starting", "cadence", cadence)
-
-    ticker := time.NewTicker(cadence)
-    defer ticker.Stop()
-
-    // 🔥 This loop blocks forever until cancel() is called
-    for {
-        select {
-        case <-ticker.C:
-            b.emitMiniBlock(ctx)
-        case <-ctx.Done():
-            log.Info("Builder loop stopped (context cancelled)")
-            return
-        }
-    }
-}
-
-// emitMiniBlock creates dummy miniblocks for test
-func (b *Builder) testemitMiniBlock(ctx context.Context) {
-    b.mbCounter++
-    log.Info("🧱 Emitted mini-block",
-        "id", b.mbCounter,
-        "timestamp", time.Now().Format(time.RFC3339Nano))
-}
 
 func (b *Builder) GetReceipt(tx common.Hash) *PreconfReceipt {
 	return b.receipts[tx]
-}
-
-func ServeHTTPJSON(b *Builder, addr string) {
-    http.HandleFunc("/preconf_getReceipt", func(w http.ResponseWriter, r *http.Request) {
-        q := r.URL.Query().Get("tx")
-        if q == "" {
-            w.WriteHeader(400)
-            return
-        }
-        h := common.HexToHash(q)
-        rec, ok := b.receipts[h]
-        if !ok {
-            w.WriteHeader(204)
-            return
-        }
-        _ = json.NewEncoder(w).Encode(rec)
-    })
-    log.Info("HTTP JSON endpoint active", "addr", addr)
-    log.Crit("HTTP server failed", "err", http.ListenAndServe(addr, nil))
 }
 

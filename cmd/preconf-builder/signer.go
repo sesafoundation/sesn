@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/ecdsa"
 	"encoding/binary"
+	"github.com/sesafoundation/sesn/log"
 	//"golang.org/x/crypto/sha3"
 	//"github.com/sesafoundation/sesn/preconf/builder"
 
