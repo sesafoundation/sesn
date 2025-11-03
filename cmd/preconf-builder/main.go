@@ -157,7 +157,9 @@ func main() {
 	}()
 
 	// ---- Run main builder loop ----
+	log.Info(">>> About to start builder.Run()")
 	builder.Run(ctx)
+	log.Info(">>> builder.Run() returned!")
 
 	// ---- Wait until context is done ----
 	//<-ctx.Done()
