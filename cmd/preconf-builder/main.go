@@ -138,7 +138,7 @@ func main() {
 		}
 	}()
 
-	log.Info("Ticker cadence check", "cfg.Cadence", b.cfg.Cadence)
+	//log.Info("Ticker cadence check", "cfg.Cadence", b.cfg.Cadence)
 
 	// ---- Start HTTP JSON-RPC (async) ----
 	go ServeHTTPJSON(builder, cfg.HTTPListen)
@@ -166,23 +166,30 @@ func xNewBuilder(rpc *gethrpc.Client, addr common.Address, key *ecdsa.PrivateKey
 	return &Builder{rpc: rpc, addr: addr, key: key, cfg: cfg, receipts: make(map[common.Hash]*PreconfReceipt)}
 }
 
-func (b *Builder) xRun(ctx context.Context) {
-    ticker := time.NewTicker(b.cfg.Cadence)
+func (b *Builder) Run(ctx context.Context) {
+    cadence := b.cfg.Cadence
+    if cadence == 0 {
+        cadence = 100 * time.Millisecond // fallback if unset
+    }
+
+    // ✅ 'b' is defined here, so this compiles fine:
+    log.Info("Ticker cadence check", "cfg.Cadence", cadence)
+
+    ticker := time.NewTicker(cadence)
     defer ticker.Stop()
 
-    log.Info("Builder running", "cadence", b.cfg.Cadence)
+    log.Info("🚀 Builder loop started", "cadence", cadence)
 
     for {
         select {
         case <-ticker.C:
             b.emitMiniBlock(ctx)
         case <-ctx.Done():
-            log.Info("Builder stopped")
+            log.Info("🛑 Builder loop stopped")
             return
         }
     }
 }
-
 
 func (b *Builder) xemitMiniBlock(ctx context.Context) {
 	txs := b.pickPendingTXs(ctx, b.cfg.MaxTxPerSlice, b.cfg.GasSlice)
