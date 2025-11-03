@@ -55,6 +55,8 @@ func (b *Builder) Run(ctx context.Context) {
 }
 
 func main() {
+	log.Info("Logger initialized — starting preconf-builder")
+	log.Root().SetHandler(log.StreamHandler(os.Stdout, log.TerminalFormat(true)))
     ctx, cancel := context.WithCancel(context.Background())
     defer cancel()
 
