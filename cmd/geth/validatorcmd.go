@@ -1188,7 +1188,9 @@ func queryBlockRewardAPRInfo (ctx *cli.Context) error {
 	if err != nil {
 		utils.Fatalf("Unpack BlockRewardAPR err: %v\n", err)
 	}
-	fmt.Printf(" Block Reward APR : %v\n", blockrewardapr)
+	//fmt.Printf(" Block Reward APR : %v\n", blockrewardapr)
+	fmt.Printf("\t Block Reward APR : %s\n", (*blockrewardapr).String())
+
 	return nil
 }
 
@@ -1224,7 +1226,8 @@ func queryValStakingRewardAPRInfo (ctx *cli.Context) error {
 	if err != nil {
 		utils.Fatalf("Unpack ValStakingRewardAPR err: %v\n", err)
 	}
-	fmt.Printf(" Validator Staking APR : %v\n",valstakingapr)
+	//fmt.Printf(" Validator Staking APR : %v\n",valstakingapr)
+	fmt.Printf("\t Validator  Staking Reward APR : %s\n", (*valstakingapr).String())
 	return nil
 }
 
@@ -1260,7 +1263,9 @@ func queryDelStakingRewardAPRInfo (ctx *cli.Context) error {
 	if err != nil {
 		utils.Fatalf("Unpack DelStakingRewardAPR err: %v\n", err)
 	}
-	fmt.Printf(" Delegator Staking Reward APR : %v\n", delstakingrewardapr)
+	//fmt.Printf(" Delegator Staking Reward APR : %v\n", delstakingrewardapr)
+	fmt.Printf("\tDelegator Staking Reward APR : %s\n", (*delstakingrewardapr).String())
+
 	return nil
 }
 
@@ -1296,6 +1301,7 @@ func queryDelGoldRewardAPRInfo (ctx *cli.Context) error {
 	if err != nil {
 		utils.Fatalf("Unpack DelGoldRewardAPR err: %v\n", err)
 	}
-	fmt.Printf(" Delegator Gold Reward APR : %v\n", delgoldrewardapr)
+	//fmt.Printf(" Delegator Gold Reward APR : %v\n", delgoldrewardapr)
+	fmt.Printf("\tDelegator Gold Reward APR : %s\n", (*delgoldrewardapr).String())
 	return nil
 }
