@@ -403,7 +403,7 @@ const (
 	GetBlockRewardAPRMethod		  = "getBlockRewardAPR"
 	GetValStakingAPRMethod		  = "getValidatorStarAPR"
 	GetDelStakingAPRMethod	      = "getDelegatorStarAPR"
-	GetDelGoldAPRMethd			  = "getDelegatorGoldAPR"
+	GetDelGoldAPRMethod			  = "getDelegatorGoldAPR"
 )
 
 const (
@@ -1260,7 +1260,7 @@ func queryDelGoldRewardAPRInfo (ctx *cli.Context) error {
 	}
 
 	validatorContractAddr := sonium.ValidatorContratAddress()
-	data, err := valABI.Pack(GetDelGoldAPRMethd)
+	data, err := valABI.Pack(GetDelGoldAPRMethod)
 	if err != nil {
 		utils.Fatalf("query DelGoldRewardAprInfo pack err: %v\n", err)
 	}
@@ -1280,7 +1280,7 @@ func queryDelGoldRewardAPRInfo (ctx *cli.Context) error {
 		delgoldrewardapr,
 	
 	}
-	err = valABI.UnpackIntoInterface(out, GetDelGoldAPRMethd, result)
+	err = valABI.UnpackIntoInterface(out, GetDelGoldAPRMethod, result)
 	if err != nil {
 		utils.Fatalf("Unpack DelGoldRewardAPR err: %v\n", err)
 	}
