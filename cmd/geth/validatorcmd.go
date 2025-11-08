@@ -1176,21 +1176,13 @@ func queryBlockRewardAPRInfo (ctx *cli.Context) error {
 	if err != nil {
 		utils.Fatalf("Get BlockRewardAPRInfo err: %v\n", err)
 	}
-	var (
-		BlockRewardAPR  = new(*big.Int)
-	)
-
-	out := &[]interface{}{
-		BlockRewardAPR,
-	
-	}
-	err = valABI.UnpackIntoInterface(out, GetBlockRewardAPRMethod, result)
+	var blockRewardAPR *big.Int
+	err = valABI.UnpackIntoInterface(&blockRewardAPR, GetBlockRewardAPRMethod, result)
 	if err != nil {
 		utils.Fatalf("Unpack BlockRewardAPR err: %v\n", err)
 	}
-	//fmt.Printf(" Block Reward APR : %v\n", blockrewardapr)
-	fmt.Printf("\t Block Reward APR : %s\n", (*BlockRewardAPR).String())
 
+	fmt.Printf("\tBlock Reward APR : %s\n", blockRewardAPR.String())
 	return nil
 }
 
@@ -1214,22 +1206,13 @@ func queryValStakingRewardAPRInfo (ctx *cli.Context) error {
 	if err != nil {
 		utils.Fatalf("Get ValStakingAPR err: %v\n", err)
 	}
-	var (
-		ValidatorStarAPR  = new(*big.Int)
-	)
-
-	out := &[]interface{}{
-		ValidatorStarAPR,
-	
-	}
-	err = valABI.UnpackIntoInterface(out, GetValStakingAPRMethod, result)
+	var validatorStarAPR *big.Int
+	err = valABI.UnpackIntoInterface(&validatorStarAPR, GetValStakingAPRMethod, result)
 	if err != nil {
 		utils.Fatalf("Unpack ValStakingRewardAPR err: %v\n", err)
 	}
-	//fmt.Printf(" Validator Staking APR : %v\n",valstakingapr)
-	fmt.Printf("\t Validator  Staking Reward APR : %s\n", (*ValidatorStarAPR).String())
 
-
+	fmt.Printf("\tValidator Star Reward APR : %s\n", validatorStarAPR.String())
 	return nil
 }
 
@@ -1253,25 +1236,19 @@ func queryDelStakingRewardAPRInfo (ctx *cli.Context) error {
 	if err != nil {
 		utils.Fatalf("Get DelStakingRewardAPRInfo err: %v\n", err)
 	}
-	var (
-		DelegatorStarAPR  = new(*big.Int)
-	)
-
-	out := &[]interface{}{
-		DelegatorStarAPR,
+	var delegatorStarAPR *big.Int
 	
-	}
-	err = valABI.UnpackIntoInterface(out, GetDelStakingAPRMethod, result)
-	if err != nil {
-		utils.Fatalf("Unpack DelStakingRewardAPR err: %v\n", err)
-	}
-	//fmt.Printf(" Delegator Staking Reward APR : %v\n", delstakingrewardapr)
-	fmt.Printf("\tDelegator Staking Reward APR : %s\n", (*DelegatorStarAPR).String())
 
+	err = valABI.UnpackIntoInterface(&delegatorStarAPR, GetDelStakingAPRMethod, result)
+	if err != nil {
+		utils.Fatalf("Unpack DelGoldRewardAPR err: %v\n", err)
+	}
+
+	fmt.Printf("\tDelegator Gold Reward APR : %s\n", delegatorStarAPR.String())
 	return nil
 }
 
-func queryDelGoldRewardAPRInfo (ctx *cli.Context) error {
+func queryDelGoldRewardAPRInfo(ctx *cli.Context) error {
 	validatorABIstr := sonium.ValidatorContractABI()
 	valABI, err := abi.JSON(strings.NewReader(validatorABIstr))
 	if err != nil {
@@ -1279,31 +1256,31 @@ func queryDelGoldRewardAPRInfo (ctx *cli.Context) error {
 	}
 
 	validatorContractAddr := sonium.ValidatorContratAddress()
+
 	data, err := valABI.Pack(GetDelGoldAPRMethod)
 	if err != nil {
 		utils.Fatalf("query DelGoldRewardAprInfo pack err: %v\n", err)
 	}
+
 	msg := ethereum.CallMsg{
 		To:   &validatorContractAddr,
 		Data: data,
 	}
+
 	result, err := queryHandler(ctx, &msg)
 	if err != nil {
 		utils.Fatalf("Get DelGoldRewardAPRInfo err: %v\n", err)
 	}
-	var (
-		DelegatorGoldAPR  = new(*big.Int)
-	)
 
-	out := &[]interface{}{
-		DelegatorGoldAPR,
-	
-	}
-	err = valABI.UnpackIntoInterface(out, GetDelGoldAPRMethod, result)
+	var delegatorGoldAPR *big.Int
+
+	// Unpack the result
+	err = valABI.UnpackIntoInterface(&delegatorGoldAPR, GetDelGoldAPRMethod, result)
 	if err != nil {
 		utils.Fatalf("Unpack DelGoldRewardAPR err: %v\n", err)
 	}
-	//fmt.Printf(" Delegator Gold Reward APR : %v\n", delgoldrewardapr)
-	fmt.Printf("\tDelegator Gold Reward APR : %s\n", (*DelegatorGoldAPR).String())
+
+	fmt.Printf("\tDelegator Gold Reward APR : %s\n", delegatorGoldAPR.String())
 	return nil
 }
+
