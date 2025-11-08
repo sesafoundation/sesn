@@ -39,7 +39,7 @@ const validatorABI = `[
         {
           "indexed": true,
           "internalType": "address",
-          "name": "validiator",
+          "name": "validator",
           "type": "address"
         }
       ],
