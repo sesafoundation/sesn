@@ -1237,14 +1237,11 @@ func queryDelStakingRewardAPRInfo (ctx *cli.Context) error {
 		utils.Fatalf("Get DelStakingRewardAPRInfo err: %v\n", err)
 	}
 	var delegatorStarAPR *big.Int
-	
-
 	err = valABI.UnpackIntoInterface(&delegatorStarAPR, GetDelStakingAPRMethod, result)
 	if err != nil {
 		utils.Fatalf("Unpack DelGoldRewardAPR err: %v\n", err)
 	}
-
-	fmt.Printf("\tDelegator Gold Reward APR : %s\n", delegatorStarAPR.String())
+	fmt.Printf("\tDelegator Star Reward APR : %s\n", delegatorStarAPR.String())
 	return nil
 }
 
