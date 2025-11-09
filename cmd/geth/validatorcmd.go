@@ -1216,7 +1216,7 @@ func queryValStakingRewardAPRInfo (ctx *cli.Context) error {
 	}
 
 	//fmt.Printf("\tValidator Star Reward APR : %s\n", validatorStarAPR.String())
-	aprFloat := new(big.Float).SetInt(validatorStardAPR)
+	aprFloat := new(big.Float).SetInt(validatorStarAPR)
 	aprFloat.Quo(aprFloat, big.NewFloat(1e18)) // divide by 1e18 to get decimal form
 	fmt.Printf("\tValidator Star APR : %.2f%%\n", aprFloat)
 	return nil
