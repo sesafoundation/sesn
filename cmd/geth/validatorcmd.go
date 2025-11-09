@@ -1186,7 +1186,7 @@ func queryBlockRewardAPRInfo (ctx *cli.Context) error {
 	aprFloat := new(big.Float).SetInt(blockRewardAPR)
 	aprFloat.Quo(aprFloat, big.NewFloat(1e18))
 	val, _ := aprFloat.Float64()
-	return val, nil
+	return val
 }
 
 func queryValStakingRewardAPRInfo (ctx *cli.Context) error {
@@ -1219,7 +1219,7 @@ func queryValStakingRewardAPRInfo (ctx *cli.Context) error {
 	aprFloat := new(big.Float).SetInt(validatorStarAPR)
 	aprFloat.Quo(aprFloat, big.NewFloat(1e18))
 	val, _ := aprFloat.Float64()
-	return val, nil
+	return val
 }
 
 func queryDelStakingRewardAPRInfo (ctx *cli.Context) error {
@@ -1251,7 +1251,7 @@ func queryDelStakingRewardAPRInfo (ctx *cli.Context) error {
 	aprFloat := new(big.Float).SetInt(delegatorStarAPR)
 	aprFloat.Quo(aprFloat, big.NewFloat(1e18))
 	val, _ := aprFloat.Float64()
-	return val, nil
+	return val
 }
 
 func queryDelGoldRewardAPRInfo(ctx *cli.Context) error {
@@ -1290,5 +1290,5 @@ func queryDelGoldRewardAPRInfo(ctx *cli.Context) error {
 	aprFloat := new(big.Float).SetInt(delegatorGoldAPR)
 	aprFloat.Quo(aprFloat, big.NewFloat(1e18))
 	val, _ := aprFloat.Float64()
-	return val, nil
+	return val
 }
