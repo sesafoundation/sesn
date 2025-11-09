@@ -574,6 +574,19 @@ const validatorABI = `[
     },
     {
       "inputs": [],
+      "name": "blocksPerYear",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
       "name": "estbr",
       "outputs": [
         {
@@ -1171,7 +1184,7 @@ const validatorABI = `[
           "type": "address"
         }
       ],
-      "name": "isGoldValidator",
+      "name": "isSlashProtect",
       "outputs": [
         {
           "internalType": "bool",
