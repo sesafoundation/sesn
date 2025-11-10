@@ -1182,11 +1182,9 @@ func queryBlockRewardAPRInfo (ctx *cli.Context) error {
 		utils.Fatalf("Unpack BlockRewardAPR err: %v\n", err)
 	}
 
-	scaled := new(big.Int).Div(blockRewardAPR, big.NewInt(100)) 
-	integer := new(big.Int).Div(scaled, big.NewInt(100))
-	fraction := new(big.Int).Mod(scaled, big.NewInt(100))
+	integer := new(big.Int).Div(blockRewardAPR, big.NewInt(100)) 
+	fraction := new(big.Int).Mod(blockRewardAPR, big.NewInt(100)) 
 	fmt.Printf("\tBlock Reward APR : %s.%02s%%\n", integer.String(), fraction.String())
-
 	return nil
 
 	
@@ -1218,11 +1216,9 @@ func queryValStakingRewardAPRInfo (ctx *cli.Context) error {
 		utils.Fatalf("Unpack ValStakingRewardAPR err: %v\n", err)
 	}
 
-	scaled := new(big.Int).Div(validatorStarAPR, big.NewInt(100)) 
-	integer := new(big.Int).Div(scaled, big.NewInt(100))
-	fraction := new(big.Int).Mod(scaled, big.NewInt(100))
+	integer := new(big.Int).Div(validatorStarAPR, big.NewInt(100)) 
+	fraction := new(big.Int).Mod(validatorStarAPR, big.NewInt(100)) 
 	fmt.Printf("\tValidator Star APR : %s.%02s%%\n", integer.String(), fraction.String())
-
 	return nil
 }
 
@@ -1252,12 +1248,9 @@ func queryDelStakingRewardAPRInfo (ctx *cli.Context) error {
 		utils.Fatalf("Unpack DelGoldRewardAPR err: %v\n", err)
 	}
 
-	scaled := new(big.Int).Div(delegatorStarAPR, big.NewInt(100)) 
-	integer := new(big.Int).Div(scaled, big.NewInt(100))
-	fraction := new(big.Int).Mod(scaled, big.NewInt(100))
+	integer := new(big.Int).Div(delegatorStarAPR, big.NewInt(100)) 
+	fraction := new(big.Int).Mod(delegatorStarAPR, big.NewInt(100)) 
 	fmt.Printf("\tDelegator Star APR : %s.%02s%%\n", integer.String(), fraction.String())
-
-
 	return nil
 }
 
@@ -1292,12 +1285,9 @@ func queryDelGoldRewardAPRInfo(ctx *cli.Context) error {
 	if err != nil {
 		utils.Fatalf("Unpack DelGoldRewardAPR err: %v\n", err)
 	}
-	
-	scaled := new(big.Int).Div(delegatorGoldAPR, big.NewInt(100))
-	integer := new(big.Int).Div(scaled, big.NewInt(100))
-	fraction := new(big.Int).Mod(scaled, big.NewInt(100))
+	integer := new(big.Int).Div(delegatorGoldAPR, big.NewInt(100)) 
+	fraction := new(big.Int).Mod(delegatorGoldAPR, big.NewInt(100)) 
 	fmt.Printf("\tDelegator Gold APR : %s.%02s%%\n", integer.String(), fraction.String())
-
 	return nil
 
 	
