@@ -1319,7 +1319,7 @@ func queryDelGoldRewardAPRInfo(ctx *cli.Context) error {
 	//fmt.Printf("\tDel Gold APR : %.2f%%\n", val)
 	//return nil
 
-	scaled := new(big.Int).Div(new(big.Int).Mul(delGoldAPR, big.NewInt(100)), big.NewInt(1e18))
+	scaled := new(big.Int).Div(new(big.Int).Mul(delegatorGoldAPR, big.NewInt(100)), big.NewInt(1e18))
     integer := new(big.Int).Div(scaled, big.NewInt(100))
     fraction := new(big.Int).Mod(scaled, big.NewInt(100))
     fmt.Printf("\tDelegator Gold APR : %s.%02s%%\n", integer.String(), fraction.String())
