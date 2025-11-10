@@ -1184,7 +1184,7 @@ func queryBlockRewardAPRInfo (ctx *cli.Context) error {
 
 	//fmt.Printf("\tBlock Reward APR : %s\n", blockRewardAPR.String())
 	aprFloat := new(big.Float).SetInt(blockRewardAPR)
-	aprFloat.Quo(aprFloat, big.NewFloat(1e18))
+	aprFloat.Quo(aprFloat, big.NewFloat(1))
 	val, _ := aprFloat.Float64()
 	fmt.Printf("\tBlock Reward APR : %.2f%%\n", val)
 	return nil
@@ -1218,7 +1218,7 @@ func queryValStakingRewardAPRInfo (ctx *cli.Context) error {
 
 	//fmt.Printf("\tValidator Star Reward APR : %s\n", validatorStarAPR.String())
 	aprFloat := new(big.Float).SetInt(validatorStarAPR)
-	aprFloat.Quo(aprFloat, big.NewFloat(1e18))
+	aprFloat.Quo(aprFloat, big.NewFloat(1))
 	val, _ := aprFloat.Float64()
 	fmt.Printf("\tValidator Star APR : %.2f%%\n", val)
 	return nil
@@ -1251,7 +1251,7 @@ func queryDelStakingRewardAPRInfo (ctx *cli.Context) error {
 	}
 	//fmt.Printf("\tDelegator Star Reward APR : %s\n", delegatorStarAPR.String())
 	aprFloat := new(big.Float).SetInt(delegatorStarAPR)
-	aprFloat.Quo(aprFloat, big.NewFloat(1e18))
+	aprFloat.Quo(aprFloat, big.NewFloat(1))
 	val, _ := aprFloat.Float64()
 	fmt.Printf("\tDel Star APR : %.2f%%\n", val)
 	return nil
@@ -1291,7 +1291,7 @@ func queryDelGoldRewardAPRInfo(ctx *cli.Context) error {
 
 	//fmt.Printf("\tDelegator Gold Reward APR : %s\n", delegatorGoldAPR.String())
 	aprFloat := new(big.Float).SetInt(delegatorGoldAPR)
-	aprFloat.Quo(aprFloat, big.NewFloat(1e18))
+	aprFloat.Quo(aprFloat, big.NewFloat(1))
 	val, _ := aprFloat.Float64()
 	fmt.Printf("\tDel Gold APR : %.2f%%\n", val)
 	return nil
