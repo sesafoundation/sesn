@@ -1182,18 +1182,10 @@ func queryBlockRewardAPRInfo (ctx *cli.Context) error {
 		utils.Fatalf("Unpack BlockRewardAPR err: %v\n", err)
 	}
 
-	//fmt.Printf("\tBlock Reward APR : %s\n", blockRewardAPR.String())
-	//aprFloat := new(big.Float).SetInt(blockRewardAPR)
-	//aprFloat.Quo(aprFloat, big.NewFloat(1))
-	//val, _ := aprFloat.Float64()
-	//fmt.Printf("\tBlock Reward APR : %.2f%%\n", val)
-	//return nil
-
-	aprFloat := new(big.Float).SetInt(blockRewardAPR)
-	aprFloat.SetPrec(256)                       // high precision
-	aprFloat.Quo(aprFloat, big.NewFloat(1))  // try 1e16 or 1e18 depending on scale
-	val, _ := aprFloat.Float64()
-	fmt.Printf("\tBlock Reward APR : %.2f%%\n", val)
+	scaled := new(big.Int).Div(blockRewardAPR, big.NewInt(100)) 
+	integer := new(big.Int).Div(scaled, big.NewInt(100))
+	fraction := new(big.Int).Mod(scaled, big.NewInt(100))
+	fmt.Printf("\tBlock Reward APR : %s.%02s%%\n", integer.String(), fraction.String())
 
 	return nil
 
@@ -1226,18 +1218,10 @@ func queryValStakingRewardAPRInfo (ctx *cli.Context) error {
 		utils.Fatalf("Unpack ValStakingRewardAPR err: %v\n", err)
 	}
 
-	//fmt.Printf("\tValidator Star Reward APR : %s\n", validatorStarAPR.String())
-	//aprFloat := new(big.Float).SetInt(validatorStarAPR)
-	//aprFloat.Quo(aprFloat, big.NewFloat(1))
-	//val, _ := aprFloat.Float64()
-	//fmt.Printf("\tValidator Star APR : %.2f%%\n", val)
-	//return nil
-
-	aprFloat := new(big.Float).SetInt(validatorStarAPR)
-	aprFloat.SetPrec(256)                       // high precision
-	aprFloat.Quo(aprFloat, big.NewFloat(1))  // try 1e16 or 1e18 depending on scale
-	val, _ := aprFloat.Float64()
-	fmt.Printf("\tValidator Star APR : %.2f%%\n", val)
+	scaled := new(big.Int).Div(validatorStarAPR, big.NewInt(100)) 
+	integer := new(big.Int).Div(scaled, big.NewInt(100))
+	fraction := new(big.Int).Mod(scaled, big.NewInt(100))
+	fmt.Printf("\tValidator Star APR : %s.%02s%%\n", integer.String(), fraction.String())
 
 	return nil
 }
@@ -1267,18 +1251,12 @@ func queryDelStakingRewardAPRInfo (ctx *cli.Context) error {
 	if err != nil {
 		utils.Fatalf("Unpack DelGoldRewardAPR err: %v\n", err)
 	}
-	//fmt.Printf("\tDelegator Star Reward APR : %s\n", delegatorStarAPR.String())
-	//aprFloat := new(big.Float).SetInt(delegatorStarAPR)
-	//aprFloat.Quo(aprFloat, big.NewFloat(1))
-	//val, _ := aprFloat.Float64()
-	//fmt.Printf("\tDel Star APR : %.2f%%\n", val)
-	//return nil
 
-	aprFloat := new(big.Float).SetInt(delegatorStarAPR)
-	aprFloat.SetPrec(256)                       // high precision
-	aprFloat.Quo(aprFloat, big.NewFloat(1))  // try 1e16 or 1e18 depending on scale
-	val, _ := aprFloat.Float64()
-	fmt.Printf("\tDelegator Star APR : %.2f%%\n", val)
+	scaled := new(big.Int).Div(delegatorStarAPR, big.NewInt(100)) 
+	integer := new(big.Int).Div(scaled, big.NewInt(100))
+	fraction := new(big.Int).Mod(scaled, big.NewInt(100))
+	fmt.Printf("\tDelegator Star APR : %s.%02s%%\n", integer.String(), fraction.String())
+
 
 	return nil
 }
@@ -1314,26 +1292,11 @@ func queryDelGoldRewardAPRInfo(ctx *cli.Context) error {
 	if err != nil {
 		utils.Fatalf("Unpack DelGoldRewardAPR err: %v\n", err)
 	}
-
-	//fmt.Printf("\tDelegator Gold Reward APR : %s\n", delegatorGoldAPR.String())
-	//aprFloat := new(big.Float).SetInt(delegatorGoldAPR)
-	//aprFloat.Quo(aprFloat, big.NewFloat(1))
-	//val, _ := aprFloat.Float64()
-	//fmt.Printf("\tDel Gold APR : %.2f%%\n", val)
-	//return nil
-
-	//aprFloat := new(big.Float).SetInt(delegatorGoldAPR)
-	//aprFloat.SetPrec(256)                       // high precision
-	//aprFloat.Quo(aprFloat, big.NewFloat(1))  // try 1e16 or 1e18 depending on scale
-	//val, _ := aprFloat.Float64()
-	//fmt.Printf("\tDelegator Gold APR : %.2f%%\n", val)
-
-
-	scaled := new(big.Int).Div(new(big.Int).Mul(delegatorGoldAPR, big.NewInt(100)), big.NewInt(1)) // no 1e18 scaling
+	
+	scaled := new(big.Int).Div(delegatorGoldAPR, big.NewInt(100))
 	integer := new(big.Int).Div(scaled, big.NewInt(100))
 	fraction := new(big.Int).Mod(scaled, big.NewInt(100))
 	fmt.Printf("\tDelegator Gold APR : %s.%02s%%\n", integer.String(), fraction.String())
-
 
 	return nil
 
