@@ -1191,7 +1191,7 @@ func queryBlockRewardAPRInfo (ctx *cli.Context) error {
 
 	aprFloat := new(big.Float).SetInt(blockRewardAPR)
 	aprFloat.SetPrec(256)                       // high precision
-	aprFloat.Quo(aprFloat, big.NewFloat(1e16))  // try 1e16 or 1e18 depending on scale
+	aprFloat.Quo(aprFloat, big.NewFloat(1e2))  // try 1e16 or 1e18 depending on scale
 	val, _ := aprFloat.Float64()
 	fmt.Printf("\tBlock Reward APR : %.2f%%\n", val)
 
@@ -1235,7 +1235,7 @@ func queryValStakingRewardAPRInfo (ctx *cli.Context) error {
 
 	aprFloat := new(big.Float).SetInt(validatorStarAPR)
 	aprFloat.SetPrec(256)                       // high precision
-	aprFloat.Quo(aprFloat, big.NewFloat(1e16))  // try 1e16 or 1e18 depending on scale
+	aprFloat.Quo(aprFloat, big.NewFloat(1e2))  // try 1e16 or 1e18 depending on scale
 	val, _ := aprFloat.Float64()
 	fmt.Printf("\tValidator Star APR : %.2f%%\n", val)
 
@@ -1276,7 +1276,7 @@ func queryDelStakingRewardAPRInfo (ctx *cli.Context) error {
 
 	aprFloat := new(big.Float).SetInt(delegatorStarAPR)
 	aprFloat.SetPrec(256)                       // high precision
-	aprFloat.Quo(aprFloat, big.NewFloat(1e16))  // try 1e16 or 1e18 depending on scale
+	aprFloat.Quo(aprFloat, big.NewFloat(1e2))  // try 1e16 or 1e18 depending on scale
 	val, _ := aprFloat.Float64()
 	fmt.Printf("\tDelegator Star APR : %.2f%%\n", val)
 
@@ -1324,7 +1324,7 @@ func queryDelGoldRewardAPRInfo(ctx *cli.Context) error {
 
 	aprFloat := new(big.Float).SetInt(delegatorGoldAPR)
 	aprFloat.SetPrec(256)                       // high precision
-	aprFloat.Quo(aprFloat, big.NewFloat(1e16))  // try 1e16 or 1e18 depending on scale
+	aprFloat.Quo(aprFloat, big.NewFloat(1e2))  // try 1e16 or 1e18 depending on scale
 	val, _ := aprFloat.Float64()
 	fmt.Printf("\tDelegator Gold APR : %.2f%%\n", val)
 
