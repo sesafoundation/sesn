@@ -67,15 +67,28 @@ func signMiniBlock(key *ecdsa.PrivateKey, mb *MiniBlock) []byte {
     return sig
 }
 
-
-func loadProposerKey() *ecdsa.PrivateKey {
-    hexKey := os.Getenv("BUILDER_KEY")
-    if hexKey == "" {
-        log.Crit("BUILDER_KEY not set — export the private key hex without 0x")
-    }
-    key, err := crypto.HexToECDSA(hexKey)
+func loadProposerKey(keystorePath, passwordFile string) *ecdsa.PrivateKey {
+    // Read password from file
+    pwBytes, err := os.ReadFile(passwordFile)
     if err != nil {
-        log.Crit("Invalid BUILDER_KEY", "err", err)
+        log.Crit("Cannot read password file", "err", err)
     }
-    return key
+    password := strings.TrimSpace(string(pwBytes)) // remove newline
+
+    // Read keystore JSON file
+    jsonData, err := os.ReadFile(keystorePath)
+    if err != nil {
+        log.Crit("Cannot read keystore JSON", "err", err)
+    }
+
+    // Create keystore instance only for decrypt helper
+    ks := keystore.NewKeyStore(filepath.Dir(keystorePath), keystore.StandardScryptN, keystore.StandardScryptP)
+
+    // Decrypt
+    keyObj, err := ks.DecryptKey(jsonData, password)
+    if err != nil {
+        log.Crit("Invalid keystore password", "err", err)
+    }
+
+    return keyObj.PrivateKey
 }

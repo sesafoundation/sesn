@@ -45,7 +45,8 @@ func main() {
     }
 
     //var propKey *ecdsa.PrivateKey = loadProposerKey(cfg.KeystorePath, cfg.KeyPassword)
-    propKey := loadProposerKey()
+    //propKey := loadProposerKey()
+    propKey := loadProposerKey(cfg.KeystorePath, cfg.KeyPassword)
     propAddr := deriveAddress(propKey)
 
     // ---- Create builder ----
@@ -89,6 +90,8 @@ type Builder struct {
 	receipts  map[common.Hash]*PreconfReceipt
 	subs      *WSHub
 	mbCounter uint64
+    KeystorePath string
+    KeyPassword  string
 }
 
 
