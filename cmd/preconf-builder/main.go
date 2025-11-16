@@ -29,7 +29,7 @@ func main() {
     cfg := BuilderConfig{
         Cadence:    100 * time.Millisecond,
       //  IPCPath:    os.Getenv("BUILDER_IPC"),
-	  	IPCPath = expandHome(cfg.IPCPath),
+	  	IPCPath  : expandHome(cfg.IPCPath),
         WSListen:   ":8556",
         HTTPListen: ":8557",
     }
