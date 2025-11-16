@@ -10,6 +10,7 @@ import (
     "syscall"
     "time"
 	"sync"
+    //"github.com/ethereum/go-ethereum/crypto"
 
     "github.com/sesafoundation/sesn/log"
     gethrpc "github.com/sesafoundation/sesn/rpc"
@@ -126,6 +127,18 @@ log.Info("newbuilder")
 
 func (b *Builder) GetReceipt(tx common.Hash) *PreconfReceipt {
 	return b.receipts[tx]
+}
+
+func loadProposerKey() *ecdsa.PrivateKey {
+    hexKey := os.Getenv("BUILDER_KEY")
+    if hexKey == "" {
+        log.Crit("BUILDER_KEY not set — export the private key hex without 0x")
+    }
+    key, err := crypto.HexToECDSA(hexKey)
+    if err != nil {
+        log.Crit("Invalid BUILDER_KEY", "err", err)
+    }
+    return key
 }
 
 
