@@ -7,6 +7,8 @@ import (
 	"strings"
 	//"crypto/ecdsa"
 	"path/filepath"
+	
+    "github.com/ethereum/go-ethereum/accounts/keystore"
 
 	 "os"
    // "os/signal"
@@ -74,18 +76,21 @@ func loadProposerKey(keystorePath, passwordFile string) *ecdsa.PrivateKey {
     // Read password from file
     pwBytes, err := os.ReadFile(passwordFile)
     if err != nil {
-        log.Crit("Cannot read password file", "err", err)
+        log.Crit("Cannot read password file", "file", passwordFile, "err", err)
     }
-    password := strings.TrimSpace(string(pwBytes)) // remove newline
+    password := strings.TrimSpace(string(pwBytes))
 
-    // Read keystore JSON file
+    // Read keystore JSON
     jsonData, err := os.ReadFile(keystorePath)
     if err != nil {
-        log.Crit("Cannot read keystore JSON", "err", err)
+        log.Crit("Cannot read keystore JSON", "file", keystorePath, "err", err)
     }
 
-    // Create keystore instance only for decrypt helper
-    ks := keystore.NewKeyStore(filepath.Dir(keystorePath), keystore.StandardScryptN, keystore.StandardScryptP)
+    // Create temporary keystore for decrypt helper
+    ks := keystore.NewKeyStore(filepath.Dir(keystorePath),
+        keystore.StandardScryptN,
+        keystore.StandardScryptP,
+    )
 
     // Decrypt
     keyObj, err := ks.DecryptKey(jsonData, password)

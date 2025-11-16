@@ -38,4 +38,6 @@ type BuilderConfig struct {
 	WSListen      string        // e.g. ":8556"
 	HTTPListen    string        // e.g. ":8557" (for getReceipt HTTP JSON-RPC)
 	NetworkID     uint64        // chainId
+	KeystorePath  string
+    KeyPassword   string
 }

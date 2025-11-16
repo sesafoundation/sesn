@@ -93,8 +93,7 @@ type Builder struct {
 	receipts  map[common.Hash]*PreconfReceipt
 	subs      *WSHub
 	mbCounter uint64
-    KeystorePath string
-    KeyPassword  string
+ 
 }
 
 
