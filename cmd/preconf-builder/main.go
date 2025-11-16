@@ -1,288 +1,99 @@
 package main
 
 import (
-	"context"
-	"crypto/ecdsa"
-	//"log"
-	"flag"
-	"net/http"
-	"os"
-	"os/signal"
-	"path/filepath"
-	"time"
-	"sync"
-	"strings"
-	"syscall"
-	//"encoding/json"
+    "context"
+    "crypto/ecdsa"
+    "encoding/json"
+    "net/http"
+    "os"
+    "os/signal"
+    "syscall"
+    "time"
 
-	gethrpc "github.com/sesafoundation/sesn/rpc"
-	"github.com/sesafoundation/sesn/log"
-	"github.com/sesafoundation/sesn/common"
-	"github.com/naoina/toml"
+    "github.com/sesafoundation/sesn/log"
+    gethrpc "github.com/sesafoundation/sesn/rpc"
 )
 
-// ------------ Builder impl (from earlier) ------------
-type Builder struct {
-	rpc      *gethrpc.Client
-	addr     common.Address
-	key      *ecdsa.PrivateKey
-	cfg      BuilderConfig
-
-	mu       sync.RWMutex
-	lastMini  *MiniBlock
-	receipts  map[common.Hash]*PreconfReceipt
-	subs      *WSHub
-	mbCounter uint64
-}
-
-// loadConfig loads from file or uses defaultBuilderConfig (default_config.go).
-func expandHome(path string) string {
-	if strings.HasPrefix(path, "~") {
-		if home, err := os.UserHomeDir(); err == nil {
-			return filepath.Join(home, path[1:])
-		}
-	}
-	return path
-}
-
-// loadConfig loads builder configuration from a TOML file if provided,
-// otherwise it falls back to the embedded defaults from default_config.go.
-func loadConfig(path string) (*BuilderConfig, error) {
-	cfg := &BuilderConfig{}
-
-	// --- Load from file if specified ---
-	if path != "" {
-		data, err := os.ReadFile(path)
-		if err != nil {
-			log.Error("Failed to read config file", "path", path, "err", err)
-			return nil, err
-		}
-		if err := toml.Unmarshal(data, cfg); err != nil {
-			log.Error("Failed to parse TOML config", "path", path, "err", err)
-			return nil, err
-		}
-		log.Info("Loaded preconf-builder config from file", "path", path)
-	} else {
-		// --- Load from embedded defaults ---
-		if err := loadDefaultConfig(cfg); err != nil {
-			log.Error("Failed to load embedded default config", "err", err)
-			return nil, err
-		}
-		log.Info("Loaded embedded default preconf-builder config")
-	}
-
-	// --- Normalize and post-process ---
-	cfg.IPCPath = expandHome(cfg.IPCPath)
-	if cfg.Cadence == 0 {
-		//cfg.Cadence = 100_000_000 // fallback: 100ms
-		  cfg.Cadence = 100 * time.Millisecond
-	}
-
-	return cfg, nil
-}
-
-
 func main() {
-	log.Info("mainloop")
-	var configPath = flag.String("config", "", "Path to TOML config for preconf-builder")
-	flag.Parse()
+    // ---- Force logging to console ----
+    log.Root().SetHandler(log.StreamHandler(os.Stdout, log.TerminalFormat(true)))
+    log.Info(">>> preconf-builder starting")
 
-	// ---- Load config (file or defaults) ----
-	var cfg BuilderConfig
-	if *configPath != "" {
-		data, err := os.ReadFile(*configPath)
-		if err != nil {
-			log.Crit("Failed to read config", "err", err)
-		}
-		if err := toml.Unmarshal(data, &cfg); err != nil {
-			log.Crit("Invalid TOML config", "err", err)
-		}
-		log.Info("Loaded preconf-builder config from file", "path", *configPath)
-	} else {
-		if err := loadDefaultConfig(&cfg); err != nil {
-			log.Crit("Failed to load default config", "err", err)
-		}
-		log.Info("Loaded default preconf-builder config (embedded)")
-	}
+    // ---- TEMP DEBUG ----
+    log.Info(">>> reached top of main()")
 
-	// ---- Announce startup ----
-	log.Info("Starting preconf-builder",
-		"IPCPath", cfg.IPCPath,
-		"Cadence", cfg.Cadence,
-		"WS", cfg.WSListen,
-		"HTTP", cfg.HTTPListen,
-	)
+    // ---- Minimal config for testing ----
+    cfg := BuilderConfig{
+        Cadence:    100 * time.Millisecond,
+        IPCPath:    os.Getenv("BUILDER_IPC"),
+        WSListen:   ":8556",
+        HTTPListen: ":8557",
+    }
 
-	// ---- Connect to Geth IPC ----
-	ipc, err := gethrpc.Dial(cfg.IPCPath)
-	if err != nil {
-		//log.Crit("Attach IPC failed", "err", err)
-		 log.Error("Attach IPC failed", "err", err)
-	}
-	defer ipc.Close()
+    // ---- Connect to IPC (but do NOT exit if fail) ----
+    ipc, err := gethrpc.Dial(cfg.IPCPath)
+    if err != nil {
+        log.Warn("IPC attach failed, continuing anyway", "err", err)
+        ipc = nil
+    }
 
-	// ---- Load proposer key (ECDSA / HSM / keystore) ----
-	var propKey *ecdsa.PrivateKey = loadProposerKey()
-	propAddr := deriveAddress(propKey)
+    var propKey *ecdsa.PrivateKey = loadProposerKey()
+    propAddr := deriveAddress(propKey)
 
-	// ---- Initialize builder + websocket hub ----
-	builder := NewBuilder(ipc, propAddr, propKey, cfg)
-	hub := NewWSHub(builder)
-	builder.subs = hub
+    // ---- Create builder ----
+    builder := NewBuilder(ipc, propAddr, propKey, cfg)
 
-	// ---- Start WebSocket server (async) ----
-	go func() {
-		log.Info("preconf WS listening",
-			"url", "ws://"+cfg.WSListen+"/ws",
-			"healthz", "/healthz",
-		)
-		if err := http.ListenAndServe(cfg.WSListen, nil); err != nil {
-			log.Crit("WS server failed", "err", err)
-		}
-	}()
+    log.Info(">>> Builder created OK")
 
-	//log.Info("Ticker cadence check", "cfg.Cadence", b.cfg.Cadence)
+    // ---- Start WS + HTTP (background) ----
+    go func() {
+        log.Info("WS server starting", "addr", cfg.WSListen)
+        http.ListenAndServe(cfg.WSListen, nil)
+    }()
+    go ServeHTTPJSON(builder, cfg.HTTPListen)
 
-	// ---- Start HTTP JSON-RPC (async) ----
-	go ServeHTTPJSON(builder, cfg.HTTPListen)
+    // ---- Handle SIGINT ----
+    ctx, cancel := context.WithCancel(context.Background())
+    go func() {
+        sig := make(chan os.Signal, 1)
+        signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
+        <-sig
+        log.Info(">>> Received shutdown signal")
+        cancel()
+    }()
 
-	// ---- Setup graceful shutdown ----
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+    log.Info(">>> About to call builder.Run()")
 
-	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
-	go func() {
-		sig := <-sigCh
-		log.Info("Received shutdown signal", "signal", sig)
-		cancel()
-	}()
+    builder.Run(ctx) // 🔥 blocks here forever
 
-	// ---- Run main builder loop ----
-	log.Info(">>> About to start builder.Run()")
-	builder.Run(ctx)
-	log.Info(">>> builder.Run() returned!")
-
-	// ---- Wait until context is done ----
-	//<-ctx.Done()
-	//log.Info("Preconf-builder stopped cleanly")
-}
-func xNewBuilder(rpc *gethrpc.Client, addr common.Address, key *ecdsa.PrivateKey, cfg BuilderConfig) *Builder {
-	return &Builder{rpc: rpc, addr: addr, key: key, cfg: cfg, receipts: make(map[common.Hash]*PreconfReceipt)}
+    log.Info(">>> builder.Run() returned — should only happen on shutdown")
+    log.Info(">>> preconf-builder exiting cleanly")
 }
 
 func (b *Builder) Run(ctx context.Context) {
-    ticker := time.NewTicker(b.cfg.Cadence)
-    defer ticker.Stop()
+    cadence := b.cfg.Cadence
+    if cadence == 0 {
+        cadence = 100 * time.Millisecond
+    }
 
-    log.Info("Builder running", "cadence", b.cfg.Cadence)
+    log.Info(">>> Run() started", "cadence", cadence)
+
+    ticker := time.NewTicker(cadence)
+    defer ticker.Stop()
 
     for {
         select {
         case <-ticker.C:
             b.emitMiniBlock(ctx)
         case <-ctx.Done():
-            log.Info("Builder stopped")
+            log.Info(">>> Run() stopping — ctx.Done()")
             return
         }
     }
 }
 
-
-func (b *Builder) xemitMiniBlock(ctx context.Context) {
-	txs := b.pickPendingTXs(ctx, b.cfg.MaxTxPerSlice, b.cfg.GasSlice)
-	if len(txs) == 0 {
-		return // nothing to emit this cycle
-	}
-
-	b.mbCounter++
-	mb := &MiniBlock{
-		ID:          b.mbCounter,
-		ParentBlock: b.currentHead(ctx),
-		TimestampMs: time.Now().UnixMilli(),
-		TxHashes:    txs,
-		GasPlanned:  b.cfg.GasSlice,
-		Signer:      b.addr,
-	}
-
-	mb.Signature = signMiniBlock(b.key, mb)
-
-	// Record receipts
-	for _, h := range txs {
-		b.receipts[h] = &PreconfReceipt{
-			TxHash:      h,
-			MiniBlockID: mb.ID,
-			Signer:      b.addr,
-			Signature:   mb.Signature,
-		}
-	}
-
-	b.mu.Lock()
-	b.lastMini = mb
-	b.mu.Unlock()
-
-	if b.subs != nil {
-		b.subs.Broadcast(mb)
-	}
-
-	log.Info("Emitted mini-block", "id", mb.ID, "txs", len(mb.TxHashes))
-}
-
 func (b *Builder) emitMiniBlock(ctx context.Context) {
-    // 1️⃣ Pull pending transactions from txpool
-    txs := b.pickPendingTXs(ctx, 1500, 3_000_000)
-    if len(txs) == 0 {
-        log.Info("No pending txs, skipping mini-block")
-        return
-    }
-
-    // 2️⃣ Build mini-block
     b.mbCounter++
-    mb := &MiniBlock{
-        ID:          b.mbCounter,
-        ParentBlock: b.currentHead(ctx),
-        TimestampMs: time.Now().UnixMilli(),
-        TxHashes:    txs,
-        GasPlanned:  b.cfg.GasSlice,
-        Signer:      b.addr,
-    }
-
-    // 3️⃣ Sign it with your proposer key
-    mb.Signature = signMiniBlock(b.key, mb)
-
-    // 4️⃣ Cache preconf receipts for each tx
-    for _, h := range txs {
-        b.receipts[h] = &PreconfReceipt{
-            TxHash:      h,
-            MiniBlockID: mb.ID,
-            Signer:      b.addr,
-            Signature:   mb.Signature,
-        }
-    }
-
-    // 5️⃣ Broadcast via WebSocket & HTTP
-    b.lastMini = mb
-    if b.subs != nil {
-        b.subs.Broadcast(mb)
-    }
-
-    // 6️⃣ Log success
-    log.Info("🧱 Emitted preconf mini-block",
-        "id", mb.ID,
-        "txs", len(mb.TxHashes),
-        "parent", mb.ParentBlock.Hex(),
-        "timestamp", time.Now().Format(time.RFC3339Nano))
-}
-
-
-func NewBuilder(ipc *gethrpc.Client, addr common.Address, key *ecdsa.PrivateKey, cfg BuilderConfig) *Builder {
-log.Info("newbuilder")
-    return &Builder{
-		    cfg: cfg,
-    }
-}
-
-func (b *Builder) GetReceipt(tx common.Hash) *PreconfReceipt {
-	return b.receipts[tx]
+    log.Info("🧱 Emitting mini-block", "id", b.mbCounter, "time", time.Now().Format(time.RFC3339Nano))
 }
 
