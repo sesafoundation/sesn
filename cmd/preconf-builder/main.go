@@ -29,8 +29,8 @@ func main() {
     // ---- Minimal config for testing ----
     cfg := BuilderConfig{
         Cadence:    100 * time.Millisecond,
-        IPCPath:    os.Getenv("BUILDER_IPC"),
-	  //	IPCPath  : expandHome(cfg.IPCPath),
+       // IPCPath:    os.Getenv("BUILDER_IPC"),
+	  	IPCPath  : "/node1/setd.ipc",
         WSListen:   ":8556",
         HTTPListen: ":8557",
     }
