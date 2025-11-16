@@ -64,9 +64,14 @@ func signMiniBlock(key *ecdsa.PrivateKey, mb *MiniBlock) []byte {
     return sig
 }
 
-// ---- demo key loader (replace with keystore/HSM) ----
 func loadProposerKey() *ecdsa.PrivateKey {
-	// For POC ONLY: use env var PRIVATE_KEY or similar in your codebase.
-	// Here, panic to force you to plug in your own loader.
-	panic("implement loadProposerKey(): load from keystore/HSM/env")
+    hexKey := os.Getenv("BUILDER_KEY")
+    if hexKey == "" {
+        log.Crit("BUILDER_KEY not set — export the private key hex without 0x")
+    }
+    key, err := crypto.HexToECDSA(hexKey)
+    if err != nil {
+        log.Crit("Invalid BUILDER_KEY", "err", err)
+    }
+    return key
 }
