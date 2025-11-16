@@ -5,7 +5,7 @@ import (
 	"encoding/binary"
 	"github.com/sesafoundation/sesn/log"
 	"strings"
-	"crypto/ecdsa"
+	//"crypto/ecdsa"
 	"path/filepath"
 
 	 "os"
