@@ -14,6 +14,8 @@ GasSlice      = 3000000
 WSListen      = ":8556"
 HTTPListen    = ":8557"
 NetworkID     = 2250
+Keystore  = "/node1/keystore/0xf3a42f681d6070afd77cd206e79ef6dbdf5604eb.json"
+KeyPass   = "PaPa@2020"
 `
 
 func loadDefaultConfig(cfg *BuilderConfig) error {
