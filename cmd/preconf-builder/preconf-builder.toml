@@ -1,5 +1,5 @@
 [Builder]
-IPCPath  = "~/.sesa/geth.ipc"
+IPCPath  = "/node1/setd.ipc"
 Cadence  = "100ms"
 WSPort   = ":8556"
 HTTPPort = ":8557"

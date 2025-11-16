@@ -7,7 +7,7 @@ import (
 
 // Default TOML config
 const defaultBuilderConfig = `
-IPCPath       = "~/.sesa/geth.ipc"
+IPCPath       = "/node1/setd.ipc"
 Cadence       = "100ms"
 MaxTxPerSlice = 1500
 GasSlice      = 3000000
