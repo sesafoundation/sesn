@@ -6,7 +6,7 @@ import (
 	"github.com/sesafoundation/sesn/log"
 	"strings"
 	//"crypto/ecdsa"
-	"path/filepath"
+	//"path/filepath"
 	
     "github.com/ethereum/go-ethereum/accounts/keystore"
 
