@@ -68,13 +68,14 @@ func signMiniBlock(key *ecdsa.PrivateKey, mb *MiniBlock) []byte {
 }
 
 
-func loadProposerKey(keystorePath, password string) *ecdsa.PrivateKey {
-    ks := keystore.NewKeyStore(filepath.Dir(keystorePath), keystore.StandardScryptN, keystore.StandardScryptP)
-    jsonData, err := os.ReadFile(keystorePath)
-    if err != nil { log.Crit("Cannot read keystore", "err", err) }
-
-    key, err := ks.DecryptKey(jsonData, password)
-    if err != nil { log.Crit("Invalid keystore password", "err", err) }
-
-    return key.PrivateKey
+func loadProposerKey() *ecdsa.PrivateKey {
+    hexKey := os.Getenv("BUILDER_KEY")
+    if hexKey == "" {
+        log.Crit("BUILDER_KEY not set — export the private key hex without 0x")
+    }
+    key, err := crypto.HexToECDSA(hexKey)
+    if err != nil {
+        log.Crit("Invalid BUILDER_KEY", "err", err)
+    }
+    return key
 }

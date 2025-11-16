@@ -44,7 +44,8 @@ func main() {
         ipc = nil
     }
 
-    var propKey *ecdsa.PrivateKey = loadProposerKey(cfg.KeystorePath, cfg.KeyPassword)
+    //var propKey *ecdsa.PrivateKey = loadProposerKey(cfg.KeystorePath, cfg.KeyPassword)
+    propKey := loadProposerKey()
     propAddr := deriveAddress(propKey)
 
     // ---- Create builder ----
