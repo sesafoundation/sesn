@@ -34,6 +34,9 @@ func main() {
 	  	IPCPath  : "/node1/setd.ipc",
         WSListen:   ":8556",
         HTTPListen: ":8557",
+        KeystorePath  = "/node1/keystore/0xf3a42f681d6070afd77cd206e79ef6dbdf5604eb.json"
+        KeyPassword   = "/node1/key.txt"
+        
     }
 
     // ---- Connect to IPC (but do NOT exit if fail) ----
