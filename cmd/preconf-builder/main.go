@@ -19,7 +19,7 @@ import (
 
 func main() {
     // ---- Force logging to console ----
-    log.Info("IPC Path check", "IPCPath", cfg.IPCPath)
+    log.Info("IPC Path check", "IPCPath", os.Getenv("BUILDER_IPC"))
     log.Root().SetHandler(log.StreamHandler(os.Stdout, log.TerminalFormat(true)))
     log.Info(">>> preconf-builder starting")
 
@@ -38,7 +38,7 @@ func main() {
     // ---- Connect to IPC (but do NOT exit if fail) ----
     ipc, err := gethrpc.Dial(cfg.IPCPath)
     if err != nil {
-        log.Info("IPC Path check", "IPCPath", cfg.IPCPath)
+        log.Info("IPC Path check", "IPCPath", os.Getenv("BUILDER_IPC"))
         log.Warn("IPC attach failed, continuing anyway", "err", err)
         ipc = nil
     }
