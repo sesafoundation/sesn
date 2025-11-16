@@ -3,15 +3,18 @@ package main
 import (
     "context"
     "crypto/ecdsa"
-    "encoding/json"
+    //"encoding/json"
     "net/http"
     "os"
     "os/signal"
     "syscall"
     "time"
+	"sync"
 
     "github.com/sesafoundation/sesn/log"
     gethrpc "github.com/sesafoundation/sesn/rpc"
+	"github.com/sesafoundation/sesn/common"
+
 )
 
 func main() {
@@ -109,5 +112,16 @@ func (b *Builder) Run(ctx context.Context) {
 func (b *Builder) emitMiniBlock(ctx context.Context) {
     b.mbCounter++
     log.Info("🧱 Emitting mini-block", "id", b.mbCounter, "time", time.Now().Format(time.RFC3339Nano))
+}
+
+func NewBuilder(ipc *gethrpc.Client, addr common.Address, key *ecdsa.PrivateKey, cfg BuilderConfig) *Builder {
+log.Info("newbuilder")
+    return &Builder{
+		    cfg: cfg,
+    }
+}
+
+func (b *Builder) GetReceipt(tx common.Hash) *PreconfReceipt {
+	return b.receipts[tx]
 }
 
