@@ -762,6 +762,12 @@ var (
 		Value: "",
 	}
 
+	ValidatorLocationFlag = cli.StringFlag{
+		Name:  "validator.location",
+		Usage: "location info of validator",
+		Value: "",
+	}
+
 	StakerAddressFlag = cli.StringFlag{
 		Name:  "validator.staker",
 		Usage: "a staker address of validator",

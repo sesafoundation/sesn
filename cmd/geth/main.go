@@ -217,6 +217,7 @@ var (
 		utils.ValidatorWebsiteFlag,
 		utils.ValidatorEmailFlag,
 		utils.ValidatorDetailFlag,
+		utils.ValidatorLocationFlag,
 		utils.ValidatorStakingFlag,
 		utils.StakerAddressFlag,
 		utils.NodeEndpointFlag,

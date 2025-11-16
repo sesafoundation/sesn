@@ -37,6 +37,7 @@ var (
 			utils.ValidatorWebsiteFlag,
 			utils.ValidatorEmailFlag,
 			utils.ValidatorDetailFlag,
+			utils.ValidatorLocationFlag,
 			utils.ValidatorStakingFlag,
 			utils.NodeEndpointFlag,
 			utils.GasLimitFlag,
@@ -63,6 +64,7 @@ The validator.create command creates a new validator.
 			utils.ValidatorWebsiteFlag,
 			utils.ValidatorEmailFlag,
 			utils.ValidatorDetailFlag,
+			utils.ValidatorLocationFlag,
 			utils.NodeEndpointFlag,
 			utils.GasLimitFlag,
 			utils.GasPriceFlag,
@@ -391,6 +393,7 @@ type validator struct {
 	website    string
 	email      string
 	details    string
+	location   string
 }
 
 const (
@@ -459,6 +462,10 @@ func makeValidatorInfo(ctx *cli.Context) *validator {
 
 	if ctx.GlobalIsSet(utils.ValidatorDetailFlag.Name) {
 		val.details = strings.TrimSpace(ctx.GlobalString(utils.ValidatorDetailFlag.Name))
+	}
+
+	if ctx.GlobalIsSet(utils.ValidatorLocationFlag.Name) {
+		val.location = strings.TrimSpace(ctx.GlobalString(utils.ValidatorLocationFlag.Name))
 	}
 
 	return &val
@@ -598,6 +605,7 @@ func updateValidatorInfo(ctx *cli.Context, method string) error {
 		validatorInfo.website,
 		validatorInfo.email,
 		validatorInfo.details,
+		validatorInfo.location,
 	)
 	if err != nil {
 		utils.Fatalf("validator contract create pack error: %v\n", err)
@@ -785,12 +793,14 @@ func queryValidatorDescription(ctx *cli.Context) error {
 		website = new(string)
 		email   = new(string)
 		details = new(string)
+		location = new(string)
 	)
 	out := &[]interface{}{
 		moniker,
 		website,
 		email,
 		details,
+		location,
 	}
 	err = valABI.UnpackIntoInterface(out, GetValidatorDespMethod, result)
 	if err != nil {
@@ -801,6 +811,8 @@ func queryValidatorDescription(ctx *cli.Context) error {
 	fmt.Printf("\twebsite: %s\n", *website)
 	fmt.Printf("\temail: %s\n", *email)
 	fmt.Printf("\tdetails: %s\n", *details)
+	fmt.Printf("\tlocation: %s\n", *location)
+
 	return nil
 }
 
