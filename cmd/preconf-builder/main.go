@@ -126,12 +126,4 @@ func (b *Builder) GetReceipt(tx common.Hash) *PreconfReceipt {
 	return b.receipts[tx]
 }
 
-func expandHome(path string) string {
-	if strings.HasPrefix(path, "~") {
-		if home, err := os.UserHomeDir(); err == nil {
-			return filepath.Join(home, path[1:])
-		}
-	}
-	return path
-}
 
