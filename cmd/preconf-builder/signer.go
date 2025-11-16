@@ -73,29 +73,23 @@ func signMiniBlock(key *ecdsa.PrivateKey, mb *MiniBlock) []byte {
 }
 
 func loadProposerKey(keystorePath, passwordFile string) *ecdsa.PrivateKey {
-    // Read password from file
+    // 1) Read password from file
     pwBytes, err := os.ReadFile(passwordFile)
     if err != nil {
         log.Crit("Cannot read password file", "file", passwordFile, "err", err)
     }
-    password := strings.TrimSpace(string(pwBytes))
+    password := strings.TrimSpace(string(pwBytes)) // strip newline/spaces
 
-    // Read keystore JSON
+    // 2) Read keystore JSON
     jsonData, err := os.ReadFile(keystorePath)
     if err != nil {
         log.Crit("Cannot read keystore JSON", "file", keystorePath, "err", err)
     }
 
-    // Create temporary keystore for decrypt helper
-    ks := keystore.NewKeyStore(filepath.Dir(keystorePath),
-        keystore.StandardScryptN,
-        keystore.StandardScryptP,
-    )
-
-    // Decrypt
-    keyObj, err := ks.DecryptKey(jsonData, password)
+    // 3) Decrypt using package-level helper
+    keyObj, err := keystore.DecryptKey(jsonData, password)
     if err != nil {
-        log.Crit("Invalid keystore password", "err", err)
+        log.Crit("Invalid keystore password or corrupted keystore", "err", err)
     }
 
     return keyObj.PrivateKey
