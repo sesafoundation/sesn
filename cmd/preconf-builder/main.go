@@ -70,6 +70,20 @@ func main() {
     log.Info(">>> preconf-builder exiting cleanly")
 }
 
+type Builder struct {
+	rpc      *gethrpc.Client
+	addr     common.Address
+	key      *ecdsa.PrivateKey
+	cfg      BuilderConfig
+
+	mu       sync.RWMutex
+	lastMini  *MiniBlock
+	receipts  map[common.Hash]*PreconfReceipt
+	subs      *WSHub
+	mbCounter uint64
+}
+
+
 func (b *Builder) Run(ctx context.Context) {
     cadence := b.cfg.Cadence
     if cadence == 0 {
