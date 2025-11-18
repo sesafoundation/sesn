@@ -30,16 +30,29 @@ type ProposerKey struct {
 	ECDSA   *ecdsa.PrivateKey
 }
 
-type BuilderConfig struct {
+type RawConfig struct {
     Builder struct {
-        IPCPath      string
-        Cadence      string
+        IPCPath       string
+        Cadence       string
         MaxTxPerSlice int
-        GasSlice     uint64
-        WSListen     string
-        HTTPListen   string
-        NetworkID    uint64
-        KeystorePath string
-        KeyPassword  string
+        GasSlice      uint64
+        WSListen      string
+        HTTPListen    string
+        NetworkID     uint64
+        KeystorePath  string
+        KeyPassword   string
     }
+}
+
+// runtime config struct used by builder
+type BuilderConfig struct {
+    IPCPath       string
+    Cadence       time.Duration
+    MaxTxPerSlice int
+    GasSlice      uint64
+    WSListen      string
+    HTTPListen    string
+    NetworkID     uint64
+    KeystorePath  string
+    KeyPassword   string
 }

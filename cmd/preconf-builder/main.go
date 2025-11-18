@@ -10,6 +10,10 @@ import (
     "syscall"
     "time"
 	"sync"
+    "flag"
+    "net/http"
+    
+    "github.com/naoina/toml"
     //"github.com/ethereum/go-ethereum/crypto"
 
     "github.com/sesafoundation/sesn/log"
@@ -19,44 +23,26 @@ import (
 )
 
 func main() {
-    // ---- CLI ----
     configPath := flag.String("config", "", "TOML config file (preconf-builder.toml)")
     flag.Parse()
 
-    // ---- Console logging ----
     log.Root().SetHandler(log.StreamHandler(os.Stdout, log.TerminalFormat(true)))
     log.Info("🚀 preconf-builder starting")
 
-    // ---- Load config (file or fatal) ----
     if *configPath == "" {
-        log.Crit("Missing --config flag. Usage: ./preconf-builder --config preconf-builder.toml")
+        log.Crit("Missing --config flag, usage: ./preconf-builder --config preconf-builder.toml")
     }
 
-    // parse file into raw (string-based) config
-    var raw struct {
-        Builder struct {
-            IPCPath       string
-            Cadence       string
-            MaxTxPerSlice int
-            GasSlice      uint64
-            WSListen      string
-            HTTPListen    string
-            NetworkID     uint64
-            KeystorePath  string
-            KeyPassword   string
-        }
-    }
-
+    // ---- Parse TOML ----
+    var raw RawConfig
     data, err := os.ReadFile(*configPath)
-    if err != nil {
-        log.Crit("Failed to read config file", "err", err)
-    }
+    if err != nil { log.Crit("Failed to read config", "err", err) }
     if err := toml.Unmarshal(data, &raw); err != nil {
-        log.Crit("Invalid TOML config", "err", err)
+        log.Crit("Invalid TOML", "err", err)
     }
     log.Info("Config loaded", "file", *configPath)
 
-    // ---- Convert TOML into runtime config ----
+    // ---- Convert raw -> runtime cfg ----
     var cfg BuilderConfig
     cfg.IPCPath       = raw.Builder.IPCPath
     cfg.WSListen      = raw.Builder.WSListen
@@ -68,37 +54,34 @@ func main() {
     cfg.KeyPassword   = raw.Builder.KeyPassword
 
     d, err := time.ParseDuration(raw.Builder.Cadence)
-    if err != nil {
-        log.Crit("Invalid Cadence format (ex: 100ms)", "err", err)
-    }
+    if err != nil { log.Crit("Invalid Cadence", "err", err) }
     cfg.Cadence = d
 
-    // ---- Connect to IPC ----
+    // ---- Attach IPC ----
     log.Info("Attaching IPC", "path", cfg.IPCPath)
     ipc, err := gethrpc.Dial(cfg.IPCPath)
-    if err != nil {
-        log.Crit("IPC attach failed", "err", err)
-    }
+    if err != nil { log.Crit("IPC attach failed", "err", err) }
+    defer ipc.Close()
 
     // ---- Load proposer key ----
     propKey := loadProposerKey(cfg.KeystorePath, cfg.KeyPassword)
     propAddr := deriveAddress(propKey)
-    log.Info("Proposer key OK", "address", propAddr.Hex())
+    log.Info("Proposer key loaded", "address", propAddr.Hex())
 
-    // ---- Create builder ----
+    // ---- Init builder ----
     builder := NewBuilder(ipc, propAddr, propKey, cfg)
     hub := NewWSHub(builder)
     builder.subs = hub
 
-    // ---- Start WS server ----
+    // ---- Start WebSocket server ----
     go func() {
-        log.Info("📡 WS", "url", "ws://"+cfg.WSListen+"/ws", "health", "/healthz")
+        log.Info("📡 WS listening", "url", "ws://"+cfg.WSListen+"/ws")
         if err := http.ListenAndServe(cfg.WSListen, nil); err != nil {
-            log.Crit("WS error", "err", err)
+            log.Crit("WS server error", "err", err)
         }
     }()
 
-    // ---- Start HTTP JSON (preconf_getReceipt) ----
+    // ---- Start HTTP RPC ----
     go ServeHTTPJSON(builder, cfg.HTTPListen)
 
     // ---- Shutdown handler ----
@@ -107,16 +90,17 @@ func main() {
     signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
     go func() {
         <-sigCh
-        log.Info("👋 Shutdown signal received")
+        log.Info("🔻 Shutdown signal received")
         cancel()
     }()
 
-    // ---- Main loop (blocks forever) ----
+    // ---- Run forever ----
     log.Info("⚙ Running builder loop", "cadence", cfg.Cadence)
     builder.Run(ctx)
-
     log.Info("🛑 Builder stopped cleanly")
 }
+
+
 
 type Builder struct {
 	rpc      *gethrpc.Client
