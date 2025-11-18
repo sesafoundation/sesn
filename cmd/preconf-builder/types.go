@@ -31,13 +31,15 @@ type ProposerKey struct {
 }
 
 type BuilderConfig struct {
-	Cadence       time.Duration // e.g. 150ms
-	MaxTxPerSlice int
-	GasSlice      uint64
-	IPCPath       string        // e.g. "~/.ethereum/geth.ipc"
-	WSListen      string        // e.g. ":8556"
-	HTTPListen    string        // e.g. ":8557" (for getReceipt HTTP JSON-RPC)
-	NetworkID     uint64        // chainId
-	KeystorePath  string
-    KeyPassword   string
+    Builder struct {
+        IPCPath      string
+        Cadence      string
+        MaxTxPerSlice int
+        GasSlice     uint64
+        WSListen     string
+        HTTPListen   string
+        NetworkID    uint64
+        KeystorePath string
+        KeyPassword  string
+    }
 }

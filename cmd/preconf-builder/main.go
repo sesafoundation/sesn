@@ -19,67 +19,103 @@ import (
 )
 
 func main() {
-    // ---- Force logging to console ----
-    log.Info("IPC Path check", "IPCPath", os.Getenv("BUILDER_IPC"))
+    // ---- CLI ----
+    configPath := flag.String("config", "", "TOML config file (preconf-builder.toml)")
+    flag.Parse()
+
+    // ---- Console logging ----
     log.Root().SetHandler(log.StreamHandler(os.Stdout, log.TerminalFormat(true)))
-    log.Info(">>> preconf-builder starting")
+    log.Info("🚀 preconf-builder starting")
 
-    // ---- TEMP DEBUG ----
-    log.Info(">>> reached top of main()")
-
-    // ---- Minimal config for testing ----
-    cfg := BuilderConfig{
-        Cadence:    100 * time.Millisecond,
-       // IPCPath:    os.Getenv("BUILDER_IPC"),
-	  	IPCPath  : "/node1/setd.ipc",
-        WSListen:   ":8556",
-        HTTPListen: ":8557",
-       KeystorePath : "/n1/keystore/0xf3a42f681d6070afd77cd206e79ef6dbdf5604eb.json",
-       KeyPassword  : "/n1/key.txt",
-        
+    // ---- Load config (file or fatal) ----
+    if *configPath == "" {
+        log.Crit("Missing --config flag. Usage: ./preconf-builder --config preconf-builder.toml")
     }
 
-    // ---- Connect to IPC (but do NOT exit if fail) ----
+    // parse file into raw (string-based) config
+    var raw struct {
+        Builder struct {
+            IPCPath       string
+            Cadence       string
+            MaxTxPerSlice int
+            GasSlice      uint64
+            WSListen      string
+            HTTPListen    string
+            NetworkID     uint64
+            KeystorePath  string
+            KeyPassword   string
+        }
+    }
+
+    data, err := os.ReadFile(*configPath)
+    if err != nil {
+        log.Crit("Failed to read config file", "err", err)
+    }
+    if err := toml.Unmarshal(data, &raw); err != nil {
+        log.Crit("Invalid TOML config", "err", err)
+    }
+    log.Info("Config loaded", "file", *configPath)
+
+    // ---- Convert TOML into runtime config ----
+    var cfg BuilderConfig
+    cfg.IPCPath       = raw.Builder.IPCPath
+    cfg.WSListen      = raw.Builder.WSListen
+    cfg.HTTPListen    = raw.Builder.HTTPListen
+    cfg.NetworkID     = raw.Builder.NetworkID
+    cfg.GasSlice      = raw.Builder.GasSlice
+    cfg.MaxTxPerSlice = raw.Builder.MaxTxPerSlice
+    cfg.KeystorePath  = raw.Builder.KeystorePath
+    cfg.KeyPassword   = raw.Builder.KeyPassword
+
+    d, err := time.ParseDuration(raw.Builder.Cadence)
+    if err != nil {
+        log.Crit("Invalid Cadence format (ex: 100ms)", "err", err)
+    }
+    cfg.Cadence = d
+
+    // ---- Connect to IPC ----
+    log.Info("Attaching IPC", "path", cfg.IPCPath)
     ipc, err := gethrpc.Dial(cfg.IPCPath)
     if err != nil {
-        log.Info("IPC Path check", "IPCPath", os.Getenv("BUILDER_IPC"))
-        log.Warn("IPC attach failed, continuing anyway", "err", err)
-        ipc = nil
+        log.Crit("IPC attach failed", "err", err)
     }
 
-    //var propKey *ecdsa.PrivateKey = loadProposerKey(cfg.KeystorePath, cfg.KeyPassword)
-    //propKey := loadProposerKey()
+    // ---- Load proposer key ----
     propKey := loadProposerKey(cfg.KeystorePath, cfg.KeyPassword)
     propAddr := deriveAddress(propKey)
+    log.Info("Proposer key OK", "address", propAddr.Hex())
 
     // ---- Create builder ----
     builder := NewBuilder(ipc, propAddr, propKey, cfg)
+    hub := NewWSHub(builder)
+    builder.subs = hub
 
-    log.Info(">>> Builder created OK")
-
-    // ---- Start WS + HTTP (background) ----
+    // ---- Start WS server ----
     go func() {
-        log.Info("WS server starting", "addr", cfg.WSListen)
-        http.ListenAndServe(cfg.WSListen, nil)
+        log.Info("📡 WS", "url", "ws://"+cfg.WSListen+"/ws", "health", "/healthz")
+        if err := http.ListenAndServe(cfg.WSListen, nil); err != nil {
+            log.Crit("WS error", "err", err)
+        }
     }()
+
+    // ---- Start HTTP JSON (preconf_getReceipt) ----
     go ServeHTTPJSON(builder, cfg.HTTPListen)
 
-    // ---- Handle SIGINT ----
+    // ---- Shutdown handler ----
     ctx, cancel := context.WithCancel(context.Background())
+    sigCh := make(chan os.Signal, 1)
+    signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
     go func() {
-        sig := make(chan os.Signal, 1)
-        signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
-        <-sig
-        log.Info(">>> Received shutdown signal")
+        <-sigCh
+        log.Info("👋 Shutdown signal received")
         cancel()
     }()
 
-    log.Info(">>> About to call builder.Run()")
+    // ---- Main loop (blocks forever) ----
+    log.Info("⚙ Running builder loop", "cadence", cfg.Cadence)
+    builder.Run(ctx)
 
-    builder.Run(ctx) // 🔥 blocks here forever
-
-    log.Info(">>> builder.Run() returned — should only happen on shutdown")
-    log.Info(">>> preconf-builder exiting cleanly")
+    log.Info("🛑 Builder stopped cleanly")
 }
 
 type Builder struct {
@@ -95,6 +131,8 @@ type Builder struct {
 	mbCounter uint64
  
 }
+
+
 
 
 func (b *Builder) Run(ctx context.Context) {
