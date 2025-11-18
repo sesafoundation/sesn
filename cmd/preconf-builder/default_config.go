@@ -18,7 +18,7 @@ KeystorePath  = "/n1/keystore/0xf3a42f681d6070afd77cd206e79ef6dbdf5604eb.json"
 KeyPassword   = "/n1/key.txt"
 `
 
-func loadDefaultConfig(cfg *BuilderConfig) error {
+func loadDefaultConfig(raw *RawConfig) error {
 	log.Trace("Loading preconf-builder default config")
-	return toml.Unmarshal([]byte(defaultBuilderConfig), cfg)
+	return toml.Unmarshal([]byte(defaultBuilderConfig), raw)
 }
