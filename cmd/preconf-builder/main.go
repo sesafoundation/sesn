@@ -21,27 +21,37 @@ import (
 )
 
 func main() {
-    configPath := flag.String("config", "", "TOML config file (preconf-builder.toml)")
+    configPath := flag.String("config", "", "TOML config file (optional)")
     flag.Parse()
 
     log.Root().SetHandler(log.StreamHandler(os.Stdout, log.TerminalFormat(true)))
     log.Info("🚀 preconf-builder starting")
 
-    if *configPath == "" {
-        log.Crit("Missing --config flag, usage: ./preconf-builder --config preconf-builder.toml")
-    }
-
-    // ---- Parse TOML ----
+    // ---- raw TOML struct ----
     var raw RawConfig
-    data, err := os.ReadFile(*configPath)
-    if err != nil { log.Crit("Failed to read config", "err", err) }
-    if err := toml.Unmarshal(data, &raw); err != nil {
-        log.Crit("Invalid TOML", "err", err)
+
+    if *configPath != "" {
+        // Load config from file
+        data, err := os.ReadFile(*configPath)
+        if err != nil { log.Crit("Failed to read config", "err", err) }
+        if err := toml.Unmarshal(data, &raw); err != nil {
+            log.Crit("Invalid TOML config", "err", err)
+        }
+        log.Info("Config loaded", "file", *configPath)
+    } else {
+        // Fallback: embedded default config
+        if err := loadDefaultConfig(&raw); err != nil {
+            log.Crit("Failed to load embedded default config", "err", err)
+        }
+        log.Info("Loaded default embedded config")
     }
-    log.Info("Config loaded", "file", *configPath)
 
     // ---- Convert raw -> runtime cfg ----
     var cfg BuilderConfig
+    d, err := time.ParseDuration(raw.Builder.Cadence)
+    if err != nil { log.Crit("Invalid cadence", "err", err) }
+
+    cfg.Cadence       = d
     cfg.IPCPath       = raw.Builder.IPCPath
     cfg.WSListen      = raw.Builder.WSListen
     cfg.HTTPListen    = raw.Builder.HTTPListen
@@ -51,51 +61,43 @@ func main() {
     cfg.KeystorePath  = raw.Builder.KeystorePath
     cfg.KeyPassword   = raw.Builder.KeyPassword
 
-    d, err := time.ParseDuration(raw.Builder.Cadence)
-    if err != nil { log.Crit("Invalid Cadence", "err", err) }
-    cfg.Cadence = d
+    log.Info("Config summary",
+        "IPC", cfg.IPCPath,
+        "Cadence", cfg.Cadence,
+        "WS", cfg.WSListen,
+        "HTTP", cfg.HTTPListen,
+    )
 
-    // ---- Attach IPC ----
-    log.Info("Attaching IPC", "path", cfg.IPCPath)
+    // ---- attach IPC ----
     ipc, err := gethrpc.Dial(cfg.IPCPath)
     if err != nil { log.Crit("IPC attach failed", "err", err) }
     defer ipc.Close()
 
-    // ---- Load proposer key ----
+    // ---- load proposer ----
     propKey := loadProposerKey(cfg.KeystorePath, cfg.KeyPassword)
     propAddr := deriveAddress(propKey)
-    log.Info("Proposer key loaded", "address", propAddr.Hex())
+    log.Info("Proposer loaded", "address", propAddr.Hex())
 
-    // ---- Init builder ----
+    // ---- build + networking ----
     builder := NewBuilder(ipc, propAddr, propKey, cfg)
     hub := NewWSHub(builder)
     builder.subs = hub
 
-    // ---- Start WebSocket server ----
     go func() {
-        log.Info("📡 WS listening", "url", "ws://"+cfg.WSListen+"/ws")
-        if err := http.ListenAndServe(cfg.WSListen, nil); err != nil {
-            log.Crit("WS server error", "err", err)
-        }
+        log.Info("📡 WS", "url", "ws://"+cfg.WSListen+"/ws")
+        http.ListenAndServe(cfg.WSListen, nil)
     }()
-
-    // ---- Start HTTP RPC ----
     go ServeHTTPJSON(builder, cfg.HTTPListen)
 
-    // ---- Shutdown handler ----
+    // ---- graceful shutdown ----
     ctx, cancel := context.WithCancel(context.Background())
     sigCh := make(chan os.Signal, 1)
     signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
-    go func() {
-        <-sigCh
-        log.Info("🔻 Shutdown signal received")
-        cancel()
-    }()
+    go func() { <-sigCh; cancel() }()
 
-    // ---- Run forever ----
-    log.Info("⚙ Running builder loop", "cadence", cfg.Cadence)
+    log.Info("⚙ running", "cadence", cfg.Cadence)
     builder.Run(ctx)
-    log.Info("🛑 Builder stopped cleanly")
+    log.Info("🛑 stopped")
 }
 
 
