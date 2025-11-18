@@ -27,11 +27,9 @@ func main() {
     log.Root().SetHandler(log.StreamHandler(os.Stdout, log.TerminalFormat(true)))
     log.Info("🚀 preconf-builder starting")
 
-    // ---- raw TOML struct ----
     var raw RawConfig
 
     if *configPath != "" {
-        // Load config from file
         data, err := os.ReadFile(*configPath)
         if err != nil { log.Crit("Failed to read config", "err", err) }
         if err := toml.Unmarshal(data, &raw); err != nil {
@@ -39,14 +37,12 @@ func main() {
         }
         log.Info("Config loaded", "file", *configPath)
     } else {
-        // Fallback: embedded default config
         if err := loadDefaultConfig(&raw); err != nil {
             log.Crit("Failed to load embedded default config", "err", err)
         }
         log.Info("Loaded default embedded config")
     }
 
-    // ---- Convert raw -> runtime cfg ----
     var cfg BuilderConfig
     d, err := time.ParseDuration(raw.Builder.Cadence)
     if err != nil { log.Crit("Invalid cadence", "err", err) }

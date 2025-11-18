@@ -5,8 +5,8 @@ import (
 	"github.com/sesafoundation/sesn/log"
 )
 
-// Default TOML config
 const defaultBuilderConfig = `
+[Builder]
 IPCPath       = "/node1/setd.ipc"
 Cadence       = "100ms"
 MaxTxPerSlice = 1500
@@ -19,6 +19,6 @@ KeyPassword   = "/n1/key.txt"
 `
 
 func loadDefaultConfig(raw *RawConfig) error {
-	log.Trace("Loading preconf-builder default config")
-	return toml.Unmarshal([]byte(defaultBuilderConfig), raw)
+    log.Trace("Loading preconf-builder default config")
+    return toml.Unmarshal([]byte(defaultBuilderConfig), raw)
 }
