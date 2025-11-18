@@ -4,15 +4,13 @@ import (
     "context"
     "crypto/ecdsa"
     //"encoding/json"
-    "net/http"
+    //"net/http"
     "os"
     "os/signal"
     "syscall"
     "time"
 	"sync"
-    "flag"
-    "net/http"
-    
+    "flag"  
     "github.com/naoina/toml"
     //"github.com/ethereum/go-ethereum/crypto"
 
