@@ -14,8 +14,8 @@ GasSlice      = 3000000
 WSListen      = ":8556"
 HTTPListen    = ":8557"
 NetworkID     = 2250
-KeystorePath  = "/node1/keystore/0xf3a42f681d6070afd77cd206e79ef6dbdf5604eb.json"
-KeyPassword   = "/node1/key.txt"
+KeystorePath  = "/n1/keystore/0xf3a42f681d6070afd77cd206e79ef6dbdf5604eb.json"
+KeyPassword   = "/n1/key.txt"
 `
 
 func loadDefaultConfig(cfg *BuilderConfig) error {
