@@ -221,7 +221,8 @@ func newWorker(config *Config, chainConfig *params.ChainConfig, engine consensus
 		resubmitAdjustCh:   make(chan *intervalAdjust, resubmitAdjustChanSize),
 	}
 //preconf code start
-	pc := NewPreconfClient("ws://127.0.0.1:8556/ws")
+	//pc := NewPreconfClient("ws://127.0.0.1:8556/ws")
+	pc := preconf.NewPreconfClient("ws://127.0.0.1:8556/ws")
 if pc != nil {
     log.Info("Preconf connected", "endpoint", "ws://127.0.0.1:8556/ws")
 } else {
