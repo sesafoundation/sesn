@@ -29,9 +29,7 @@ import (
 	"encoding/json"
     "io"
     "net/http"
- 
-
-	mapset "github.com/deckarep/golang-set"
+	 mapset "github.com/deckarep/golang-set"
 	"github.com/sesafoundation/sesn/common"
 	"github.com/sesafoundation/sesn/consensus"
 	"github.com/sesafoundation/sesn/consensus/misc"
