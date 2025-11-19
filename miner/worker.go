@@ -40,7 +40,7 @@ import (
 	"github.com/sesafoundation/sesn/log"
 	"github.com/sesafoundation/sesn/params"
 	"github.com/sesafoundation/sesn/trie"
-	import "github.com/sesafoundation/sesn/preconf"
+	"github.com/sesafoundation/sesn/preconf"
 	//preconf *preconf.PreconfClient
 )
 
