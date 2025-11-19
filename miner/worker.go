@@ -42,8 +42,8 @@ import (
 	"github.com/sesafoundation/sesn/log"
 	"github.com/sesafoundation/sesn/params"
 	"github.com/sesafoundation/sesn/trie"
-	preconf *PreconfClient
-
+	import "github.com/sesafoundation/sesn/preconf"
+	//preconf *preconf.PreconfClient
 )
 
 const (
@@ -194,6 +194,8 @@ type worker struct {
 	skipSealHook func(*task) bool                   // Method to decide whether skipping the sealing.
 	fullTaskHook func()                             // Method to call before pushing the full sealing task.
 	resubmitHook func(time.Duration, time.Duration) // Method to call upon updating resubmitting interval.
+
+	preconf *preconf.PreconfClient
 }
 
 func newWorker(config *Config, chainConfig *params.ChainConfig, engine consensus.Engine, eth Backend, mux *event.TypeMux, isLocalBlock func(*types.Block) bool, init bool) *worker {
