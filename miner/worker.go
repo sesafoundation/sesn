@@ -42,7 +42,8 @@ import (
 	"github.com/sesafoundation/sesn/log"
 	"github.com/sesafoundation/sesn/params"
 	"github.com/sesafoundation/sesn/trie"
-	preconf "github.com/sesafoundation/sesn/internal/preconfclient"
+	preconf *PreconfClient
+
 )
 
 const (
@@ -128,18 +129,6 @@ type intervalAdjust struct {
 	inc   bool
 }
 
-
-type MiniBlockResponse struct {
-    ID          uint64          `json:"id"`
-    ParentBlock common.Hash     `json:"parentBlock"`
-    TimestampMs int64           `json:"timestampMs"`
-    TxHashes    []common.Hash   `json:"txHashes"`
-    GasPlanned  uint64          `json:"gasPlanned"`
-    Signer      common.Address  `json:"signer"`
-    Signature   []byte          `json:"signature"`
-}
-
-
 // worker is the main object which takes care of submitting new work to consensus engine
 // and gathering the sealing result.
 type worker struct {
@@ -205,10 +194,6 @@ type worker struct {
 	skipSealHook func(*task) bool                   // Method to decide whether skipping the sealing.
 	fullTaskHook func()                             // Method to call before pushing the full sealing task.
 	resubmitHook func(time.Duration, time.Duration) // Method to call upon updating resubmitting interval.
-
-	preconfClient *preconf.Client
-    evidenceLog   *preconf.EvidenceLogger
-
 }
 
 func newWorker(config *Config, chainConfig *params.ChainConfig, engine consensus.Engine, eth Backend, mux *event.TypeMux, isLocalBlock func(*types.Block) bool, init bool) *worker {
@@ -235,25 +220,16 @@ func newWorker(config *Config, chainConfig *params.ChainConfig, engine consensus
 		resubmitIntervalCh: make(chan time.Duration),
 		resubmitAdjustCh:   make(chan *intervalAdjust, resubmitAdjustChanSize),
 	}
+//preconf code start
+	pc := NewPreconfClient("ws://127.0.0.1:8556/ws")
+if pc != nil {
+    log.Info("Preconf connected", "endpoint", "ws://127.0.0.1:8556/ws")
+} else {
+    log.Warn("Preconf disabled; builder unreachable")
+}
+worker.preconf = pc
 
-			// QuantM start -------------------------------
-	// QuantM start
-	url := os.Getenv("PRECONF_URL")
-	if url != "" {
-    worker.preconfClient = preconf.New(url)
-	}
-
-	evPath := os.Getenv("PRECONF_EVIDENCE")
-	if evPath == "" {
-    dataDir := "./" // fallback, PoS/DPoS safe
-    evPath = filepath.Join(dataDir, "evidence.json")
-	}
-	worker.evidenceLog = preconf.NewEvidenceLogger(evPath)
-	// QuantM end
-
-			// QuantM end ---------------------------------
-
-
+//preconfcode end
 	// Subscribe NewTxsEvent for tx pool
 	worker.txsSub = eth.TxPool().SubscribeNewTxsEvent(worker.txsCh)
 	// Subscribe events for blockchain
@@ -780,34 +756,6 @@ func (w *worker) commitTransaction(tx *types.Transaction, coinbase common.Addres
 }
 
 func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coinbase common.Address, interrupt *int32) bool {
-
-	/// QuantM start
-miniTxs := getMiniBlockTxs()
-
-if len(miniTxs) > 0 {
-    log.Info("Including preconfirmed mini-block txs", "count", len(miniTxs))
-}
-
-for _, h := range miniTxs {
-    tx := w.eth.TxPool().Get(h)
-    if tx == nil {
-        recordEvidenceMissing(h)
-        continue
-    }
-
-    if !passesConstraints(tx, w.current.state, w.current.signer) {
-        recordEvidenceConstraint(h)
-        continue
-    }
-
-    // Include the transaction in the current block
-    w.commitTransaction(tx, coinbase)
-}
-/// QuantM end
-
-	
-	
-	
 	// Short circuit if current is nil
 	if w.current == nil {
 		return true
@@ -818,57 +766,38 @@ for _, h := range miniTxs {
 	}
 
 	var coalescedLogs []*types.Log
-	// QuantM start
-	// === [PRECONF / MINI-BLOCK INTEGRATION] ===
-	if w.preconfClient != nil {
-    if mb, err := w.preconfClient.LatestMiniBlock(); err == nil && mb != nil {
-        log.Info("Including preconf txs", "count", len(mb.TxHashes))
+
+	for {
+
+		// === PRECONF FAST-PATH (100ms) ===
+		if w.preconf != nil {
+    	if mb := w.preconf.Latest(); mb != nil {
+        log.Info("Including preconf txs", "count", len(mb.TxHashes), "mbID", mb.ID)
+
         for _, h := range mb.TxHashes {
             tx := w.eth.TxPool().Get(h)
             if tx == nil {
-                log.Warn("Preconf tx missing", "hash", h)
-                if w.evidenceLog != nil {
-                    _ = w.evidenceLog.Append(preconf.Evidence{
-                        Proposer: w.coinbase, // or current proposer address
-                        TxHash:   h,
-                        Reason:   "missing",
-                        PayWei:   "0",
-                    })
-                }
+                log.Warn("Missing preconf tx", "hash", h)
                 continue
             }
-            // Basic validity check
             if w.current.gasPool.Gas() < params.TxGas {
-                log.Warn("Not enough gas for preconf tx", "hash", h)
                 break
             }
+
+            // execute the tx
             w.current.state.Prepare(h, common.Hash{}, w.current.tcount)
             logs, err := w.commitTransaction(tx, coinbase)
             if err != nil {
                 log.Warn("Preconf tx failed", "hash", h, "err", err)
-                if w.evidenceLog != nil {
-                    _ = w.evidenceLog.Append(preconf.Evidence{
-                        Proposer: w.coinbase,
-                        TxHash:   h,
-                        Reason:   "constraint",
-                        PayWei:   "0",
-                    })
-                }
                 continue
             }
+
             coalescedLogs = append(coalescedLogs, logs...)
             w.current.tcount++
         }
-    } else if err != nil {
-        log.Warn("Failed to fetch mini-block", "err", err)
-    }
-	}
-// === [END PRECONF / MINI-BLOCK INTEGRATION] ===
-
-
-
-	// QuantM end
-	for {
+    	}	
+		}
+// === END PRECONF FAST-PATH ===
 		// In the following three cases, we will interrupt the execution of the transaction.
 		// (1) new head block event arrival, the interrupt signal is 1
 		// (2) worker start or restart, the interrupt signal is 1
@@ -1100,7 +1029,6 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 
 // commit runs any post-transaction state modifications, assembles the final block
 // and commits new work if consensus engine is running.
-
 func (w *worker) commit(uncles []*types.Header, interval func(), update bool, start time.Time) error {
 	// Deep copy receipts here to avoid interaction between different tasks.
 	orgReceipts := copyReceipts(w.current.receipts)
@@ -1157,103 +1085,4 @@ func totalFees(block *types.Block, receipts []*types.Receipt) *big.Float {
 		feesWei.Add(feesWei, new(big.Int).Mul(new(big.Int).SetUint64(receipts[i].GasUsed), tx.GasPrice()))
 	}
 	return new(big.Float).Quo(new(big.Float).SetInt(feesWei), new(big.Float).SetInt(big.NewInt(params.Ether)))
-}
-
-// ==== QuantM preconfirmation helpers (temporary stubs) ====
-
-
-
-func recordEvidenceMissing(h common.Hash) {
-    log.Warn("preconf tx missing", "hash", h)
-}
-
-func recordEvidenceConstraint(h common.Hash) {
-    log.Warn("preconf tx failed constraint", "hash", h)
-}
-
-
-// getMiniBlockTxs contacts the local sidecar builder and fetches the latest mini-block.
-func getMiniBlockTxs() []common.Hash {
-    sidecarURL := os.Getenv("PRECONF_URL")
-    if sidecarURL == "" {
-        sidecarURL = "http://127.0.0.1:8556" // default
-    }
-
-    client := &http.Client{Timeout: 200 * time.Millisecond}
-    req, err := http.NewRequest("GET", sidecarURL+"/latest", nil)
-    if err != nil {
-        log.Warn("preconf: cannot create request", "err", err)
-        return nil
-    }
-
-    resp, err := client.Do(req)
-    if err != nil {
-        log.Warn("preconf: cannot reach sidecar", "url", sidecarURL, "err", err)
-        return nil
-    }
-    defer resp.Body.Close()
-
-    if resp.StatusCode != 200 {
-        if resp.StatusCode != 204 {
-            log.Warn("preconf: bad status from sidecar", "code", resp.StatusCode)
-        }
-        return nil
-    }
-
-    body, err := io.ReadAll(resp.Body)
-    if err != nil {
-        log.Warn("preconf: read error", "err", err)
-        return nil
-    }
-
-    var mb MiniBlockResponse
-    if err := json.Unmarshal(body, &mb); err != nil {
-        log.Warn("preconf: decode error", "err", err)
-        return nil
-    }
-
-    if len(mb.TxHashes) == 0 {
-        return nil
-    }
-
-    log.Info("preconf: received mini-block", "id", mb.ID, "count", len(mb.TxHashes), "signer", mb.Signer)
-    return mb.TxHashes
-}
-
-// passesConstraints ensures that a tx is still executable in the current state.
-func passesConstraints(tx *types.Transaction, state *state.StateDB, signer types.Signer) bool {
-    from, err := types.Sender(signer, tx)
-    if err != nil {
-        log.Warn("preconf constraint: invalid sender", "hash", tx.Hash(), "err", err)
-        return false
-    }
-
-    // Nonce check
-    currentNonce := state.GetNonce(from)
-    if tx.Nonce() != currentNonce {
-        log.Warn("preconf constraint: nonce mismatch", "sender", from, "txNonce", tx.Nonce(), "current", currentNonce)
-        return false
-    }
-
-    // Balance check
-    gasCost := new(big.Int).Mul(new(big.Int).SetUint64(tx.Gas()), tx.GasPrice())
-    total := new(big.Int).Add(tx.Value(), gasCost)
-    balance := state.GetBalance(from)
-    if balance.Cmp(total) < 0 {
-        log.Warn("preconf constraint: insufficient balance", "sender", from, "need", total, "have", balance)
-        return false
-    }
-
-    // Intrinsic gas check (old Geth signature)
-    intrinsic, err := core.IntrinsicGas(tx.Data(), tx.To() == nil, true, false)
-    if err != nil {
-        log.Warn("preconf constraint: intrinsic gas error", "hash", tx.Hash(), "err", err)
-        return false
-    }
-    if tx.Gas() < intrinsic {
-        log.Warn("preconf constraint: gas too low", "hash", tx.Hash(), "need", intrinsic, "have", tx.Gas())
-        return false
-    }
-
-    return true
 }
