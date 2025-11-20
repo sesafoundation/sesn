@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/sesafoundation/sesn/common"
+	//"github.com/sesafoundation/sesn/common"
 )
 
 // PreconfClient holds the latest miniblock streamed by the builder
