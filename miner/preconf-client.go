@@ -3,7 +3,7 @@ package miner
 import (
 	"encoding/json"
 	"net/url"
-	"time"
+//	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/sesafoundation/sesn/common"
