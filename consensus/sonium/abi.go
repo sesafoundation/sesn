@@ -1,6 +1,6 @@
 package sonium
 
-const validatorABI = `[
+const validatorABI = ` [
     {
       "anonymous": false,
       "inputs": [
@@ -39,7 +39,7 @@ const validatorABI = `[
         {
           "indexed": true,
           "internalType": "address",
-          "name": "validiator",
+          "name": "validator",
           "type": "address"
         }
       ],
@@ -418,45 +418,6 @@ const validatorABI = `[
     },
     {
       "inputs": [],
-      "name": "BlockRewardAPR",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "DelegatorGoldAPR",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "DelegatorStarAPR",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
       "name": "GoldCardCoin",
       "outputs": [
         {
@@ -509,6 +470,19 @@ const validatorABI = `[
     },
     {
       "inputs": [],
+      "name": "SPX",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
       "name": "SlashContractAddr",
       "outputs": [
         {
@@ -549,19 +523,6 @@ const validatorABI = `[
     {
       "inputs": [],
       "name": "ValidatorSlashAmount",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "ValidatorStarAPR",
       "outputs": [
         {
           "internalType": "uint256",
@@ -1171,7 +1132,7 @@ const validatorABI = `[
           "type": "address"
         }
       ],
-      "name": "isGoldValidator",
+      "name": "isSlashProtect",
       "outputs": [
         {
           "internalType": "bool",
@@ -1328,6 +1289,45 @@ const validatorABI = `[
     {
       "inputs": [],
       "name": "getDelegatorGoldAPR",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "getTotalRewardStaking",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "getTotalStarStaking",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "getTotalGoldStaking",
       "outputs": [
         {
           "internalType": "uint256",
