@@ -135,6 +135,7 @@ type worker struct {
 	engine      consensus.Engine
 	eth         Backend
 	chain       *core.BlockChain
+	backend *eth.EthAPIBackend
 
 	// Feeds
 	pendingLogsFeed event.Feed
@@ -220,6 +221,9 @@ func newWorker(config *Config, chainConfig *params.ChainConfig, engine consensus
 		resubmitIntervalCh: make(chan time.Duration),
 		resubmitAdjustCh:   make(chan *intervalAdjust, resubmitAdjustChanSize),
 	}
+	worker.backend = eth.APIBackend().(*eth.EthAPIBackend)
+	//worker.backend = eth.(*Ethereum).APIBackend
+
 //preconf code start
 	//pc := NewPreconfClient("ws://127.0.0.1:8556/ws")
 	pc := preconf.NewPreconfClient("ws://127.0.0.1:8556/ws")
@@ -795,21 +799,21 @@ func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coin
 
             coalescedLogs = append(coalescedLogs, logs...)
             w.current.tcount++
-
-			if w.backend != nil {
-   			 r := &preconf.PreconfReceipt{
-        TxHash:      tx.Hash(),
-        MiniBlockID: mb.ID,
-        Signer:      mb.SignerAddr,
-        TimestampMs: mb.TimestampMs,
-    	}
-   		 w.backend.preconfMu.Lock()
-    	 w.backend.preconfReceipts[tx.Hash()] = r
-   		 w.backend.preconfMu.Unlock()
-
-   		 // notify websocket subscribers
-   		 w.backend.preconfFeed.Send(r)
-		}
+			//preconf
+				if w.backend != nil {
+   				 	r := &preconf.PreconfReceipt{
+        			TxHash:      tx.Hash(),
+       				MiniBlockID: mb.ID,
+        			Signer:      mb.SignerAddr,
+        			TimestampMs: mb.TimestampMs,
+    				}
+    				w.backend.preconfMu.Lock()
+    				w.backend.preconfReceipts[tx.Hash()] = r
+    				w.backend.preconfMu.Unlock()
+    				w.backend.preconfFeed.Send(r)
+					}
+	
+			//end preconf
         }
     	}	
 		}
