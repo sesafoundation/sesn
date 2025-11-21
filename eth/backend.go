@@ -149,7 +149,15 @@ func New(stack *node.Node, config *Config) (*Ethereum, error) {
 		bloomIndexer:      NewBloomIndexer(chainDb, params.BloomBitsBlocks, params.BloomConfirms),
 		p2pServer:         stack.Server(),
 	}
-	eth.APIBackend = &EthAPIBackend{stack.Config().ExtRPCEnabled(), eth, nil}
+	//eth.APIBackend = &EthAPIBackend{stack.Config().ExtRPCEnabled(), eth, nil}
+	eth.APIBackend = &EthAPIBackend{
+    extRPCEnabled:   stack.Config().ExtRPCEnabled(),
+    eth:             eth,
+    gpo:             nil,
+
+    // 🔥 initialize preconf storage
+    preconfReceipts: make(map[common.Hash]*preconf.PreconfReceipt),
+	}
 	ethAPI := ethapi.NewPublicBlockChainAPI(eth.APIBackend)
 	eth.engine = CreateConsensusEngine(stack, chainConfig, &config.Ethash, config.Miner.Notify, config.Miner.Noverify, chainDb, ethAPI)
 
@@ -215,12 +223,20 @@ func New(stack *node.Node, config *Config) (*Ethereum, error) {
 	eth.miner = miner.New(eth, &config.Miner, chainConfig, eth.EventMux(), eth.engine, eth.isLocalBlock)
 	eth.miner.SetExtra(makeExtraData(config.Miner.ExtraData))
 
-	eth.APIBackend = &EthAPIBackend{stack.Config().ExtRPCEnabled(), eth, nil}
+	//eth.APIBackend = &EthAPIBackend{stack.Config().ExtRPCEnabled(), eth, nil}
+	eth.APIBackend = &EthAPIBackend{
+    extRPCEnabled:   stack.Config().ExtRPCEnabled(),
+    eth:             eth,
+    gpo:             nil,
+    preconfReceipts: make(map[common.Hash]*preconf.PreconfReceipt),
+	}
 	gpoParams := config.GPO
 	if gpoParams.Default == nil {
 		gpoParams.Default = config.Miner.GasPrice
 	}
+	//eth.APIBackend.gpo = gasprice.NewOracle(eth.APIBackend, gpoParams)
 	eth.APIBackend.gpo = gasprice.NewOracle(eth.APIBackend, gpoParams)
+
 
 	eth.dialCandidates, err = eth.setupDiscovery()
 	if err != nil {

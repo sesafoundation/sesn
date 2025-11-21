@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"math/big"
+	"sync"
 
 	"github.com/sesafoundation/sesn/accounts"
 	"github.com/sesafoundation/sesn/common"
@@ -37,6 +38,10 @@ import (
 	"github.com/sesafoundation/sesn/miner"
 	"github.com/sesafoundation/sesn/params"
 	"github.com/sesafoundation/sesn/rpc"
+
+	"github.com/sesafoundation/sesn/preconf"
+	"github.com/ethereum/go-ethereum/event"
+
 )
 
 // EthAPIBackend implements ethapi.Backend for full nodes
@@ -46,6 +51,7 @@ type EthAPIBackend struct {
 	gpo           *gasprice.Oracle
 	preconfReceipts map[common.Hash]*preconf.PreconfReceipt
     preconfMu       sync.RWMutex
+    preconfFeed     event.Feed
 }
 
 // ChainConfig returns the active chain configuration.
