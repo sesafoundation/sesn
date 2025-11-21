@@ -762,10 +762,10 @@ var (
 		Value: "",
 	}
 
-	ValidatorLocationFlag = cli.StringFlag{
-		Name:  "validator.location",
-		Usage: "location info of validator",
-		Value: "",
+	ValidatorLocationFlag = cli.UintFlag{
+    Name:  "validator.location",
+    Usage: "numeric locationId (see https://github.com/sesafoundation/earth/locations.json)",
+    Value: 0,
 	}
 
 	StakerAddressFlag = cli.StringFlag{

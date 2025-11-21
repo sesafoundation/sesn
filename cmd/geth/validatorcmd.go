@@ -22,6 +22,37 @@ import (
 	"gopkg.in/urfave/cli.v1"
 )
 
+var locationsURL = "https://raw.githubusercontent.com/sesafoundation/earth/main/locations.json"
+
+var locationNameToId = map[string]uint16{}
+
+func loadLocations() {
+    if len(locationNameToId) > 0 {
+        return // already loaded
+    }
+
+    resp, err := http.Get(locationsURL)
+    if err != nil {
+        return
+    }
+    defer resp.Body.Close()
+
+    var data map[string]struct {
+        Name string `json:"name"`
+    }
+    dec := json.NewDecoder(resp.Body)
+    if dec.Decode(&data) != nil {
+        return
+    }
+
+    for idStr, rec := range data {
+        // rec.Name = "IN-Goa"
+        var id uint64
+        fmt.Sscanf(idStr, "%d", &id)
+        locationNameToId[rec.Name] = uint16(id)
+    }
+}
+
 var (
 	createValidatorCommand = cli.Command{
 		Action:    utils.MigrateFlags(createValidator),
@@ -393,7 +424,7 @@ type validator struct {
 	website    string
 	email      string
 	details    string
-	location   string
+	location   uint16
 }
 
 const (
@@ -439,6 +470,8 @@ var validatorStatusMap = map[uint8]string{
 
 func makeValidatorInfo(ctx *cli.Context) *validator {
 	val := validator{}
+
+	// rewardAddr
 	if ctx.GlobalIsSet(utils.ValidatorRewardAddrFlag.Name) {
 		val.rewardAddr = common.HexToAddress(strings.TrimSpace(ctx.GlobalString(utils.ValidatorRewardAddrFlag.Name)))
 	} else {
@@ -448,28 +481,47 @@ func makeValidatorInfo(ctx *cli.Context) *validator {
 		val.rewardAddr = common.HexToAddress(strings.TrimSpace(ctx.GlobalString(utils.FromAddressFlag.Name)))
 	}
 
+	// moniker
 	if ctx.GlobalIsSet(utils.ValidatorMonikerFlag.Name) {
 		val.moniker = strings.TrimSpace(ctx.GlobalString(utils.ValidatorMonikerFlag.Name))
 	}
 
+	// website
 	if ctx.GlobalIsSet(utils.ValidatorWebsiteFlag.Name) {
 		val.website = strings.TrimSpace(ctx.GlobalString(utils.ValidatorWebsiteFlag.Name))
 	}
 
+	// email
 	if ctx.GlobalIsSet(utils.ValidatorEmailFlag.Name) {
 		val.email = strings.TrimSpace(ctx.GlobalString(utils.ValidatorEmailFlag.Name))
 	}
 
+	// details
 	if ctx.GlobalIsSet(utils.ValidatorDetailFlag.Name) {
 		val.details = strings.TrimSpace(ctx.GlobalString(utils.ValidatorDetailFlag.Name))
 	}
 
+	// 🔥 locationId (uint16)
 	if ctx.GlobalIsSet(utils.ValidatorLocationFlag.Name) {
-		val.location = strings.TrimSpace(ctx.GlobalString(utils.ValidatorLocationFlag.Name))
+		locStr := strings.TrimSpace(ctx.GlobalString(utils.ValidatorLocationFlag.Name))
+		locInt, err := strconv.Atoi(locStr)
+		if err != nil || locInt < 1 || locInt > 65535 {
+			utils.Fatalf("invalid locationId %s — must be uint16", locStr)
+		}
+		val.locationId = uint16(locInt)
 	}
+
+	loc := ctx.GlobalUint(utils.ValidatorLocationFlag.Name)
+	if loc > 0 && loc <= 65535 {
+    val.locationId = uint16(loc)	
+	} else {
+    utils.Fatalf("invalid locationId — must match locations.json")
+	}
+
 
 	return &val
 }
+
 
 func defaultKeystorDir() string {
 	dataDir := node.DefaultDataDir()
@@ -793,7 +845,7 @@ func queryValidatorDescription(ctx *cli.Context) error {
 		website = new(string)
 		email   = new(string)
 		details = new(string)
-		location = new(string)
+		location = new(uint16)
 	)
 	out := &[]interface{}{
 		moniker,
@@ -914,6 +966,7 @@ func queryActivatedValidators(ctx *cli.Context) error {
 	}
 	fmt.Printf("current activated validators:\n")
 	fmt.Printf("\tvalidators: %v\n", validators)
+	fmt.Printf("✓ Using validator location %d (%s)\n", val.locationId, locStr) //newadded
 	return nil
 }
 
