@@ -8,3 +8,10 @@ type MiniBlock struct {
 	TimestampMs int64         `json:"timestampMs"`
 	SignerAddr  common.Address `json:"signer"`   // optional
 }
+
+type PreconfReceipt struct {
+    TxHash      common.Hash    `json:"txHash"`
+    MiniBlockID uint64         `json:"miniBlockId"`
+    Signer      common.Address `json:"signer"`
+    TimestampMs int64          `json:"timestampMs"`
+}

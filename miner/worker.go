@@ -23,12 +23,6 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-//	"os"
-//	"path/filepath"
-	//"context"
-//	"encoding/json"
- //   "io"
- //   "net/http"
 	 mapset "github.com/deckarep/golang-set"
 	"github.com/sesafoundation/sesn/common"
 	"github.com/sesafoundation/sesn/consensus"
@@ -41,7 +35,7 @@ import (
 	"github.com/sesafoundation/sesn/params"
 	"github.com/sesafoundation/sesn/trie"
 	"github.com/sesafoundation/sesn/preconf"
-	//preconf *preconf.PreconfClient
+	ethbackend "github.com/sesafoundation/sesn/eth"
 )
 
 const (
@@ -135,7 +129,7 @@ type worker struct {
 	engine      consensus.Engine
 	eth         Backend
 	chain       *core.BlockChain
-	backend *eth.EthAPIBackend
+	backend *ethbackend.EthAPIBackend
 
 	// Feeds
 	pendingLogsFeed event.Feed
@@ -221,7 +215,7 @@ func newWorker(config *Config, chainConfig *params.ChainConfig, engine consensus
 		resubmitIntervalCh: make(chan time.Duration),
 		resubmitAdjustCh:   make(chan *intervalAdjust, resubmitAdjustChanSize),
 	}
-	worker.backend = eth.APIBackend().(*eth.EthAPIBackend)
+	worker.backend = eth.(*Ethereum).APIBackend
 	//worker.backend = eth.(*Ethereum).APIBackend
 
 //preconf code start
