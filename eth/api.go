@@ -88,6 +88,30 @@ func (api *PublicEthereumAPI) GetPreconfReceipt(hash common.Hash) (*preconf.Prec
     return r, nil
 }
 
+// eth_getTransactionStatus
+// returns: 0=pending, 1=preconfirmed, 2=confirmed, 3=reverted
+func (api *PublicEthereumAPI) GetTransactionStatus(hash common.Hash) (uint64, error) {
+    // 1) Check confirmed
+    if receipt, _ := api.GetTransactionReceipt(hash); receipt != nil {
+        if receipt.Status == types.ReceiptStatusSuccessful {
+            return 2, nil // confirmed-success
+        }
+        return 3, nil // confirmed-reverted
+    }
+
+    // 2) Check preconfirmed (100ms miniblock)
+    api.b.preconfMu.RLock()
+    pre, ok := api.b.preconfReceipts[hash]
+    api.b.preconfMu.RUnlock()
+    if ok && pre != nil {
+        return 1, nil // preconfirmed
+    }
+
+    // 3) Otherwise pending
+    return 0, nil
+}
+
+
 
 // PublicMinerAPI provides an API to control the miner.
 // It offers only methods that operate on data that pose no security risk when it is publicly accessible.

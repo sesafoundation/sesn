@@ -364,6 +364,11 @@ func (s *Ethereum) APIs() []rpc.API {
     		Version:   "1.0",
     		Service:   NewPreconfSubscriptionAPI(b.APIBackend),
     		Public:    true,
+		},{
+    		Namespace: "tx",
+    		Version:   "1.0",
+    		Service:   NewTxStatusSubscriptionAPI(b.APIBackend),
+    		Public:    true,
 		},
 	}...)
 }
