@@ -795,6 +795,21 @@ func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coin
 
             coalescedLogs = append(coalescedLogs, logs...)
             w.current.tcount++
+
+			if w.backend != nil {
+   			 r := &preconf.PreconfReceipt{
+        TxHash:      tx.Hash(),
+        MiniBlockID: mb.ID,
+        Signer:      mb.SignerAddr,
+        TimestampMs: mb.TimestampMs,
+    	}
+   		 w.backend.preconfMu.Lock()
+    	 w.backend.preconfReceipts[tx.Hash()] = r
+   		 w.backend.preconfMu.Unlock()
+
+   		 // notify websocket subscribers
+   		 w.backend.preconfFeed.Send(r)
+		}
         }
     	}	
 		}

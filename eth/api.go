@@ -38,6 +38,7 @@ import (
 	"github.com/sesafoundation/sesn/rlp"
 	"github.com/sesafoundation/sesn/rpc"
 	"github.com/sesafoundation/sesn/trie"
+	"github.com/sesafoundation/sesn/preconf"
 )
 
 // PublicEthereumAPI provides an API to access Ethereum full node-related
@@ -74,6 +75,19 @@ func (api *PublicEthereumAPI) ChainId() hexutil.Uint64 {
 	}
 	return (hexutil.Uint64)(chainID.Uint64())
 }
+
+// eth_getPreconfReceipt
+func (api *PublicEthereumAPI) GetPreconfReceipt(hash common.Hash) (*preconf.PreconfReceipt, error) {
+    api.b.preconfMu.RLock()
+    r := api.b.preconfReceipts[hash]
+    api.b.preconfMu.RUnlock()
+
+    if r == nil {
+        return nil, nil // tx not preconfirmed (still pending or invalid)
+    }
+    return r, nil
+}
+
 
 // PublicMinerAPI provides an API to control the miner.
 // It offers only methods that operate on data that pose no security risk when it is publicly accessible.
@@ -535,3 +549,5 @@ func (api *PrivateDebugAPI) getModifiedAccounts(startBlock, endBlock *types.Bloc
 	}
 	return dirty, nil
 }
+
+
