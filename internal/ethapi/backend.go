@@ -138,13 +138,13 @@ func GetAPIs(apiBackend Backend) []rpc.API {
 		{
     		Namespace: "preconf",
     		Version:   "1.0",
-    		Service:   preconf.NewPublicPreconfAPI(apiBackend),
+    		Service:   preconfapi.NewPublicPreconfAPI(apiBackend),
     		Public:    true,
 		},
 		{
     		Namespace: "preconf",
     		Version:   "1.0",
-    		Service:   preconf.NewPublicPreconfSubscriptionAPI(apiBackend),
+    		Service:   preconfapi.NewPublicPreconfSubscriptionAPI(apiBackend),
     		Public:    true,
 		},
 
