@@ -2,6 +2,7 @@ package preconfapi
 
 import (
     "context"
+
     "github.com/ethereum/go-ethereum/rpc"
     "github.com/sesafoundation/sesn/preconf"
 )
