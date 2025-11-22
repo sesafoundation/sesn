@@ -35,6 +35,7 @@ import (
 	"github.com/sesafoundation/sesn/params"
 	"github.com/sesafoundation/sesn/trie"
 	"github.com/sesafoundation/sesn/preconf"
+	ethapi "github.com/sesafoundation/sesn/internal/ethapi"
 	//ethbackend "github.com/sesafoundation/sesn/eth"
 )
 
@@ -216,9 +217,13 @@ func newWorker(config *Config, chainConfig *params.ChainConfig, engine consensus
 		resubmitIntervalCh: make(chan time.Duration),
 		resubmitAdjustCh:   make(chan *intervalAdjust, resubmitAdjustChanSize),
 	}
-	//worker.backend = eth.(*Ethereum).APIBackend
-	//worker.backend = eth.(*Ethereum).APIBackend
-	worker.backend = eth.APIBackend().(*ethapi.EthAPIBackend)
+	if full, ok := eth.(*Ethereum); ok {
+    if api, ok2 := full.APIBackend.(*ethapi.EthAPIBackend); ok2 {
+        worker.backend = api
+    }
+}
+}
+
 
 //preconf code start
 	//pc := NewPreconfClient("ws://127.0.0.1:8556/ws")
