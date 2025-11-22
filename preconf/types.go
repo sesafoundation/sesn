@@ -13,5 +13,5 @@ type PreconfReceipt struct {
     TxHash      common.Hash    `json:"txHash"`
     MiniBlockID uint64         `json:"miniBlockId"`
     Signer      common.Address `json:"signer"`
-    TimestampMs int64          `json:"timestampMs"`
+  //  TimestampMs int64          `json:"timestampMs"`
 }

@@ -50,10 +50,16 @@ type EthAPIBackend struct {
 	eth           *Ethereum
 	gpo           *gasprice.Oracle
 
-    preconfMu     sync.RWMutex
-    preconfRec    map[common.Hash]*preconf.Receipt
-    preconfScope  event.SubscriptionScope
-	preconfFeed     event.Feed  // 🔥 new
+
+	
+    preconfMu       sync.RWMutex
+    preconfReceipts map[common.Hash]*preconf.PreconfReceipt
+    preconfFeed     event.Feed
+
+    //preconfMu     sync.RWMutex
+    //preconfRec    map[common.Hash]*preconf.Receipt
+    //preconfScope  event.SubscriptionScope
+	//preconfFeed     event.Feed  // 🔥 new
 
 	
 }

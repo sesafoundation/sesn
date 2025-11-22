@@ -154,7 +154,7 @@ func New(stack *node.Node, config *Config) (*Ethereum, error) {
     eth:             eth,
     gpo:             nil,
     preconfReceipts: make(map[common.Hash]*preconf.PreconfReceipt),
-	}
+}
 	log.Info("preconf receipts map initialised")
 
 	ethAPI := ethapi.NewPublicBlockChainAPI(eth.APIBackend)
