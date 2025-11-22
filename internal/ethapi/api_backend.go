@@ -48,8 +48,8 @@ type EthAPIBackend struct {
 	eth           *Ethereum
 	gpo           *gasprice.Oracle	
 	preconfMu       sync.RWMutex
-    preconfReceipts map[common.Hash]*preconf.PreconfReceipt
-    preconfFeed     event.Feed	
+	preconfReceipts map[common.Hash]*preconf.PreconfReceipt
+	preconfFeed     event.Feed
 }
 
 // ChainConfig returns the active chain configuration.
@@ -345,21 +345,22 @@ func (b *EthAPIBackend) GetPreconfReceipt(hash common.Hash) (*preconf.PreconfRec
     return r, ok
 }
 
-func (b *EthAPIBackend) PreconfSubscribe(ch chan *preconf.PreconfReceipt) event.Subscription {
-    return b.PreconfFeed.Subscribe(ch)
+
+func (b *EthAPIBackend) StorePreconfReceipt(h common.Hash, r *preconf.PreconfReceipt) {
+    b.preconfMu.Lock()
+    b.preconfReceipts[h] = r
+    b.preconfMu.Unlock()
 }
 
-func (eb *EthAPIBackend) StorePreconfReceipt(hash common.Hash, r *preconf.PreconfReceipt) {
-    eb.preconfMu.Lock()
-    eb.preconfReceipts[hash] = r
-    eb.preconfMu.Unlock()
-    eb.preconfFeed.Send(r)
-}
-
-func (eb *EthAPIBackend) LoadPreconfReceipt(hash common.Hash) *preconf.PreconfReceipt {
-    eb.preconfMu.RLock()
-    r := eb.preconfReceipts[hash]
-    eb.preconfMu.RUnlock()
+func (b *EthAPIBackend) LoadPreconfReceipt(h common.Hash) *preconf.PreconfReceipt {
+    b.preconfMu.RLock()
+    r := b.preconfReceipts[h]
+    b.preconfMu.RUnlock()
     return r
 }
+
+func (b *EthAPIBackend) PreconfSubscribe(ch chan *preconf.PreconfReceipt) event.Subscription {
+    return b.preconfFeed.Subscribe(ch)
+}
+
 
