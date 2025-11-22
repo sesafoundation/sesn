@@ -46,18 +46,10 @@ import (
 type EthAPIBackend struct {
 	extRPCEnabled bool
 	eth           *Ethereum
-	gpo           *gasprice.Oracle
- 	PreconfMu       sync.RWMutex
-    PreconfReceipts map[common.Hash]*preconf.PreconfReceipt
-    PreconfFeed     event.Feed
-	
-
-    //preconfMu     sync.RWMutex
-    //preconfRec    map[common.Hash]*preconf.Receipt
-    //preconfScope  event.SubscriptionScope
-	//preconfFeed     event.Feed  // 🔥 new
-
-	
+	gpo           *gasprice.Oracle	
+	preconfMu       sync.RWMutex
+    preconfReceipts map[common.Hash]*preconf.PreconfReceipt
+    preconfFeed     event.Feed	
 }
 
 // ChainConfig returns the active chain configuration.
@@ -358,10 +350,10 @@ func (b *EthAPIBackend) PreconfSubscribe(ch chan *preconf.PreconfReceipt) event.
 }
 
 
-func (b *EthAPIBackend) StorePreconfReceipt(hash common.Hash, r *preconf.PreconfReceipt) {
-    b.PreconfMu.Lock()
-    b.PreconfReceipts[hash] = r
-    b.PreconfMu.Unlock()
-    b.PreconfFeed.Send(r)
+func (eb *EthAPIBackend) StorePreconfReceipt(hash common.Hash, r *preconf.PreconfReceipt) {
+    eb.preconfMu.Lock()
+    eb.preconfReceipts[hash] = r
+    eb.preconfMu.Unlock()
+    eb.preconfFeed.Send(r)
 }
 

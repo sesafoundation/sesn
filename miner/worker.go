@@ -804,14 +804,13 @@ func (w *worker) commitTransaction(tx *types.Transaction, coinbase common.Addres
     // --- PRECONF HOOK --------------------------------------
     // Only executed if validator is running preconf-builder support
     if w.preconfBackend != nil {
-    r := &preconf.PreconfReceipt{
-        TxHash:      tx.Hash(),
-        MiniBlockID: 0,          // TODO: wire actual miniblock ID later
-        Signer:      w.coinbase,
+    	r := &preconf.PreconfReceipt{
+        TxHash: tx.Hash(),
+        MiniBlockID: 0,      // updated later by miniblock sync
+        Signer: w.coinbase,
     }
     w.preconfBackend.StorePreconfReceipt(tx.Hash(), r)
-	}
- 
+}
     // --------------------------------------------------------
 
     return receipt.Logs, nil
@@ -939,18 +938,15 @@ func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coin
 			coalescedLogs = append(coalescedLogs, logs...)
 
 				// === Preconf Receipt injection ===
-    		if w.preconfBackend != nil {
-        	r := &preconf.PreconfReceipt{
-            TxHash:      tx.Hash(),
-            MiniBlockID: 0,                // will be replaced when mini-block ID flows into miner
-            Signer:      w.coinbase,
-        	}
-        	w.preconfBackend.PreconfMu.Lock()
-        	w.preconfBackend.PreconfReceipts[tx.Hash()] = r
-        	w.preconfBackend.PreconfMu.Unlock()
-        	w.preconfBackend.PreconfFeed.Send(r)
-    		}
-    		// === End Preconf ===
+				if w.preconfBackend != nil {
+    			r := &preconf.PreconfReceipt{
+        		TxHash: tx.Hash(),
+        		MiniBlockID: 0,      // updated later by miniblock sync
+        		Signer: w.coinbase,
+    			}
+    			w.preconfBackend.StorePreconfReceipt(tx.Hash(), r)
+				}
+    			// === End Preconf ===
 
 			w.current.tcount++
 			txs.Shift()
