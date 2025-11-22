@@ -79,9 +79,9 @@ const (
 	staleThreshold = 7
 )
 
-type PreconfBackend interface {
-    StorePreconfReceipt(txHash common.Hash, receipt *preconf.PreconfReceipt)
-}
+//type PreconfBackend interface {
+ //   StorePreconfReceipt(txHash common.Hash, receipt *preconf.PreconfReceipt)
+//}
 
 // environment is the worker's current environment and holds all of the current state information.
 type environment struct {
@@ -804,14 +804,14 @@ func (w *worker) commitTransaction(tx *types.Transaction, coinbase common.Addres
     // --- PRECONF HOOK --------------------------------------
     // Only executed if validator is running preconf-builder support
     if w.preconfBackend != nil {
-        r := &preconf.PreconfReceipt{
-            TxHash:      tx.Hash(),
-            MiniBlockID: 0,               // updated later when miniblock ID is known
-            Signer:      w.coinbase,      // receives preconf fee
-            Signature:   nil,             // preconf signature (filled by preconf-builder)
-        }
-        w.preconfBackend.StorePreconfReceipt(tx.Hash(), r)
+    r := &preconf.PreconfReceipt{
+        TxHash:      tx.Hash(),
+        MiniBlockID: 0,          // TODO: wire actual miniblock ID later
+        Signer:      w.coinbase,
     }
+    w.preconfBackend.StorePreconfReceipt(tx.Hash(), r)
+	}
+ 
     // --------------------------------------------------------
 
     return receipt.Logs, nil
@@ -857,15 +857,14 @@ func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coin
             coalescedLogs = append(coalescedLogs, logs...)
             w.current.tcount++
 			//preconf
-				if w.preconfFeed != nil {
-				r := &preconf.PreconfReceipt{
-    			TxHash:      tx.Hash(),
-    			MiniBlockID: mbID,             // <- we will handle mbID next
-    			Signer:      worker.coinbase,  // or current proposer
-    			Signature:   mbSignature,      // optional; put nil if not available
-				}
-    			w.preconfFeed.Send(r)
-				}
+			if w.preconfBackend != nil {
+    		r := &preconf.PreconfReceipt{
+        	TxHash:      tx.Hash(),
+        	MiniBlockID: 0,          // unknown here — filled later when miniblock event comes
+        	Signer:      w.coinbase,
+    		}
+    		w.preconfBackend.StorePreconfReceipt(tx.Hash(), r)
+}
 	
 			//end preconf
         }
