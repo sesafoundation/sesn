@@ -9,7 +9,8 @@ import (
 )
 
 type PublicPreconfAPI struct {
-    backend *ethapi.EthAPIBackend
+    //backend *ethapi.EthAPIBackend
+	backend, ok := api.backend.(*ethapi.EthAPIBackend)
 }
 
 func NewPublicPreconfAPI(b *ethapi.EthAPIBackend) *PublicPreconfAPI {

@@ -9,7 +9,8 @@ import (
  
 // WebSocket subscription API → preconf events
 type PublicPreconfSubscriptionAPI struct {
-    backend *EthAPIBackend
+    //backend *EthAPIBackend
+	backend, ok := api.backend.(*ethapi.EthAPIBackend)
 }
 
 // Constructor

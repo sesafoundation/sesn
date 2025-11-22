@@ -136,15 +136,15 @@ func GetAPIs(apiBackend Backend) []rpc.API {
 		},
 		// 🔥 PRECONF START
 		{
-    		Namespace: "eth",
+    		Namespace: "preconf",
     		Version:   "1.0",
-    		Service:   NewPublicPreconfAPI(apiBackend),
+    		Service:   preconf.NewPublicPreconfAPI(apiBackend),
     		Public:    true,
 		},
 		{
-    		Namespace: "eth",
+    		Namespace: "preconf",
     		Version:   "1.0",
-    		Service:   NewPublicPreconfSubscriptionAPI(apiBackend),
+    		Service:   preconf.NewPublicPreconfSubscriptionAPI(apiBackend),
     		Public:    true,
 		},
 
