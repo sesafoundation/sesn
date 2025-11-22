@@ -939,17 +939,17 @@ func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coin
 			coalescedLogs = append(coalescedLogs, logs...)
 
 				// === Preconf Receipt injection ===
-    		if w.backend != nil {
+    		if w.preconfBackend != nil {
         	r := &preconf.PreconfReceipt{
             TxHash:      tx.Hash(),
             MiniBlockID: 0,                // will be replaced when mini-block ID flows into miner
             Signer:      w.coinbase,
             Signature:   nil,
         	}
-        	w.backend.PreconfMu.Lock()
-        	w.backend.PreconfReceipts[tx.Hash()] = r
-        	w.backend.PreconfMu.Unlock()
-        	w.backend.PreconfFeed.Send(r)
+        	w.preconfBackend.PreconfMu.Lock()
+        	w.preconfBackend.PreconfReceipts[tx.Hash()] = r
+        	w.preconfBackend.PreconfMu.Unlock()
+        	w.preconfBackend.PreconfFeed.Send(r)
     		}
     		// === End Preconf ===
 
