@@ -6,22 +6,20 @@ import (
     "github.com/ethereum/go-ethereum/rpc"
     "github.com/sesafoundation/sesn/preconf"
 )
-
-//type PublicPreconfSubscriptionAPI struct {
-//    backend Backend
-//}
-
+ 
+// WebSocket subscription API → preconf events
 type PublicPreconfSubscriptionAPI struct {
-    b Backend
+    backend *EthAPIBackend
 }
 
-func NewPublicPreconfSubscriptionAPI(b Backend) *PublicPreconfSubscriptionAPI {
+// Constructor
+func NewPublicPreconfSubscriptionAPI(b *EthAPIBackend) *PublicPreconfSubscriptionAPI {
     return &PublicPreconfSubscriptionAPI{backend: b}
 }
 
+// WebSocket subscription handler: preconf_subscribe
 func (api *PublicPreconfSubscriptionAPI) SubscribePreconf(ctx context.Context) (*rpc.Subscription, error) {
-    eb, ok := api.b.(*EthAPIBackend)
-    if !ok {
+    if api.backend == nil {
         return nil, rpc.ErrNotificationsUnsupported
     }
 
@@ -29,12 +27,16 @@ func (api *PublicPreconfSubscriptionAPI) SubscribePreconf(ctx context.Context) (
     if !ok {
         return nil, rpc.ErrNotificationsUnsupported
     }
+
     sub := notifier.CreateSubscription()
 
+    // Feed channel for mini-block receipts
     ch := make(chan *preconf.PreconfReceipt, 128)
-    eb.preconfFeed.Subscribe(ch)
+    api.backend.PreconfFeed.Subscribe(ch)
 
     go func() {
+        defer api.backend.PreconfFeed.Unsubscribe(ch)
+
         for {
             select {
             case <-ctx.Done():
@@ -44,5 +46,7 @@ func (api *PublicPreconfSubscriptionAPI) SubscribePreconf(ctx context.Context) (
             }
         }
     }()
+
     return sub, nil
 }
+

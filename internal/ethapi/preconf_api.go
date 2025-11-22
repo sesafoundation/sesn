@@ -5,6 +5,7 @@ import (
 
     "github.com/sesafoundation/sesn/common"
     "github.com/sesafoundation/sesn/preconf"
+	"github.com/sesafoundation/sesn/internal/ethapi"
 )
 
 type PublicPreconfAPI struct {
