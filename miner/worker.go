@@ -944,7 +944,6 @@ func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coin
             TxHash:      tx.Hash(),
             MiniBlockID: 0,                // will be replaced when mini-block ID flows into miner
             Signer:      w.coinbase,
-            Signature:   nil,
         	}
         	w.preconfBackend.PreconfMu.Lock()
         	w.preconfBackend.PreconfReceipts[tx.Hash()] = r
