@@ -344,3 +344,24 @@ func (b *EthAPIBackend) Miner() *miner.Miner {
 func (b *EthAPIBackend) StartMining(threads int) error {
 	return b.eth.StartMining(threads)
 }
+
+
+func (b *EthAPIBackend) GetPreconfReceipt(hash common.Hash) (*preconf.PreconfReceipt, bool) {
+    b.PreconfMu.RLock()
+    r, ok := b.PreconfReceipts[hash]
+    b.PreconfMu.RUnlock()
+    return r, ok
+}
+
+func (b *EthAPIBackend) PreconfSubscribe(ch chan *preconf.PreconfReceipt) event.Subscription {
+    return b.PreconfFeed.Subscribe(ch)
+}
+
+
+func (b *EthAPIBackend) StorePreconfReceipt(hash common.Hash, r *preconf.PreconfReceipt) {
+    b.PreconfMu.Lock()
+    b.PreconfReceipts[hash] = r
+    b.PreconfMu.Unlock()
+    b.PreconfFeed.Send(r)
+}
+

@@ -35,7 +35,7 @@ import (
 	"github.com/sesafoundation/sesn/params"
 	"github.com/sesafoundation/sesn/trie"
 	"github.com/sesafoundation/sesn/preconf"
-	ethapi "github.com/sesafoundation/sesn/internal/ethapi"
+	//ethapi "github.com/sesafoundation/sesn/internal/ethapi"
 	//ethbackend "github.com/sesafoundation/sesn/eth"
 )
 
@@ -78,6 +78,10 @@ const (
 	// staleThreshold is the maximum depth of the acceptable stale block.
 	staleThreshold = 7
 )
+
+type PreconfBackend interface {
+    StorePreconfReceipt(txHash common.Hash, receipt *preconf.PreconfReceipt)
+}
 
 // environment is the worker's current environment and holds all of the current state information.
 type environment struct {
@@ -131,7 +135,9 @@ type worker struct {
 	eth         Backend
 	chain       *core.BlockChain
 	//backend 	*ethbackend.EthAPIBackend
-	backend 	*ethapi.EthAPIBackend
+	//backend 	*ethapi.EthAPIBackend
+
+	preconfBackend PreconfBackend
 
 	// Feeds
 	pendingLogsFeed event.Feed
@@ -218,10 +224,12 @@ func newWorker(config *Config, chainConfig *params.ChainConfig, engine consensus
 		resubmitAdjustCh:   make(chan *intervalAdjust, resubmitAdjustChanSize),
 	}
 	if full, ok := eth.(*Ethereum); ok {
-    if api, ok2 := full.APIBackend.(*ethapi.EthAPIBackend); ok2 {
-        worker.backend = api
-    }
-}
+   
+		if api, ok := eth.APIBackend().(PreconfBackend); ok {
+    	worker.preconfBackend = api
+		}
+
+	}
 }
 
 
@@ -747,18 +755,44 @@ func (w *worker) updateSnapshot() {
 	w.snapshotState = w.current.state.Copy()
 }
 
+// commitTransaction applies a tx and (if enabled) stores a preconf receipt.
 func (w *worker) commitTransaction(tx *types.Transaction, coinbase common.Address) ([]*types.Log, error) {
-	snap := w.current.state.Snapshot()
+    snap := w.current.state.Snapshot()
 
-	receipt, err := core.ApplyTransaction(w.chainConfig, w.chain, &coinbase, w.current.gasPool, w.current.state, w.current.header, tx, &w.current.header.GasUsed, *w.chain.GetVMConfig())
-	if err != nil {
-		w.current.state.RevertToSnapshot(snap)
-		return nil, err
-	}
-	w.current.txs = append(w.current.txs, tx)
-	w.current.receipts = append(w.current.receipts, receipt)
+    receipt, err := core.ApplyTransaction(
+        w.chainConfig,
+        w.chain,
+        &coinbase,
+        w.current.gasPool,
+        w.current.state,
+        w.current.header,
+        tx,
+        &w.current.header.GasUsed,
+        *w.chain.GetVMConfig(),
+    )
+    if err != nil {
+        w.current.state.RevertToSnapshot(snap)
+        return nil, err
+    }
 
-	return receipt.Logs, nil
+    // original Geth logic
+    w.current.txs = append(w.current.txs, tx)
+    w.current.receipts = append(w.current.receipts, receipt)
+
+    // --- PRECONF HOOK --------------------------------------
+    // Only executed if validator is running preconf-builder support
+    if w.preconfBackend != nil {
+        r := &preconf.PreconfReceipt{
+            TxHash:      tx.Hash(),
+            MiniBlockID: 0,               // updated later when miniblock ID is known
+            Signer:      w.coinbase,      // receives preconf fee
+            Signature:   nil,             // preconf signature (filled by preconf-builder)
+        }
+        w.preconfBackend.StorePreconfReceipt(tx.Hash(), r)
+    }
+    // --------------------------------------------------------
+
+    return receipt.Logs, nil
 }
 
 func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coinbase common.Address, interrupt *int32) bool {

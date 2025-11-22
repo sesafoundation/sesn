@@ -155,13 +155,3 @@ func GetAPIs(apiBackend Backend) []rpc.API {
 	}
 }
 
-func (b *EthAPIBackend) GetPreconfReceipt(hash common.Hash) (*preconf.PreconfReceipt, bool) {
-    b.PreconfMu.RLock()
-    r, ok := b.PreconfReceipts[hash]
-    b.PreconfMu.RUnlock()
-    return r, ok
-}
-
-func (b *EthAPIBackend) PreconfSubscribe(ch chan *preconf.PreconfReceipt) event.Subscription {
-    return b.PreconfFeed.Subscribe(ch)
-}
