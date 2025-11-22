@@ -129,7 +129,8 @@ type worker struct {
 	engine      consensus.Engine
 	eth         Backend
 	chain       *core.BlockChain
-	backend *ethbackend.EthAPIBackend
+	//backend 	*ethbackend.EthAPIBackend
+	backend 	*ethapi.EthAPIBackend
 
 	// Feeds
 	pendingLogsFeed event.Feed
@@ -215,8 +216,9 @@ func newWorker(config *Config, chainConfig *params.ChainConfig, engine consensus
 		resubmitIntervalCh: make(chan time.Duration),
 		resubmitAdjustCh:   make(chan *intervalAdjust, resubmitAdjustChanSize),
 	}
-	worker.backend = eth.(*Ethereum).APIBackend
 	//worker.backend = eth.(*Ethereum).APIBackend
+	//worker.backend = eth.(*Ethereum).APIBackend
+	worker.backend = eth.APIBackend().(*ethapi.EthAPIBackend)
 
 //preconf code start
 	//pc := NewPreconfClient("ws://127.0.0.1:8556/ws")
@@ -882,7 +884,7 @@ func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coin
         	TxHash:      tx.Hash(),
         	MiniBlockID: 0, // if you want builder MB index, fill later
         	Signer:      w.coinbase,
-        	Signature:   nil, // optional: builder signs, miner can attach receipt
+        	//Signature:   nil, // optional: builder signs, miner can attach receipt
     		}
     		w.backend.preconfMu.Lock()
     		w.backend.preconfReceipts[tx.Hash()] = r
