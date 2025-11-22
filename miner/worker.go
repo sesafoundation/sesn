@@ -864,7 +864,7 @@ func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coin
     }
 
     w.preconfBackend.StorePreconfReceipt(tx.Hash(), r)
-    w.preconfBackend.PreconfSubscribe(...)  // only if broadcasting
+   // w.preconfBackend.PreconfSubscribe(...)  // only if broadcasting
 }
 	
 			//end preconf
@@ -948,7 +948,7 @@ func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coin
     				}
 
     				w.preconfBackend.StorePreconfReceipt(tx.Hash(), r)
-    				w.preconfBackend.PreconfSubscribe(...)  // only if broadcasting
+    				//w.preconfBackend.PreconfSubscribe(...)  // only if broadcasting
 					}
     			// === End Preconf ===
 
