@@ -2,26 +2,23 @@ package preconfapi
 
 import (
     "context"
-
     "github.com/ethereum/go-ethereum/rpc"
     "github.com/sesafoundation/sesn/preconf"
-    "github.com/sesafoundation/sesn/internal/ethapi"
 )
 
+type PreconfBackend interface {
+    PreconfSubscribe(chan *preconf.PreconfReceipt) event.Subscription
+}
+
 type PublicPreconfSubscriptionAPI struct {
-    backend *ethapi.EthAPIBackend
+    backend PreconfBackend
 }
 
-func NewPublicPreconfSubscriptionAPI(b *ethapi.EthAPIBackend) *PublicPreconfSubscriptionAPI {
-    return &PublicPreconfSubscriptionAPI{backend: b}
+func NewPublicPreconfSubscriptionAPI(backend PreconfBackend) *PublicPreconfSubscriptionAPI {
+    return &PublicPreconfSubscriptionAPI{backend: backend}
 }
 
-// RPC: eth_subscribe "preconfReceipts"
 func (api *PublicPreconfSubscriptionAPI) SubscribePreconf(ctx context.Context) (*rpc.Subscription, error) {
-    if api.backend == nil {
-        return nil, rpc.ErrNotificationsUnsupported
-    }
-
     notifier, ok := rpc.NotifierFromContext(ctx)
     if !ok {
         return nil, rpc.ErrNotificationsUnsupported
@@ -29,7 +26,7 @@ func (api *PublicPreconfSubscriptionAPI) SubscribePreconf(ctx context.Context) (
     sub := notifier.CreateSubscription()
 
     ch := make(chan *preconf.PreconfReceipt, 128)
-    api.backend.PreconfFeed.Subscribe(ch)
+    api.backend.PreconfSubscribe(ch)
 
     go func() {
         for {
@@ -41,6 +38,5 @@ func (api *PublicPreconfSubscriptionAPI) SubscribePreconf(ctx context.Context) (
             }
         }
     }()
-
     return sub, nil
 }
