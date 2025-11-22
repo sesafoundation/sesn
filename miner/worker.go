@@ -810,7 +810,6 @@ func (w *worker) commitTransaction(tx *types.Transaction, coinbase common.Addres
     }
 
     w.preconfBackend.StorePreconfReceipt(tx.Hash(), r)
-    w.preconfBackend.PreconfSubscribe(...)  // only if broadcasting
 }
     // --------------------------------------------------------
 

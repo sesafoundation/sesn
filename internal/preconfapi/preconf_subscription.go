@@ -4,6 +4,7 @@ import (
     "context"
     "github.com/ethereum/go-ethereum/rpc"
     "github.com/sesafoundation/sesn/preconf"
+	"github.com/sesafoundation/sesn/event"
 )
 
 type PreconfBackend interface {
