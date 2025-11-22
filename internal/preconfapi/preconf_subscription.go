@@ -7,10 +7,6 @@ import (
 	"github.com/sesafoundation/sesn/event"
 )
 
-type PreconfBackend interface {
-    PreconfSubscribe(chan *preconf.PreconfReceipt) event.Subscription
-}
-
 type PublicPreconfSubscriptionAPI struct {
     backend PreconfBackend
 }
