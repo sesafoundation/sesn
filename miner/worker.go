@@ -802,12 +802,14 @@ func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coin
             w.current.tcount++
 			//preconf
 				if w.preconfFeed != nil {
-    			r := &preconf.Receipt{
-        		TxHash: tx.Hash(),
-        		MiniID: mbID,
-    			}
+				r := &preconf.PreconfReceipt{
+    			TxHash:      tx.Hash(),
+    			MiniBlockID: mbID,             // <- we will handle mbID next
+    			Signer:      worker.coinbase,  // or current proposer
+    			Signature:   mbSignature,      // optional; put nil if not available
+				}
     			w.preconfFeed.Send(r)
-}
+				}
 	
 			//end preconf
         }
@@ -880,24 +882,25 @@ func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coin
 		case errors.Is(err, nil):
 			// Everything ok, collect the logs and shift in the next transaction from the same account
 			coalescedLogs = append(coalescedLogs, logs...)
+
+				// === Preconf Receipt injection ===
+    		if w.backend != nil {
+        	r := &preconf.PreconfReceipt{
+            TxHash:      tx.Hash(),
+            MiniBlockID: 0,                // will be replaced when mini-block ID flows into miner
+            Signer:      w.coinbase,
+            Signature:   nil,
+        	}
+        	w.backend.PreconfMu.Lock()
+        	w.backend.PreconfReceipts[tx.Hash()] = r
+        	w.backend.PreconfMu.Unlock()
+        	w.backend.PreconfFeed.Send(r)
+    		}
+    		// === End Preconf ===
+
 			w.current.tcount++
 			txs.Shift()
-
-			// === Preconf receipt record (for miner-side accepted txs) ===
-			if w.backend != nil {
-    		r := &preconf.PreconfReceipt{
-        	TxHash:      tx.Hash(),
-        	MiniBlockID: 0, // if you want builder MB index, fill later
-        	Signer:      w.coinbase,
-        	//Signature:   nil, // optional: builder signs, miner can attach receipt
-    		}
-    		w.backend.preconfMu.Lock()
-    		w.backend.preconfReceipts[tx.Hash()] = r
-    		w.backend.preconfMu.Unlock()
-
-    		// notify WS / RPC subscribers
-    		w.backend.preconfFeed.Send(r)
-			}
+			
 
 
 		default:
