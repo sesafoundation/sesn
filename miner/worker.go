@@ -876,6 +876,23 @@ func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coin
 			w.current.tcount++
 			txs.Shift()
 
+			// === Preconf receipt record (for miner-side accepted txs) ===
+			if w.backend != nil {
+    		r := &preconf.PreconfReceipt{
+        	TxHash:      tx.Hash(),
+        	MiniBlockID: 0, // if you want builder MB index, fill later
+        	Signer:      w.coinbase,
+        	Signature:   nil, // optional: builder signs, miner can attach receipt
+    		}
+    		w.backend.preconfMu.Lock()
+    		w.backend.preconfReceipts[tx.Hash()] = r
+    		w.backend.preconfMu.Unlock()
+
+    		// notify WS / RPC subscribers
+    		w.backend.preconfFeed.Send(r)
+			}
+
+
 		default:
 			// Strange error, discard the transaction and get the next in line (note, the
 			// nonce-too-high clause will prevent us from executing in vain).
