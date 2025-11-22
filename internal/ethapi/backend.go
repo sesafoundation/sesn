@@ -164,4 +164,3 @@ func (b *EthAPIBackend) GetPreconfReceipt(hash common.Hash) (*preconf.PreconfRec
 func (b *EthAPIBackend) PreconfSubscribe(ch chan *preconf.PreconfReceipt) event.Subscription {
     return b.PreconfFeed.Subscribe(ch)
 }
-

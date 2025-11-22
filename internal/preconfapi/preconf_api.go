@@ -8,9 +8,9 @@ import (
 )
 
 // This interface is implemented by EthAPIBackend (added in backend.go)
-type PreconfBackend interface {
-    GetPreconfReceipt(hash common.Hash) (*preconf.PreconfReceipt, bool)
-}
+//type PreconfBackend interface {
+//    GetPreconfReceipt(hash common.Hash) (*preconf.PreconfReceipt, bool)
+//}
 
 type PublicPreconfAPI struct {
     backend PreconfBackend
