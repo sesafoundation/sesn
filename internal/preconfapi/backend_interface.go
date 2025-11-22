@@ -7,4 +7,5 @@ import (
 
 type PreconfBackend interface {
     StorePreconfReceipt(common.Hash, *preconf.PreconfReceipt)
+    LoadPreconfReceipt(common.Hash) *preconf.PreconfReceipt
 }

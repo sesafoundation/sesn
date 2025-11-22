@@ -349,11 +349,17 @@ func (b *EthAPIBackend) PreconfSubscribe(ch chan *preconf.PreconfReceipt) event.
     return b.PreconfFeed.Subscribe(ch)
 }
 
-
 func (eb *EthAPIBackend) StorePreconfReceipt(hash common.Hash, r *preconf.PreconfReceipt) {
     eb.preconfMu.Lock()
     eb.preconfReceipts[hash] = r
     eb.preconfMu.Unlock()
     eb.preconfFeed.Send(r)
+}
+
+func (eb *EthAPIBackend) LoadPreconfReceipt(hash common.Hash) *preconf.PreconfReceipt {
+    eb.preconfMu.RLock()
+    r := eb.preconfReceipts[hash]
+    eb.preconfMu.RUnlock()
+    return r
 }
 
