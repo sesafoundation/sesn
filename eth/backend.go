@@ -149,7 +149,7 @@ func New(stack *node.Node, config *Config) (*Ethereum, error) {
 		bloomIndexer:      NewBloomIndexer(chainDb, params.BloomBitsBlocks, params.BloomConfirms),
 		p2pServer:         stack.Server(),
 	}
-	eth.APIBackend = &EthAPIBackend{
+eth.APIBackend = &EthAPIBackend{
     extRPCEnabled:   stack.Config().ExtRPCEnabled(),
     eth:             eth,
     gpo:             nil,
@@ -228,7 +228,6 @@ func New(stack *node.Node, config *Config) (*Ethereum, error) {
     gpo:             nil,
     preconfReceipts: make(map[common.Hash]*preconf.PreconfReceipt),
 	}
-
 
 	gpoParams := config.GPO
 	if gpoParams.Default == nil {
