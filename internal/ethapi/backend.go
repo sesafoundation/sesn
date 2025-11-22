@@ -153,6 +153,20 @@ func GetAPIs(apiBackend Backend) []rpc.API {
     		Service:   NewTxStatusSubscriptionAPI(b.APIBackend),
     		Public:    true,
 		},
+		{
+    		Namespace: "eth",
+    		Version:   "1.0",
+    		Service:   NewPublicPreconfAPI(apiBackend),
+    		Public:    true,
+		},
+		{
+    		Namespace: "eth",
+    		Version:   "1.0",
+    		Service:   NewPublicPreconfSubscriptionAPI(apiBackend),
+    		Public:    true,
+		},
+
+
 		// 🔥 PRECONF END
 	}
 }

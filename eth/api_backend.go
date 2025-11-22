@@ -53,6 +53,9 @@ type EthAPIBackend struct {
     preconfMu     sync.RWMutex
     preconfRec    map[common.Hash]*preconf.Receipt
     preconfScope  event.SubscriptionScope
+	preconfFeed     event.Feed  // 🔥 new
+
+	
 }
 
 // ChainConfig returns the active chain configuration.
