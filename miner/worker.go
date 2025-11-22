@@ -802,14 +802,16 @@ func (w *worker) commitTransaction(tx *types.Transaction, coinbase common.Addres
     w.current.receipts = append(w.current.receipts, receipt)
 
     // --- PRECONF HOOK --------------------------------------
-				if w.preconfBackend != nil {
-   				 r := &preconf.PreconfReceipt{
-       			 xHash: tx.Hash(),
-        		MiniBlockID: 0, // update later from builder
-        		Signer: w.coinbase,
+			if w.preconfBackend != nil {
+    	r := &preconf.PreconfReceipt{
+        TxHash:      tx.Hash(),
+        MiniBlockID: 0,            // TODO: update when miniblock ID passed from builder
+        Signer:      w.coinbase,   // current validator/miner
+        Signature:   nil,
     }
-
     w.preconfBackend.StorePreconfReceipt(tx.Hash(), r)
+    w.preconfBackend.PreconfFeed().Send(r)
+}
 }
     // --------------------------------------------------------
 
@@ -856,14 +858,21 @@ func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coin
             coalescedLogs = append(coalescedLogs, logs...)
             w.current.tcount++
 			//preconf
-						if w.preconfBackend != nil {
-    					r := &preconf.PreconfReceipt{
-        				TxHash: tx.Hash(),
-        				MiniBlockID: 0, // update later from builder
-        				Signer: w.coinbase,
-    }
+					if w.preconfBackend != nil {
+ 	   	r := &preconf.PreconfReceipt{
+        TxHash:      tx.Hash(),
+        MiniBlockID: 0,            // TODO: update when miniblock ID passed from builder
+        Signer:      w.coinbase,   // current validator/miner
+        Signature:   nil,
+    	}
+    		w.preconfBackend.StorePreconfReceipt(tx.Hash(), r)
+    		w.preconfBackend.PreconfFeed().Send(r)
+}			
 
-    w.preconfBackend.StorePreconfReceipt(tx.Hash(), r)
+
+
+
+
    // w.preconfBackend.PreconfSubscribe(...)  // only if broadcasting
 }
 	
@@ -941,15 +950,15 @@ func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coin
 
 				// === Preconf Receipt injection ===
 						if w.preconfBackend != nil {
-    					r := &preconf.PreconfReceipt{
-        				TxHash: tx.Hash(),
-        				MiniBlockID: 0, // update later from builder
-        				Signer: w.coinbase,
-    				}
-
-    				w.preconfBackend.StorePreconfReceipt(tx.Hash(), r)
-    				//w.preconfBackend.PreconfSubscribe(...)  // only if broadcasting
-					}
+    			r := &preconf.PreconfReceipt{
+        		TxHash:      tx.Hash(),
+        		MiniBlockID: 0,            // TODO: update when miniblock ID passed from builder
+        		Signer:      w.coinbase,   // current validator/miner
+        		Signature:   nil,
+    }
+    w.preconfBackend.StorePreconfReceipt(tx.Hash(), r)
+    w.preconfBackend.PreconfFeed().Send(r)
+}
     			// === End Preconf ===
 
 			w.current.tcount++
