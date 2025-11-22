@@ -8,20 +8,20 @@ import (
 )
 
 type PublicPreconfAPI struct {
-    b Backend
+    backend *ethapi.EthAPIBackend
 }
 
-func NewPublicPreconfAPI(b Backend) *PublicPreconfAPI {
-    return &PublicPreconfAPI{b}
+func NewPublicPreconfAPI(b *ethapi.EthAPIBackend) *PublicPreconfAPI {
+    return &PublicPreconfAPI{backend: b}
 }
-
 func (api *PublicPreconfAPI) GetPreconfReceipt(ctx context.Context, txHash common.Hash) (*preconf.PreconfReceipt, error) {
-    eb, ok := api.b.(*EthAPIBackend)
-    if !ok {
+    if api.backend == nil {
         return nil, nil
     }
-    eb.preconfMu.RLock()
-    r := eb.preconfReceipts[txHash]
-    eb.preconfMu.RUnlock()
+
+    api.backend.PreconfMu.RLock()
+    r := api.backend.PreconfReceipts[txHash]
+    api.backend.PreconfMu.RUnlock()
+
     return r, nil
 }
