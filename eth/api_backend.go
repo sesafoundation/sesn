@@ -49,9 +49,10 @@ type EthAPIBackend struct {
 	extRPCEnabled bool
 	eth           *Ethereum
 	gpo           *gasprice.Oracle
-	preconfReceipts map[common.Hash]*preconf.PreconfReceipt
-    preconfMu       sync.RWMutex
-    preconfFeed     event.Feed
+
+    preconfMu     sync.RWMutex
+    preconfRec    map[common.Hash]*preconf.Receipt
+    preconfScope  event.SubscriptionScope
 }
 
 // ChainConfig returns the active chain configuration.

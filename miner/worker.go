@@ -35,7 +35,7 @@ import (
 	"github.com/sesafoundation/sesn/params"
 	"github.com/sesafoundation/sesn/trie"
 	"github.com/sesafoundation/sesn/preconf"
-	ethbackend "github.com/sesafoundation/sesn/eth"
+	//ethbackend "github.com/sesafoundation/sesn/eth"
 )
 
 const (
@@ -794,18 +794,13 @@ func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coin
             coalescedLogs = append(coalescedLogs, logs...)
             w.current.tcount++
 			//preconf
-				if w.backend != nil {
-   				 	r := &preconf.PreconfReceipt{
-        			TxHash:      tx.Hash(),
-       				MiniBlockID: mb.ID,
-        			Signer:      mb.SignerAddr,
-        			TimestampMs: mb.TimestampMs,
-    				}
-    				w.backend.preconfMu.Lock()
-    				w.backend.preconfReceipts[tx.Hash()] = r
-    				w.backend.preconfMu.Unlock()
-    				w.backend.preconfFeed.Send(r)
-					}
+				if w.preconfFeed != nil {
+    			r := &preconf.Receipt{
+        		TxHash: tx.Hash(),
+        		MiniID: mbID,
+    			}
+    			w.preconfFeed.Send(r)
+}
 	
 			//end preconf
         }
