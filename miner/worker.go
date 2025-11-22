@@ -199,75 +199,97 @@ type worker struct {
 	preconf *preconf.PreconfClient
 }
 
-func newWorker(config *Config, chainConfig *params.ChainConfig, engine consensus.Engine, eth Backend, mux *event.TypeMux, isLocalBlock func(*types.Block) bool, init bool) *worker {
-	worker := &worker{
-		config:             config,
-		chainConfig:        chainConfig,
-		engine:             engine,
-		eth:                eth,
-		mux:                mux,
-		chain:              eth.BlockChain(),
-		isLocalBlock:       isLocalBlock,
-		localUncles:        make(map[common.Hash]*types.Block),
-		remoteUncles:       make(map[common.Hash]*types.Block),
-		unconfirmed:        newUnconfirmedBlocks(eth.BlockChain(), miningLogAtDepth),
-		pendingTasks:       make(map[common.Hash]*task),
-		txsCh:              make(chan core.NewTxsEvent, txChanSize),
-		chainHeadCh:        make(chan core.ChainHeadEvent, chainHeadChanSize),
-		chainSideCh:        make(chan core.ChainSideEvent, chainSideChanSize),
-		newWorkCh:          make(chan *newWorkReq),
-		taskCh:             make(chan *task),
-		resultCh:           make(chan *types.Block, resultQueueSize),
-		exitCh:             make(chan struct{}),
-		startCh:            make(chan struct{}, 1),
-		resubmitIntervalCh: make(chan time.Duration),
-		resubmitAdjustCh:   make(chan *intervalAdjust, resubmitAdjustChanSize),
-	}
-	if full, ok := eth.(*Ethereum); ok {
-   
-		if api, ok := eth.APIBackend().(PreconfBackend); ok {
-    	worker.preconfBackend = api
-		}
+///newworker start
+func newWorker(
+    config *Config,
+    chainConfig *params.ChainConfig,
+    engine consensus.Engine,
+    eth Backend,
+    mux *event.TypeMux,
+    isLocalBlock func(*types.Block) bool,
+    init bool,
+) *worker {
 
-	}
+    worker := &worker{
+        config:             config,
+        chainConfig:        chainConfig,
+        engine:             engine,
+        eth:                eth,
+        mux:                mux,
+        chain:              eth.BlockChain(),
+        isLocalBlock:       isLocalBlock,
+        localUncles:        make(map[common.Hash]*types.Block),
+        remoteUncles:       make(map[common.Hash]*types.Block),
+        unconfirmed:        newUnconfirmedBlocks(eth.BlockChain(), miningLogAtDepth),
+        pendingTasks:       make(map[common.Hash]*task),
+        txsCh:              make(chan core.NewTxsEvent, txChanSize),
+        chainHeadCh:        make(chan core.ChainHeadEvent, chainHeadChanSize),
+        chainSideCh:        make(chan core.ChainSideEvent, chainSideChanSize),
+        newWorkCh:          make(chan *newWorkReq),
+        taskCh:             make(chan *task),
+        resultCh:           make(chan *types.Block, resultQueueSize),
+        exitCh:             make(chan struct{}),
+        startCh:            make(chan struct{}, 1),
+        resubmitIntervalCh: make(chan time.Duration),
+        resubmitAdjustCh:   make(chan *intervalAdjust, resubmitAdjustChanSize),
+    }
+
+    //
+    // ---- PRECONF BACKEND (connect miner → RPC backend) ----
+    //
+    if full, ok := eth.(interface{ APIBackend() interface{} }); ok {
+        if api, ok2 := full.APIBackend().(PreconfBackend); ok2 {
+            worker.preconfBackend = api
+            log.Info("preconf backend attached to miner")
+        }
+    }
+
+    //
+    // ---- PRECONF BUILDER WS CLIENT (mini-blocks 100ms) ----
+    //
+    pc := preconf.NewPreconfClient("ws://127.0.0.1:8556/ws")
+    if pc != nil {
+        worker.preconf = pc
+        log.Info("preconf-builder connected", "url", "ws://127.0.0.1:8556/ws")
+    } else {
+        log.Warn("preconf-builder unreachable — running without 100ms preconfirmation")
+    }
+
+    //
+    // ---- ORIGINAL GETH SUBSCRIPTIONS (must remain) ----
+    //
+    worker.txsSub = eth.TxPool().SubscribeNewTxsEvent(worker.txsCh)
+    worker.chainHeadSub = eth.BlockChain().SubscribeChainHeadEvent(worker.chainHeadCh)
+    worker.chainSideSub = eth.BlockChain().SubscribeChainSideEvent(worker.chainSideCh)
+
+    //
+    // ---- Original recommit logic ----
+    //
+    recommit := worker.config.Recommit
+    if recommit < minRecommitInterval {
+        log.Warn("Sanitizing miner recommit interval", "provided", recommit, "updated", minRecommitInterval)
+        recommit = minRecommitInterval
+    }
+
+    //
+    // ---- Main worker loops ----
+    //
+    go worker.mainLoop()
+    go worker.newWorkLoop(recommit)
+    go worker.resultLoop()
+    go worker.taskLoop()
+
+    // ---- Start first work ----
+    if init {
+        worker.startCh <- struct{}{}
+    }
+
+    return worker
 }
 
 
-//preconf code start
-	//pc := NewPreconfClient("ws://127.0.0.1:8556/ws")
-	pc := preconf.NewPreconfClient("ws://127.0.0.1:8556/ws")
-if pc != nil {
-    log.Info("Preconf connected", "endpoint", "ws://127.0.0.1:8556/ws")
-} else {
-    log.Warn("Preconf disabled; builder unreachable")
-}
-worker.preconf = pc
 
-//preconfcode end
-	// Subscribe NewTxsEvent for tx pool
-	worker.txsSub = eth.TxPool().SubscribeNewTxsEvent(worker.txsCh)
-	// Subscribe events for blockchain
-	worker.chainHeadSub = eth.BlockChain().SubscribeChainHeadEvent(worker.chainHeadCh)
-	worker.chainSideSub = eth.BlockChain().SubscribeChainSideEvent(worker.chainSideCh)
-
-	// Sanitize recommit interval if the user-specified one is too short.
-	recommit := worker.config.Recommit
-	if recommit < minRecommitInterval {
-		log.Warn("Sanitizing miner recommit interval", "provided", recommit, "updated", minRecommitInterval)
-		recommit = minRecommitInterval
-	}
-
-	go worker.mainLoop()
-	go worker.newWorkLoop(recommit)
-	go worker.resultLoop()
-	go worker.taskLoop()
-
-	// Submit first work to initialize pending state.
-	if init {
-		worker.startCh <- struct{}{}
-	}
-	return worker
-}
+///newworker ends
 
 // setEtherbase sets the etherbase used to initialize the block coinbase field.
 func (w *worker) setEtherbase(addr common.Address) {
