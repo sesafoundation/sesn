@@ -158,6 +158,8 @@ eth.APIBackend = &EthAPIBackend{
 	log.Info("preconf receipts map initialised")
 
 	ethAPI := ethapi.NewPublicBlockChainAPI(eth.APIBackend)
+	eth.APIBackend.PreconfReceipts = make(map[common.Hash]*preconf.PreconfReceipt)
+	
 	eth.engine = CreateConsensusEngine(stack, chainConfig, &config.Ethash, config.Miner.Notify, config.Miner.Noverify, chainDb, ethAPI)
 
 	bcVersion := rawdb.ReadDatabaseVersion(chainDb)

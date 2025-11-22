@@ -35,6 +35,7 @@ import (
 	"github.com/sesafoundation/sesn/params"
 	"github.com/sesafoundation/sesn/rpc"
 	 preconfapi "github.com/sesafoundation/sesn/internal/preconfapi"
+	 "github.com/sesafoundation/sesn/preconf"
 )
 
 // Backend interface provides the common API services (that are provided by

@@ -14,14 +14,13 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
-package eth
+package ethapi
 
 import (
 	"context"
 	"errors"
 	"math/big"
 	"sync"
-
 	"github.com/sesafoundation/sesn/accounts"
 	"github.com/sesafoundation/sesn/common"
 	"github.com/sesafoundation/sesn/consensus"
@@ -38,7 +37,6 @@ import (
 	"github.com/sesafoundation/sesn/miner"
 	"github.com/sesafoundation/sesn/params"
 	"github.com/sesafoundation/sesn/rpc"
-
 	"github.com/sesafoundation/sesn/preconf"
 	"github.com/ethereum/go-ethereum/event"
 
@@ -49,12 +47,10 @@ type EthAPIBackend struct {
 	extRPCEnabled bool
 	eth           *Ethereum
 	gpo           *gasprice.Oracle
-
-
+ 	PreconfMu       sync.RWMutex
+    PreconfReceipts map[common.Hash]*preconf.PreconfReceipt
+    PreconfFeed     event.Feed
 	
-    preconfMu       sync.RWMutex
-    preconfReceipts map[common.Hash]*preconf.PreconfReceipt
-    preconfFeed     event.Feed
 
     //preconfMu     sync.RWMutex
     //preconfRec    map[common.Hash]*preconf.Receipt
