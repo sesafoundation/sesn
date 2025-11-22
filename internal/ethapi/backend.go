@@ -90,6 +90,7 @@ type Backend interface {
 	Engine() consensus.Engine
 }
 
+
 func GetAPIs(apiBackend Backend) []rpc.API {
 	nonceLock := new(AddrLocker)
 	return []rpc.API{
@@ -133,5 +134,26 @@ func GetAPIs(apiBackend Backend) []rpc.API {
 			Service:   NewPrivateAccountAPI(apiBackend, nonceLock),
 			Public:    false,
 		},
+		// 🔥 PRECONF START
+		{
+			Namespace: "eth",
+			Version:   "1.0",
+			Service:   NewPreconfReceiptAPI(apiBackend), // adds eth_getPreconfReceipt
+			Public:    true,
+		},
+		{
+			Namespace: "preconf",
+			Version:   "1.0",
+			Service:   NewPreconfSubscriptionAPI(apiBackend), // adds preconf_subscribe
+			Public:    true,
+		},
+		{
+    		Namespace: "tx",
+    		Version:   "1.0",
+    		Service:   NewTxStatusSubscriptionAPI(b.APIBackend),
+    		Public:    true,
+		},
+		// 🔥 PRECONF END
 	}
 }
+
