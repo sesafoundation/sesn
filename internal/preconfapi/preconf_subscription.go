@@ -14,8 +14,8 @@ type PublicPreconfSubscriptionAPI struct {
     backend PreconfBackend
 }
 
-func NewPublicPreconfSubscriptionAPI(backend PreconfBackend) *PublicPreconfSubscriptionAPI {
-    return &PublicPreconfSubscriptionAPI{backend: backend}
+func NewPublicPreconfSubscriptionAPI(b PreconfBackend) *PublicPreconfSubscriptionAPI {
+    return &PublicPreconfSubscriptionAPI{backend: b}
 }
 
 func (api *PublicPreconfSubscriptionAPI) SubscribePreconf(ctx context.Context) (*rpc.Subscription, error) {

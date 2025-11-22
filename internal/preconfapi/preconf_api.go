@@ -16,8 +16,6 @@ func NewPublicPreconfAPI(b PreconfBackend) *PublicPreconfAPI {
 }
 
 func (api *PublicPreconfAPI) GetPreconfReceipt(ctx context.Context, txHash common.Hash) (*preconf.PreconfReceipt, error) {
-    if api.backend == nil {
-        return nil, nil
-    }
     return api.backend.LoadPreconfReceipt(txHash), nil
 }
+
