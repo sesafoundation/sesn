@@ -155,12 +155,8 @@ func New(stack *node.Node, config *Config) (*Ethereum, error) {
 	// -------------------------------------------------------
 	// Assign API backend without import cycle
 	// -------------------------------------------------------
-	eth.APIBackend = &EthAPIBackend{
-    extRPCEnabled:   stack.Config().ExtRPCEnabled(),
-    backend:         eth,   // store as Backend interface
-    gpo:             nil,   // set gas price oracle later
-    preconfReceipts: make(map[common.Hash]*preconf.PreconfReceipt),
-	}
+	eth.APIBackend = ethapi.NewEthAPIBackend(stack.Config().ExtRPCEnabled(), eth)
+
 
 	// This is the correct API to pass `eth` into
 	ethAPI := ethapi.NewPublicBlockChainAPI(eth)
@@ -225,28 +221,24 @@ func New(stack *node.Node, config *Config) (*Ethereum, error) {
 	if checkpoint == nil {
 		checkpoint = params.TrustedCheckpoints[genesisHash]
 	}
+	////
 	if eth.protocolManager, err = NewProtocolManager(chainConfig, checkpoint, config.SyncMode, config.NetworkId, eth.eventMux, eth.txPool, eth.engine, eth.blockchain, chainDb, cacheLimit, config.Whitelist); err != nil {
-		return nil, err
-	}
+    return nil, err
+	}	
 	eth.miner = miner.New(eth, &config.Miner, chainConfig, eth.EventMux(), eth.engine, eth.isLocalBlock)
 	eth.miner.SetExtra(makeExtraData(config.Miner.ExtraData))
 
-	//eth.APIBackend = NewEthAPIBackend(stack.Config().ExtRPCEnabled(), eth)
-	eth.APIBackend = &EthAPIBackend{
-    extRPCEnabled:    stack.Config().ExtRPCEnabled(),
-    backend:             eth,
-    gpo:              nil, // oracle set later
-    //PreconfReceipts:  make(map[common.Hash]*preconf.PreconfReceipt),
-	preconfReceipts: make(map[common.Hash]*preconf.PreconfReceipt),
-}
+	// 🔥 PRECONF/RPC SAFE API BACKEND
+	eth.APIBackend = ethapi.NewEthAPIBackend(stack.Config().ExtRPCEnabled(), eth)
+
+	// Gas price oracle (must be AFTER NewEthAPIBackend)
 	gpoParams := config.GPO
 	if gpoParams.Default == nil {
-		gpoParams.Default = config.Miner.GasPrice
+    gpoParams.Default = config.Miner.GasPrice
 	}
-	//eth.APIBackend.gpo = gasprice.NewOracle(eth.APIBackend, gpoParams)
 	eth.APIBackend.gpo = gasprice.NewOracle(eth.APIBackend, gpoParams)
 
-
+	/////
 	eth.dialCandidates, err = eth.setupDiscovery()
 	if err != nil {
 		return nil, err
