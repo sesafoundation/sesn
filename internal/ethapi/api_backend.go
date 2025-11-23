@@ -38,6 +38,13 @@ import (
 	"github.com/sesafoundation/sesn/params"
 	"github.com/sesafoundation/sesn/rpc"
 	"github.com/sesafoundation/sesn/preconf"
+	 eth "github.com/sesafoundation/sesn/eth"
+)
+
+const (
+    bloomFilterThreads  = 16
+    bloomRetrievalBatch = 16
+    bloomRetrievalWait  = 50 * time.Millisecond
 )
 
 // EthAPIBackend implements ethapi.Backend for full nodes
@@ -52,13 +59,14 @@ import (
 
 type EthAPIBackend struct {
     extRPCEnabled bool
-    eth           *Ethereum
-	gpo           core.GasPriceOracle
-
+    eth           *eth.Ethereum
+    gpo           *gasprice.Oracle
 	preconfMu       sync.RWMutex
 	preconfReceipts map[common.Hash]*preconf.PreconfReceipt
 	preconfFeed     event.Feed
 }
+
+
 
 func NewEthAPIBackend(ext bool, eth *Ethereum) *EthAPIBackend {
     return &EthAPIBackend{

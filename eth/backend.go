@@ -52,6 +52,8 @@ import (
 	"github.com/sesafoundation/sesn/params"
 	"github.com/sesafoundation/sesn/rlp"
 	"github.com/sesafoundation/sesn/rpc"
+	//"github.com/sesafoundation/sesn/internal/preconfapi"
+
 )
 
 // Ethereum implements the Ethereum full node service.
