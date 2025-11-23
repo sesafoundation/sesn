@@ -38,7 +38,7 @@ import (
 	"github.com/sesafoundation/sesn/params"
 	"github.com/sesafoundation/sesn/rpc"
 	"github.com/sesafoundation/sesn/preconf"
-	"github.com/ethereum/go-ethereum/event"
+	//"github.com/ethereum/go-ethereum/event"
 
 )
 
