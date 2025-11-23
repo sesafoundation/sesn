@@ -36,7 +36,8 @@ import (
 	"github.com/sesafoundation/sesn/rpc"
 	// preconfapi "github.com/sesafoundation/sesn/internal/preconfapi"
 	 "github.com/sesafoundation/sesn/preconf"
-	 "github.com/sesafoundation/sesn/internal/preconfapi"
+	// "github.com/sesafoundation/sesn/internal/preconfapi"
+	 preconfapi "github.com/sesafoundation/sesn/internal/preconfapi"
 )
 
 // Backend interface provides the common API services (that are provided by
@@ -96,69 +97,75 @@ type Backend interface {
 
 func GetAPIs(apiBackend Backend) []rpc.API {
 	nonceLock := new(AddrLocker)
-	return []rpc.API{
+
+	apis := []rpc.API{
 		{
 			Namespace: "eth",
 			Version:   "1.0",
 			Service:   NewPublicEthereumAPI(apiBackend),
 			Public:    true,
-		}, {
+		},
+		{
 			Namespace: "eth",
 			Version:   "1.0",
 			Service:   NewPublicBlockChainAPI(apiBackend),
 			Public:    true,
-		}, {
+		},
+		{
 			Namespace: "eth",
 			Version:   "1.0",
 			Service:   NewPublicTransactionPoolAPI(apiBackend, nonceLock),
 			Public:    true,
-		}, {
+		},
+		{
 			Namespace: "txpool",
 			Version:   "1.0",
 			Service:   NewPublicTxPoolAPI(apiBackend),
 			Public:    true,
-		}, {
+		},
+		{
 			Namespace: "debug",
 			Version:   "1.0",
 			Service:   NewPublicDebugAPI(apiBackend),
 			Public:    true,
-		}, {
+		},
+		{
 			Namespace: "debug",
 			Version:   "1.0",
 			Service:   NewPrivateDebugAPI(apiBackend),
-		}, {
+		},
+		{
 			Namespace: "eth",
 			Version:   "1.0",
 			Service:   NewPublicAccountAPI(apiBackend.AccountManager()),
 			Public:    true,
-		}, {
+		},
+		{
 			Namespace: "personal",
 			Version:   "1.0",
 			Service:   NewPrivateAccountAPI(apiBackend, nonceLock),
 			Public:    false,
 		},
-		// 🔥 PRECONF START
-		 if pb, ok := apiBackend.(preconfapi.PreconfBackend); ok {
-        apis = append(apis,
-            rpc.API{
-                Namespace: "preconf",
-                Version:   "1.0",
-                Service:   preconfapi.NewPublicPreconfAPI(pb),
-                Public:    true,
-            },
-            rpc.API{
-                Namespace: "preconf",
-                Version:   "1.0",
-                Service:   preconfapi.NewPublicPreconfSubscriptionAPI(pb),
-                Public:    true,
-            },
-        )
-   		 }
-		
-
-
-		// 🔥 PRECONF END
-		    return apis
 	}
-}
 
+	// 🔥 PRECONF EXTENSIONS
+	if pb, ok := apiBackend.(preconfapi.PreconfBackend); ok {
+		apis = append(
+			apis,
+			rpc.API{
+				Namespace: "preconf",
+				Version:   "1.0",
+				Service:   preconfapi.NewPublicPreconfAPI(pb),
+				Public:    true,
+			},
+			rpc.API{
+				Namespace: "preconf",
+				Version:   "1.0",
+				Service:   preconfapi.NewPublicPreconfSubscriptionAPI(pb),
+				Public:    true,
+			},
+		)
+	}
+
+	return apis
+}
