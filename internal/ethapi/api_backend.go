@@ -23,7 +23,7 @@ import (
     "github.com/sesafoundation/sesn/ethdb"
 	"github.com/sesafoundation/sesn/eth/gasprice"
 	"github.com/sesafoundation/sesn/eth/downloader"
-	//"github.com/sesafoundation/sesn/miner"
+	"github.com/sesafoundation/sesn/miner"
 	"github.com/ethereum/go-ethereum/core/state"
 	//core_state "github.com/ethereum/go-ethereum/core/state"
 )
@@ -95,17 +95,42 @@ func (b *EthAPIBackend) BlockByHash(ctx context.Context, hash common.Hash) (*typ
 }
 
 func (b *EthAPIBackend) StateAndHeaderByNumber(ctx context.Context, num rpc.BlockNumber) (*state.StateDB, *types.Header, error) {
+    // ---- Pending block / state (miner) ----
     if num == rpc.PendingBlockNumber {
-        blk, st := b.backend.Miner().Pending()
+        blk, pendingState := b.backend.Miner().Pending()
+        if blk == nil || pendingState == nil {
+            return nil, nil, errors.New("pending block/state unavailable")
+        }
+        // Ensure type matches *state.StateDB
+        st, ok := pendingState.(*state.StateDB)
+        if !ok {
+            return nil, nil, errors.New("pending state is not *state.StateDB")
+        }
         return st, blk.Header(), nil
     }
+
+    // ---- Resolve header for given block number ----
     hdr, err := b.HeaderByNumber(ctx, num)
-    if err != nil || hdr == nil {
+    if err != nil {
+        return nil, nil, err
+    }
+    if hdr == nil {
         return nil, nil, errors.New("header not found")
     }
-    s, err := b.backend.BlockChain().StateAt(hdr.Root)
-    return s, hdr, err
+
+    // ---- Load state for that header ----
+    stRaw, err := b.backend.BlockChain().StateAt(hdr.Root)
+    if err != nil {
+        return nil, nil, err
+    }
+    st, ok := stRaw.(*state.StateDB)
+    if !ok {
+        return nil, nil, errors.New("StateAt did not return *state.StateDB")
+    }
+
+    return st, hdr, nil
 }
+
 
 //
 // Receipts / logs / TD
