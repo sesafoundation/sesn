@@ -97,6 +97,12 @@ type Backend interface {
     StorePreconfReceipt(common.Hash, *preconf.PreconfReceipt)
     LoadPreconfReceipt(common.Hash) *preconf.PreconfReceipt
     PreconfSubscribe(chan *preconf.PreconfReceipt) event.Subscription
+
+	BlockChain() *core.BlockChain
+	Miner() *miner.Miner
+	ProtocolManager() *ProtocolManager
+	NetVersion() int
+	NodeInfo() interface{}
 }
 
 

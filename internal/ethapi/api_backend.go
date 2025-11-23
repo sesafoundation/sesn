@@ -404,5 +404,3 @@ func (b *EthAPIBackend) PreconfSubscribe(ch chan *preconf.PreconfReceipt) event.
 	return b.preconfFeed.Subscribe(ch)
 }
 
-
-
