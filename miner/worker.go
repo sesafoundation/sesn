@@ -899,7 +899,8 @@ func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coin
 			break
 		}
 
-		from, _ := types.Sender(w.current.signer, tx)
+		// No need to extract sender here — nonce checks are already handled in txpool.
+		// from, _ := types.Sender(w.current.signer, tx)  // <- removed
 		if tx.Protected() && !w.chainConfig.IsEIP155(w.current.header.Number) {
 			txs.Pop()
 			continue
