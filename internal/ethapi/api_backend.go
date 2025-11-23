@@ -21,6 +21,7 @@ import (
 	"errors"
 	"math/big"
 	"sync"
+	"time"
 	"github.com/sesafoundation/sesn/accounts"
 	"github.com/sesafoundation/sesn/common"
 	"github.com/sesafoundation/sesn/consensus"
@@ -69,25 +70,21 @@ func NewEthAPIBackend(ext bool, eth *Ethereum) *EthAPIBackend {
 }
 
 func (b *EthAPIBackend) BlockChain() *core.BlockChain         { return b.backend.BlockChain() }
-func (b *EthAPIBackend) TxPool() *core.TxPool                  { return b.backend.TxPool() }
-func (b *EthAPIBackend) AccountManager() *accounts.Manager     { return b.backend.AccountManager() }
-func (b *EthAPIBackend) ProtocolVersion() int                  { return b.backend.ProtocolVersion() }
-func (b *EthAPIBackend) Miner() *miner.Miner                   { return b.backend.Miner() }
+//func (b *EthAPIBackend) TxPool() *core.TxPool                  { return b.backend.TxPool() }
+//func (b *EthAPIBackend) AccountManager() *accounts.Manager     { return b.backend.AccountManager() }
+//func (b *EthAPIBackend) ProtocolVersion() int                  { return b.backend.ProtocolVersion() }
+//func (b *EthAPIBackend) Miner() *miner.Miner                   { return b.backend.Miner() }
 func (b *EthAPIBackend) ProtocolManager() interface{}          { return b.backend.ProtocolManager() }
 func (b *EthAPIBackend) NetVersion() uint64                    { return b.backend.NetVersion() }
 func (b *EthAPIBackend) ChainConfig() *params.ChainConfig      { return b.backend.ChainConfig() }
 func (b *EthAPIBackend) NodeInfo() interface{}                 { return b.backend.NodeInfo() }
-func (b *EthAPIBackend) SubscribeChainHead(ch chan<- core.ChainHeadEvent) event.Subscription {
-    return b.backend.SubscribeChainHead(ch)
-}
+//func (b *EthAPIBackend) SubscribeChainHead(ch chan<- core.ChainHeadEvent) event.Subscription {
+//    return b.backend.SubscribeChainHead(ch)
+//}
 
 
 
 
-// ChainConfig returns the active chain configuration.
-func (b *EthAPIBackend) ChainConfig() *params.ChainConfig {
-	return b.backend.blockchain.Config()
-}
 
 // ---------------- Core chain access ----------------
 
