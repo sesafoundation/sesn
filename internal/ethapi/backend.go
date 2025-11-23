@@ -115,7 +115,7 @@ type Backend interface {
 
     // mining
    // Miner() *miner.Miner
-    StartMining(int) error
+    //StartMining(int) error
 
     // txpool
     TxPool() *core.TxPool
@@ -132,6 +132,11 @@ type Backend interface {
     ChainConfig() *params.ChainConfig
     AccountManager() *accounts.Manager
     Engine() consensus.Engine
+
+	Miner() *miner.Miner
+	StartMining(int) error
+
+	EthVersion() int 
 
     // RPC safety
     //RPCGasCap() uint64
