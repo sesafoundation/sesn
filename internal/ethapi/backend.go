@@ -46,11 +46,11 @@ import (
 // both full and light clients) with access to necessary functions.
 type Backend interface {
     // Downloader / Chain Management
-    Downloader() *downloader.Downloader
-    ProtocolVersion() int
+   // Downloader() *downloader.Downloader
+   // ProtocolVersion() int
     SuggestPrice(ctx context.Context) (*big.Int, error)
     ChainDb() ethdb.Database
-    AccountManager() *accounts.Manager
+   // AccountManager() *accounts.Manager
     ExtRPCEnabled() bool
     RPCGasCap() uint64
     RPCTxFeeCap() float64
@@ -61,7 +61,7 @@ type Backend interface {
     HeaderByHash(ctx context.Context, hash common.Hash) (*types.Header, error)
     HeaderByNumberOrHash(ctx context.Context, blockNrOrHash rpc.BlockNumberOrHash) (*types.Header, error)
     CurrentHeader() *types.Header
-    CurrentBlock() *types.Block
+   // CurrentBlock() *types.Block
     BlockByNumber(ctx context.Context, number rpc.BlockNumber) (*types.Block, error)
     BlockByHash(ctx context.Context, hash common.Hash) (*types.Block, error)
     BlockByNumberOrHash(ctx context.Context, blockNrOrHash rpc.BlockNumberOrHash) (*types.Block, error)
@@ -92,8 +92,8 @@ type Backend interface {
     SubscribePendingLogsEvent(ch chan<- []*types.Log) event.Subscription
     SubscribeRemovedLogsEvent(ch chan<- core.RemovedLogsEvent) event.Subscription
 
-    ChainConfig() *params.ChainConfig
-    Engine() consensus.Engine
+   // ChainConfig() *params.ChainConfig
+   // Engine() consensus.Engine
 
     // ⭐ PRECONF EXTENSION (required)
     StorePreconfReceipt(common.Hash, *preconf.PreconfReceipt)
@@ -110,11 +110,11 @@ type Backend interface {
 	    // blockchain
     BlockChain() *core.BlockChain
     CurrentBlock() *types.Block
-    CurrentHeader() *types.Header
+   // CurrentHeader() *types.Header
     SetHead(uint64)
 
     // mining
-    Miner() *miner.Miner
+   // Miner() *miner.Miner
     StartMining(int) error
 
     // txpool
@@ -128,7 +128,7 @@ type Backend interface {
     NodeInfo() interface{}
 
     // config + database
-    ChainDb() ethdb.Database
+   // ChainDb() ethdb.Database
     ChainConfig() *params.ChainConfig
     AccountManager() *accounts.Manager
     Engine() consensus.Engine
