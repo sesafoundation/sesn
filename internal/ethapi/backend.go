@@ -75,7 +75,7 @@ type Backend interface {
     SubscribeChainSideEvent(ch chan<- core.ChainSideEvent) event.Subscription
 
     // TxPool
-    SendTx(ctx context.Context, signedTx *types.Transaction) error
+    //SendTx(ctx context.Context, signedTx *types.Transaction) error
     GetTransaction(ctx context.Context, txHash common.Hash) (*types.Transaction, common.Hash, uint64, uint64, error)
     GetPoolTransactions() (types.Transactions, error)
     GetPoolTransaction(txHash common.Hash) *types.Transaction
@@ -134,8 +134,8 @@ type Backend interface {
     Engine() consensus.Engine
 
     // RPC safety
-    RPCGasCap() uint64
-    RPCTxFeeCap() float64
+    //RPCGasCap() uint64
+    //RPCTxFeeCap() float64
 }
 
 
