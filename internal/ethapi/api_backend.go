@@ -15,14 +15,16 @@ import (
     "github.com/sesafoundation/sesn/core/rawdb"
     "github.com/sesafoundation/sesn/core/types"
     "github.com/sesafoundation/sesn/core/vm"
-   // "github.com/sesafoundation/sesn/core/gasprice"
+    //"github.com/sesafoundation/sesn/core/gasprice"
     "github.com/sesafoundation/sesn/preconf"
-   // "github.com/sesafoundation/sesn/downloader"
+    //"github.com/sesafoundation/sesn/downloader"
     "github.com/sesafoundation/sesn/event"
     "github.com/sesafoundation/sesn/log"
     "github.com/sesafoundation/sesn/params"
     "github.com/sesafoundation/sesn/rpc"
     "github.com/sesafoundation/sesn/ethdb"
+	"github.com/sesafoundation/sesn/gasprice"
+	"github.com/sesafoundation/sesn/downloader"
 )
 
 const (
