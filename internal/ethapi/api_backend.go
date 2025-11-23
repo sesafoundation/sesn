@@ -3,7 +3,7 @@ package ethapi
 import (
     "context"
     "errors"
-    "math/big"
+  //  "math/big"
     "sync"
     "time"
 
@@ -11,16 +11,16 @@ import (
     "github.com/sesafoundation/sesn/common"
     "github.com/sesafoundation/sesn/consensus"
     "github.com/sesafoundation/sesn/core"
-    "github.com/sesafoundation/sesn/core/bloombits"
-    "github.com/sesafoundation/sesn/core/rawdb"
+   // "github.com/sesafoundation/sesn/core/bloombits"
+  //  "github.com/sesafoundation/sesn/core/rawdb"
     "github.com/sesafoundation/sesn/core/types"
-    "github.com/sesafoundation/sesn/core/vm"
+  //  "github.com/sesafoundation/sesn/core/vm"
     //"github.com/sesafoundation/sesn/core/gasprice"
     "github.com/sesafoundation/sesn/preconf"
     //"github.com/sesafoundation/sesn/downloader"
     "github.com/sesafoundation/sesn/event"
-    "github.com/sesafoundation/sesn/log"
-    "github.com/sesafoundation/sesn/params"
+ //   "github.com/sesafoundation/sesn/log"
+ //   "github.com/sesafoundation/sesn/params"
     "github.com/sesafoundation/sesn/rpc"
     "github.com/sesafoundation/sesn/ethdb"
 	"github.com/sesafoundation/sesn/eth/gasprice"
@@ -37,22 +37,39 @@ const (
 // Backend interface — implemented by *eth.Ethereum
 //
 type Backender interface {
+    // blockchain core
     BlockChain() *core.BlockChain
-    TxPool() *core.TxPool
-    Miner() *core.Miner
-    Downloader() *downloader.Downloader
-    ChainDb() ethdb.Database
-    AccountManager() *accounts.Manager
+    ChainConfig() *params.ChainConfig
     Engine() consensus.Engine
 
-    // sync / misc
-    EventMux() *event.TypeMux
-    EthVersion() int
+    // mining
+    Miner() *miner.Miner
+    StartMining(int) error
+
+    // tx pool
+    TxPool() *core.TxPool
+
+    // sync / networking
+    Downloader() *downloader.Downloader
+    ProtocolVersion() int
     NetVersion() uint64
-    NodeInfo() interface{}
+
+    // database + accounts
+    ChainDb() ethdb.Database
+    AccountManager() *accounts.Manager
+    EventMux() *event.TypeMux
+
+    // RPC safety
     RPCGasCap() uint64
     RPCTxFeeCap() float64
+
+    // suggested gas-price oracle
+    SuggestPrice(ctx context.Context) (*big.Int, error)
+
+    // misc
+    NodeInfo() interface{}
 }
+
 
 //
 // Main API backend wrapper
