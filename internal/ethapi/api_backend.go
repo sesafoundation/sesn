@@ -55,6 +55,7 @@ import (
 type EthAPIBackend struct {
     extRPCEnabled bool
     eth           *Ethereum
+	gpo           core.GasPriceOracle
 
     // === PRECONF EXTENSIONS ===
     PreconfMu       sync.RWMutex
@@ -387,6 +388,5 @@ func (b *EthAPIBackend) LoadPreconfReceipt(hash common.Hash) *preconf.PreconfRec
 func (b *EthAPIBackend) PreconfSubscribe(ch chan *preconf.PreconfReceipt) event.Subscription {
     return b.PreconfFeed.Subscribe(ch)
 }
-
 
 
