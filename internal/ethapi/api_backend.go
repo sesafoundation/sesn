@@ -11,18 +11,19 @@ import (
     "github.com/sesafoundation/sesn/common"
     "github.com/sesafoundation/sesn/consensus"
     "github.com/sesafoundation/sesn/core"
-    "github.com/sesafoundation/sesn/core/bloombits"
-    "github.com/sesafoundation/sesn/core/rawdb"
+  //  "github.com/sesafoundation/sesn/core/bloombits"
+ //   "github.com/sesafoundation/sesn/core/rawdb"
     "github.com/sesafoundation/sesn/core/types"
-    "github.com/sesafoundation/sesn/core/vm"
+   // "github.com/sesafoundation/sesn/core/vm"
     "github.com/sesafoundation/sesn/preconf"
     "github.com/sesafoundation/sesn/event"
-    "github.com/sesafoundation/sesn/log"
+ //   "github.com/sesafoundation/sesn/log"
     "github.com/sesafoundation/sesn/params"
     "github.com/sesafoundation/sesn/rpc"
     "github.com/sesafoundation/sesn/ethdb"
 	"github.com/sesafoundation/sesn/eth/gasprice"
 	"github.com/sesafoundation/sesn/eth/downloader"
+	"github.com/sesafoundation/sesn/miner"
 )
 
 const (
