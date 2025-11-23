@@ -779,8 +779,10 @@ func (w *worker) updateSnapshot() {
 
 // commitTransaction applies a tx and (if enabled) stores a preconf receipt.
 func (w *worker) commitTransaction(tx *types.Transaction, coinbase common.Address) ([]*types.Log, error) {
+    // snapshot for revert-on-error
     snap := w.current.state.Snapshot()
 
+    // Apply transaction to state (normal Geth execution)
     receipt, err := core.ApplyTransaction(
         w.chainConfig,
         w.chain,
@@ -797,26 +799,31 @@ func (w *worker) commitTransaction(tx *types.Transaction, coinbase common.Addres
         return nil, err
     }
 
-    // original Geth logic
+    // Update block context
     w.current.txs = append(w.current.txs, tx)
     w.current.receipts = append(w.current.receipts, receipt)
 
-    // --- PRECONF HOOK --------------------------------------
-			if w.preconfBackend != nil {
-    	r := &preconf.PreconfReceipt{
-        TxHash:      tx.Hash(),
-        MiniBlockID: 0,            // TODO: update when miniblock ID passed from builder
-        Signer:      w.coinbase,   // current validator/miner
-        Signature:   nil,
+    // ---- PRECONF RECEIPT HOOK ------------------------------------------
+    //
+    // Only store a preconfirmation if:
+    //  1) backend is enabled, and
+    //  2) TX was successfully executed (receipt != nil)
+    //
+    if w.preconfBackend != nil {
+        r := &preconf.PreconfReceipt{
+            TxHash:      tx.Hash(),
+            MiniBlockID: 0,        // updated later in commitTransactions when miniblock exists
+            Signer:      coinbase, // block proposer / validator
+        }
+        // backend handles feed + storage
+        w.preconfBackend.StorePreconfReceipt(tx.Hash(), r)
     }
-    w.preconfBackend.StorePreconfReceipt(tx.Hash(), r)
-    w.preconfBackend.PreconfFeed().Send(r)
-}
-}
-    // --------------------------------------------------------
+    // --------------------------------------------------------------------
 
     return receipt.Logs, nil
 }
+
+
 
 func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coinbase common.Address, interrupt *int32) bool {
 	// Short circuit if current is nil
@@ -830,172 +837,124 @@ func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coin
 
 	var coalescedLogs []*types.Log
 
-	for {
+	// === PRECONF FAST-PATH (optional) ======================================
+	if w.preconf != nil {
+		if mb := w.preconf.Latest(); mb != nil {
+			log.Info("Including preconf txs", "count", len(mb.TxHashes), "mbID", mb.ID)
 
-		// === PRECONF FAST-PATH (100ms) ===
-		if w.preconf != nil {
-    	if mb := w.preconf.Latest(); mb != nil {
-        log.Info("Including preconf txs", "count", len(mb.TxHashes), "mbID", mb.ID)
+			for _, h := range mb.TxHashes {
+				tx := w.eth.TxPool().Get(h)
+				if tx == nil {
+					log.Warn("Missing preconf tx", "hash", h)
+					continue
+				}
+				if w.current.gasPool.Gas() < params.TxGas {
+					break
+				}
 
-        for _, h := range mb.TxHashes {
-            tx := w.eth.TxPool().Get(h)
-            if tx == nil {
-                log.Warn("Missing preconf tx", "hash", h)
-                continue
-            }
-            if w.current.gasPool.Gas() < params.TxGas {
-                break
-            }
+				w.current.state.Prepare(h, common.Hash{}, w.current.tcount)
+				logs, err := w.commitTransaction(tx, coinbase)
+				if err != nil {
+					log.Warn("Preconf tx failed", "hash", h, "err", err)
+					continue
+				}
 
-            // execute the tx
-            w.current.state.Prepare(h, common.Hash{}, w.current.tcount)
-            logs, err := w.commitTransaction(tx, coinbase)
-            if err != nil {
-                log.Warn("Preconf tx failed", "hash", h, "err", err)
-                continue
-            }
+				coalescedLogs = append(coalescedLogs, logs...)
+				w.current.tcount++
 
-            coalescedLogs = append(coalescedLogs, logs...)
-            w.current.tcount++
-			//preconf
-					if w.preconfBackend != nil {
- 	   	r := &preconf.PreconfReceipt{
-        TxHash:      tx.Hash(),
-        MiniBlockID: 0,            // TODO: update when miniblock ID passed from builder
-        Signer:      w.coinbase,   // current validator/miner
-        Signature:   nil,
-    	}
-    		w.preconfBackend.StorePreconfReceipt(tx.Hash(), r)
-    		w.preconfBackend.PreconfFeed().Send(r)
-}			
-
-
-
-
-
-   // w.preconfBackend.PreconfSubscribe(...)  // only if broadcasting
-}
-	
-			//end preconf
-        }
-    	}	
+				// Store receipt — backend will publish events automatically
+				if w.preconfBackend != nil {
+					w.preconfBackend.StorePreconfReceipt(h, &preconf.PreconfReceipt{
+						TxHash:      h,
+						MiniBlockID: mb.ID,     // correct mini-block ID here
+						Signer:      coinbase,
+					})
+				}
+			}
 		}
-// === END PRECONF FAST-PATH ===
-		// In the following three cases, we will interrupt the execution of the transaction.
-		// (1) new head block event arrival, the interrupt signal is 1
-		// (2) worker start or restart, the interrupt signal is 1
-		// (3) worker recreate the mining block with any newly arrived transactions, the interrupt signal is 2.
-		// For the first two cases, the semi-finished work will be discarded.
-		// For the third case, the semi-finished work will be submitted to the consensus engine.
+	}
+	// =======================================================================
+
+	for {
+		// Interrupt handling (unchanged)
 		if interrupt != nil && atomic.LoadInt32(interrupt) != commitInterruptNone {
-			// Notify resubmit loop to increase resubmitting interval due to too frequent commits.
 			if atomic.LoadInt32(interrupt) == commitInterruptResubmit {
 				ratio := float64(w.current.header.GasLimit-w.current.gasPool.Gas()) / float64(w.current.header.GasLimit)
 				if ratio < 0.1 {
 					ratio = 0.1
 				}
-				w.resubmitAdjustCh <- &intervalAdjust{
-					ratio: ratio,
-					inc:   true,
-				}
+				w.resubmitAdjustCh <- &intervalAdjust{ratio: ratio, inc: true}
 			}
 			return atomic.LoadInt32(interrupt) == commitInterruptNewHead
 		}
-		// If we don't have enough gas for any further transactions then we're done
+
+		// Stop if gas left is less than TxGas
 		if w.current.gasPool.Gas() < params.TxGas {
-			log.Trace("Not enough gas for further transactions", "have", w.current.gasPool, "want", params.TxGas)
 			break
 		}
-		// Retrieve the next transaction and abort if all done
+
+		// Next pending transaction
 		tx := txs.Peek()
 		if tx == nil {
 			break
 		}
-		// Error may be ignored here. The error has already been checked
-		// during transaction acceptance is the transaction pool.
-		//
-		// We use the eip155 signer regardless of the current hf.
-		from, _ := types.Sender(w.current.signer, tx)
-		// Check whether the tx is replay protected. If we're not in the EIP155 hf
-		// phase, start ignoring the sender until we do.
-		if tx.Protected() && !w.chainConfig.IsEIP155(w.current.header.Number) {
-			log.Trace("Ignoring reply protected transaction", "hash", tx.Hash(), "eip155", w.chainConfig.EIP155Block)
 
+		from, _ := types.Sender(w.current.signer, tx)
+		if tx.Protected() && !w.chainConfig.IsEIP155(w.current.header.Number) {
 			txs.Pop()
 			continue
 		}
-		// Start executing the transaction
-		w.current.state.Prepare(tx.Hash(), common.Hash{}, w.current.tcount)
 
+		w.current.state.Prepare(tx.Hash(), common.Hash{}, w.current.tcount)
 		logs, err := w.commitTransaction(tx, coinbase)
 		switch {
 		case errors.Is(err, core.ErrGasLimitReached):
-			// Pop the current out-of-gas transaction without shifting in the next from the account
-			log.Trace("Gas limit exceeded for current block", "sender", from)
 			txs.Pop()
 
 		case errors.Is(err, core.ErrNonceTooLow):
-			// New head notification data race between the transaction pool and miner, shift
-			log.Trace("Skipping transaction with low nonce", "sender", from, "nonce", tx.Nonce())
 			txs.Shift()
 
 		case errors.Is(err, core.ErrNonceTooHigh):
-			// Reorg notification data race between the transaction pool and miner, skip account =
-			log.Trace("Skipping account with hight nonce", "sender", from, "nonce", tx.Nonce())
 			txs.Pop()
 
 		case errors.Is(err, nil):
-			// Everything ok, collect the logs and shift in the next transaction from the same account
 			coalescedLogs = append(coalescedLogs, logs...)
 
-				// === Preconf Receipt injection ===
-						if w.preconfBackend != nil {
-    			r := &preconf.PreconfReceipt{
-        		TxHash:      tx.Hash(),
-        		MiniBlockID: 0,            // TODO: update when miniblock ID passed from builder
-        		Signer:      w.coinbase,   // current validator/miner
-        		Signature:   nil,
-    }
-    w.preconfBackend.StorePreconfReceipt(tx.Hash(), r)
-    w.preconfBackend.PreconfFeed().Send(r)
-}
-    			// === End Preconf ===
+			// === Preconf Receipt for non-preconf tx ======================
+			if w.preconfBackend != nil {
+				w.preconfBackend.StorePreconfReceipt(tx.Hash(), &preconf.PreconfReceipt{
+					TxHash:      tx.Hash(),
+					MiniBlockID: 0,     // not from miniblock → id zero
+					Signer:      coinbase,
+				})
+			}
+			// ==============================================================
 
 			w.current.tcount++
 			txs.Shift()
-			
-
 
 		default:
-			// Strange error, discard the transaction and get the next in line (note, the
-			// nonce-too-high clause will prevent us from executing in vain).
-			log.Debug("Transaction failed, account skipped", "hash", tx.Hash(), "err", err)
 			txs.Shift()
 		}
 	}
 
+	// pending logs delivery (unchanged)
 	if !w.isRunning() && len(coalescedLogs) > 0 {
-		// We don't push the pendingLogsEvent while we are mining. The reason is that
-		// when we are mining, the worker will regenerate a mining block every 3 seconds.
-		// In order to avoid pushing the repeated pendingLog, we disable the pending log pushing.
-
-		// make a copy, the state caches the logs and these logs get "upgraded" from pending to mined
-		// logs by filling in the block hash when the block was mined by the local miner. This can
-		// cause a race condition if a log was "upgraded" before the PendingLogsEvent is processed.
 		cpy := make([]*types.Log, len(coalescedLogs))
 		for i, l := range coalescedLogs {
-			cpy[i] = new(types.Log)
-			*cpy[i] = *l
+			x := new(types.Log)
+			*x = *l
+			cpy[i] = x
 		}
 		w.pendingLogsFeed.Send(cpy)
 	}
-	// Notify resubmit loop to decrease resubmitting interval if current interval is larger
-	// than the user-specified one.
+
 	if interrupt != nil {
 		w.resubmitAdjustCh <- &intervalAdjust{inc: false}
 	}
 	return false
 }
+
 
 // commitNewWork generates several new sealing tasks based on the parent block.
 func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) {

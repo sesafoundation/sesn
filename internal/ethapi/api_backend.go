@@ -345,11 +345,11 @@ func (b *EthAPIBackend) GetPreconfReceipt(hash common.Hash) (*preconf.PreconfRec
     return r, ok
 }
 
-
 func (b *EthAPIBackend) StorePreconfReceipt(h common.Hash, r *preconf.PreconfReceipt) {
     b.preconfMu.Lock()
     b.preconfReceipts[h] = r
     b.preconfMu.Unlock()
+    b.preconfFeed.Send(r)
 }
 
 func (b *EthAPIBackend) LoadPreconfReceipt(h common.Hash) *preconf.PreconfReceipt {
