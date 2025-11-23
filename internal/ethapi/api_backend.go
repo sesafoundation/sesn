@@ -36,29 +36,29 @@ const (
 //
 // Backend interface — implemented by *eth.Ethereum
 //
-//type Backend interface {
-//    BlockChain() *core.BlockChain
-//    TxPool() *core.TxPool
-//    Miner() *core.Miner
-//    Downloader() *downloader.Downloader
-//    ChainDb() ethdb.Database
-//    AccountManager() *accounts.Manager
-//    Engine() consensus.Engine
-//
-//    // sync / misc
-//    EventMux() *event.TypeMux
-//    EthVersion() int
-//    NetVersion() uint64
-//    NodeInfo() interface{}
-//    RPCGasCap() uint64
-//    RPCTxFeeCap() float64
-//}
+type Backender interface {
+    BlockChain() *core.BlockChain
+    TxPool() *core.TxPool
+    Miner() *core.Miner
+    Downloader() *downloader.Downloader
+    ChainDb() ethdb.Database
+    AccountManager() *accounts.Manager
+    Engine() consensus.Engine
+
+    // sync / misc
+    EventMux() *event.TypeMux
+    EthVersion() int
+    NetVersion() uint64
+    NodeInfo() interface{}
+    RPCGasCap() uint64
+    RPCTxFeeCap() float64
+}
 
 //
 // Main API backend wrapper
 //
 type EthAPIBackend struct {
-    backend        Backend
+    backend        Backender
     extRPCEnabled  bool
     gpo            *gasprice.Oracle
 
