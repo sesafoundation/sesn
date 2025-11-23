@@ -139,31 +139,35 @@ func New(stack *node.Node, config *Config) (*Ethereum, error) {
 	log.Info("Initialised chain configuration", "config", chainConfig)
 
 	eth := &Ethereum{
-		config:            config,
-		chainDb:           chainDb,
-		eventMux:          stack.EventMux(),
-		accountManager:    stack.AccountManager(),
-		closeBloomHandler: make(chan struct{}),
-		networkID:         config.NetworkId,
-		gasPrice:          config.Miner.GasPrice,
-		etherbase:         config.Miner.Etherbase,
-		bloomRequests:     make(chan chan *bloombits.Retrieval),
-		bloomIndexer:      NewBloomIndexer(chainDb, params.BloomBitsBlocks, params.BloomConfirms),
-		p2pServer:         stack.Server(),
+    config:            config,
+    chainDb:           chainDb,
+    eventMux:          stack.EventMux(),
+    accountManager:    stack.AccountManager(),
+    closeBloomHandler: make(chan struct{}),
+    networkID:         config.NetworkId,
+    gasPrice:          config.Miner.GasPrice,
+    etherbase:         config.Miner.Etherbase,
+    bloomRequests:     make(chan chan *bloombits.Retrieval),
+    bloomIndexer:      NewBloomIndexer(chainDb, params.BloomBitsBlocks, params.BloomConfirms),
+    p2pServer:         stack.Server(),
 	}
-	//eth.APIBackend = NewEthAPIBackend(stack.Config().ExtRPCEnabled(), eth)
+
+	// -------------------------------------------------------
+	// Assign API backend without import cycle
+	// -------------------------------------------------------
 	eth.APIBackend = &EthAPIBackend{
-    extRPCEnabled:    stack.Config().ExtRPCEnabled(),
-    backend:            eth,
-    gpo:              nil, // oracle set later
-    //PreconfReceipts:  make(map[common.Hash]*preconf.PreconfReceipt),
-	preconfReceipts: make(map[common.Hash]*preconf.PreconfReceipt),
-}
+    extRPCEnabled:   stack.Config().ExtRPCEnabled(),
+    backend:         eth,   // store as Backend interface
+    gpo:             nil,   // set gas price oracle later
+    preconfReceipts: make(map[common.Hash]*preconf.PreconfReceipt),
+	}
 
-	ethAPI := ethapi.NewPublicBlockChainAPI(eth.APIBackend)
-	eth.APIBackend.PreconfReceipts = make(map[common.Hash]*preconf.PreconfReceipt)
+	// This is the correct API to pass `eth` into
+	ethAPI := ethapi.NewPublicBlockChainAPI(eth)
 
+	// Create consensus engine (unchanged)
 	eth.engine = CreateConsensusEngine(stack, chainConfig, &config.Ethash, config.Miner.Notify, config.Miner.Noverify, chainDb, ethAPI)
+
 
 	bcVersion := rawdb.ReadDatabaseVersion(chainDb)
 	var dbVer = "<nil>"
