@@ -40,6 +40,7 @@ import (
 	"github.com/sesafoundation/sesn/rpc"
 	"github.com/sesafoundation/sesn/preconf"
 	// eth "github.com/sesafoundation/sesn/eth"
+	ethpkg "github.com/sesafoundation/sesn/eth"
 )
 
 const (
@@ -47,10 +48,9 @@ const (
     bloomRetrievalBatch = 16
     bloomRetrievalWait  = 50 * time.Millisecond
 )
-
 type EthAPIBackend struct {
     extRPCEnabled   bool
-    eth             *Ethereum
+    eth             *ethpkg.Ethereum
     gpo             *gasprice.Oracle
 
     preconfMu       sync.RWMutex
@@ -58,10 +58,10 @@ type EthAPIBackend struct {
     preconfFeed     event.Feed
 }
 
-func NewEthAPIBackend(ext bool, eth *Ethereum) *EthAPIBackend {
+func NewEthAPIBackend(ext bool, node *ethpkg.Ethereum) *EthAPIBackend {
     return &EthAPIBackend{
         extRPCEnabled:   ext,
-        eth:             eth,
+        eth:             node,
         preconfReceipts: make(map[common.Hash]*preconf.PreconfReceipt),
     }
 }
