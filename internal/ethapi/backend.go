@@ -38,6 +38,8 @@ import (
 	 "github.com/sesafoundation/sesn/preconf"
 	// "github.com/sesafoundation/sesn/internal/preconfapi"
 	 preconfapi "github.com/sesafoundation/sesn/internal/preconfapi"
+	  "github.com/sesafoundation/sesn/miner"
+	  ethtypes "github.com/sesafoundation/sesn/eth/protocols/eth"
 )
 
 // Backend interface provides the common API services (that are provided by
@@ -100,7 +102,8 @@ type Backend interface {
 
 	BlockChain() *core.BlockChain
 	Miner() *miner.Miner
-	ProtocolManager() *ProtocolManager
+	//ProtocolManager() *ProtocolManager
+	ProtocolManager() *ethtypes.ProtocolManager
 	NetVersion() int
 	NodeInfo() interface{}
 }
