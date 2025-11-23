@@ -31,15 +31,13 @@ import (
 	"github.com/sesafoundation/sesn/core/types"
 	"github.com/sesafoundation/sesn/core/vm"
 	"github.com/sesafoundation/sesn/eth/downloader"
-	"github.com/sesafoundation/sesn/eth/gasprice"
+	//"github.com/sesafoundation/sesn/eth/gasprice"
 	"github.com/sesafoundation/sesn/ethdb"
 	"github.com/sesafoundation/sesn/event"
 	"github.com/sesafoundation/sesn/miner"
 	"github.com/sesafoundation/sesn/params"
 	"github.com/sesafoundation/sesn/rpc"
-	"github.com/sesafoundation/sesn/preconf"
-	//"github.com/ethereum/go-ethereum/event"
-
+	//"github.com/sesafoundation/sesn/preconf"
 )
 
 // EthAPIBackend implements ethapi.Backend for full nodes
@@ -57,17 +55,16 @@ type EthAPIBackend struct {
     eth           *Ethereum
 	gpo           core.GasPriceOracle
 
-    // === PRECONF EXTENSIONS ===
-    PreconfMu       sync.RWMutex
-    PreconfReceipts map[common.Hash]*preconf.PreconfReceipt
-    PreconfFeed     event.Feed
-}
+	preconfMu       sync.RWMutex
+	preconfReceipts map[common.Hash]*preconf.PreconfReceipt
+	preconfFeed     event.Feed
 
 func NewEthAPIBackend(ext bool, eth *Ethereum) *EthAPIBackend {
     return &EthAPIBackend{
         extRPCEnabled:   ext,
         eth:             eth,
-        PreconfReceipts: make(map[common.Hash]*preconf.PreconfReceipt),
+        //PreconfReceipts: make(map[common.Hash]*preconf.PreconfReceipt),
+		preconfReceipts: make(map[common.Hash]*preconf.PreconfReceipt),
     }
 }
 
@@ -360,33 +357,33 @@ func (b *EthAPIBackend) StartMining(threads int) error {
 
 // GetPreconfReceipt returns receipt + boolean existence indicator
 func (b *EthAPIBackend) GetPreconfReceipt(hash common.Hash) (*preconf.PreconfReceipt, bool) {
-    b.PreconfMu.RLock()
-    r, ok := b.PreconfReceipts[hash]
-    b.PreconfMu.RUnlock()
+    b.preconfMu.RLock()
+    r, ok := b.preconfReceipts[hash]
+    b.preconfMu.RUnlock()
     return r, ok
-}
-
-// StorePreconfReceipt saves receipt and publishes WS notification
-func (b *EthAPIBackend) StorePreconfReceipt(hash common.Hash, r *preconf.PreconfReceipt) {
-    b.PreconfMu.Lock()
-    b.PreconfReceipts[hash] = r
-    b.PreconfMu.Unlock()
-
-    // Notify subscribers (non-blocking event feed)
-    b.PreconfFeed.Send(r)
-}
-
-// LoadPreconfReceipt returns receipt or nil (without ok flag)
-func (b *EthAPIBackend) LoadPreconfReceipt(hash common.Hash) *preconf.PreconfReceipt {
-    b.PreconfMu.RLock()
-    r := b.PreconfReceipts[hash]
-    b.PreconfMu.RUnlock()
-    return r
 }
 
 // PreconfSubscribe registers a subscriber WS channel
 func (b *EthAPIBackend) PreconfSubscribe(ch chan *preconf.PreconfReceipt) event.Subscription {
     return b.PreconfFeed.Subscribe(ch)
+}
+
+
+func (b *EthAPIBackend) StorePreconfReceipt(h common.Hash, r *preconf.PreconfReceipt) {
+    b.preconfMu.Lock()
+    b.preconfReceipts[h] = r
+    b.preconfMu.Unlock()
+}
+
+func (b *EthAPIBackend) LoadPreconfReceipt(h common.Hash) *preconf.PreconfReceipt {
+    b.preconfMu.RLock()
+    r := b.preconfReceipts[h]
+    b.preconfMu.RUnlock()
+    return r
+}
+
+func (b *EthAPIBackend) PreconfSubscribe(ch chan *preconf.PreconfReceipt) event.Subscription {
+    return b.preconfFeed.Subscribe(ch)
 }
 
 

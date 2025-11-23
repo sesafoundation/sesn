@@ -808,16 +808,15 @@ func (w *worker) commitTransaction(tx *types.Transaction, coinbase common.Addres
     // Only store a preconfirmation if:
     //  1) backend is enabled, and
     //  2) TX was successfully executed (receipt != nil)
-    //
-    if w.preconfBackend != nil {
-        r := &preconf.PreconfReceipt{
-            TxHash:      tx.Hash(),
-            MiniBlockID: 0,        // updated later in commitTransactions when miniblock exists
-            Signer:      coinbase, // block proposer / validator
-        }
-        // backend handles feed + storage
-        w.preconfBackend.StorePreconfReceipt(tx.Hash(), r)
+
+	if w.preconfBackend != nil {
+    r := &preconf.PreconfReceipt{
+        TxHash:      tx.Hash(),
+        MiniBlockID: 0,
+        Signer:      w.coinbase,
     }
+    w.preconfBackend.StorePreconfReceipt(tx.Hash(), r)
+}
     // --------------------------------------------------------------------
 
     return receipt.Logs, nil
@@ -867,7 +866,7 @@ func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coin
 					w.preconfBackend.StorePreconfReceipt(h, &preconf.PreconfReceipt{
 						TxHash:      h,
 						MiniBlockID: mb.ID,     // correct mini-block ID here
-						Signer:      coinbase,
+						Signer:      w.coinbase,
 					})
 				}
 			}
@@ -926,7 +925,7 @@ func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coin
 				w.preconfBackend.StorePreconfReceipt(tx.Hash(), &preconf.PreconfReceipt{
 					TxHash:      tx.Hash(),
 					MiniBlockID: 0,     // not from miniblock → id zero
-					Signer:      coinbase,
+					Signer:      w.coinbase,
 				})
 			}
 			// ==============================================================

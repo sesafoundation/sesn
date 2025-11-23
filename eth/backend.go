@@ -154,7 +154,8 @@ func New(stack *node.Node, config *Config) (*Ethereum, error) {
     extRPCEnabled:    stack.Config().ExtRPCEnabled(),
     eth:              eth,
     gpo:              nil, // oracle set later
-    PreconfReceipts:  make(map[common.Hash]*preconf.PreconfReceipt),
+    //PreconfReceipts:  make(map[common.Hash]*preconf.PreconfReceipt),
+	preconfReceipts: make(map[common.Hash]*preconf.PreconfReceipt),
 }
 
 	ethAPI := ethapi.NewPublicBlockChainAPI(eth.APIBackend)
@@ -229,7 +230,8 @@ func New(stack *node.Node, config *Config) (*Ethereum, error) {
     extRPCEnabled:    stack.Config().ExtRPCEnabled(),
     eth:              eth,
     gpo:              nil, // oracle set later
-    PreconfReceipts:  make(map[common.Hash]*preconf.PreconfReceipt),
+    //PreconfReceipts:  make(map[common.Hash]*preconf.PreconfReceipt),
+	preconfReceipts: make(map[common.Hash]*preconf.PreconfReceipt),
 }
 	gpoParams := config.GPO
 	if gpoParams.Default == nil {
