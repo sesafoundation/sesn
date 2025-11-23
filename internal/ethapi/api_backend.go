@@ -24,6 +24,7 @@ import (
 	"github.com/sesafoundation/sesn/eth/gasprice"
 	"github.com/sesafoundation/sesn/eth/downloader"
 	"github.com/sesafoundation/sesn/miner"
+	core_state "github.com/ethereum/go-ethereum/core/state"
 )
 
 const (
@@ -35,46 +36,45 @@ const (
 //
 // Backend interface — implemented by *eth.Ethereum
 //
-type Backender interface {
-    // blockchain core
+type Backend interface {
+    // blockchain
     BlockChain() *core.BlockChain
-    ChainConfig() *params.ChainConfig
-    Engine() consensus.Engine
+    CurrentBlock() *types.Block
+    CurrentHeader() *types.Header
+    SetHead(uint64)
 
     // mining
     Miner() *miner.Miner
     StartMining(int) error
 
-    // tx pool
+    // txpool
     TxPool() *core.TxPool
+    SendTx(context.Context, *types.Transaction) error
 
     // sync / networking
     Downloader() *downloader.Downloader
     ProtocolVersion() int
     NetVersion() uint64
+    NodeInfo() interface{}
 
-    // database + accounts
+    // config + database
     ChainDb() ethdb.Database
+    ChainConfig() *params.ChainConfig
     AccountManager() *accounts.Manager
-    EventMux() *event.TypeMux
+    Engine() consensus.Engine
 
     // RPC safety
     RPCGasCap() uint64
     RPCTxFeeCap() float64
-
-    // suggested gas-price oracle
-    SuggestPrice(ctx context.Context) (*big.Int, error)
-
-    // misc
-    NodeInfo() interface{}
 }
+
 
 
 //
 // Main API backend wrapper
 //
 type EthAPIBackend struct {
-    backend        Backender
+    backend        Backend
     extRPCEnabled  bool
     gpo            *gasprice.Oracle
 
