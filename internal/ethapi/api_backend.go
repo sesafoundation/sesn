@@ -101,12 +101,7 @@ func (b *EthAPIBackend) StateAndHeaderByNumber(ctx context.Context, num rpc.Bloc
         if blk == nil || pendingState == nil {
             return nil, nil, errors.New("pending block/state unavailable")
         }
-        // Ensure type matches *state.StateDB
-        st, ok := pendingState.(*state.StateDB)
-        if !ok {
-            return nil, nil, errors.New("pending state is not *state.StateDB")
-        }
-        return st, blk.Header(), nil
+        return pendingState, blk.Header(), nil // pendingState is already *state.StateDB
     }
 
     // ---- Resolve header for given block number ----
@@ -119,17 +114,14 @@ func (b *EthAPIBackend) StateAndHeaderByNumber(ctx context.Context, num rpc.Bloc
     }
 
     // ---- Load state for that header ----
-    stRaw, err := b.backend.BlockChain().StateAt(hdr.Root)
+    st, err := b.backend.BlockChain().StateAt(hdr.Root) // already returns *state.StateDB
     if err != nil {
         return nil, nil, err
-    }
-    st, ok := stRaw.(*state.StateDB)
-    if !ok {
-        return nil, nil, errors.New("StateAt did not return *state.StateDB")
     }
 
     return st, hdr, nil
 }
+
 
 
 //
