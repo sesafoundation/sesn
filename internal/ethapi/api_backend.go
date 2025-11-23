@@ -3,7 +3,7 @@ package ethapi
 import (
     "context"
     "errors"
-    "math/big"
+  //  "math/big"
     "sync"
     "time"
 
@@ -24,7 +24,8 @@ import (
 	"github.com/sesafoundation/sesn/eth/gasprice"
 	"github.com/sesafoundation/sesn/eth/downloader"
 	"github.com/sesafoundation/sesn/miner"
-	core_state "github.com/ethereum/go-ethereum/core/state"
+	"github.com/ethereum/go-ethereum/core/state"
+	//core_state "github.com/ethereum/go-ethereum/core/state"
 )
 
 const (
