@@ -23,8 +23,8 @@ import (
     "github.com/sesafoundation/sesn/params"
     "github.com/sesafoundation/sesn/rpc"
     "github.com/sesafoundation/sesn/ethdb"
-	"github.com/sesafoundation/sesn/gasprice"
-	"github.com/sesafoundation/sesn/downloader"
+	"github.com/sesafoundation/sesn/eth/gasprice"
+	"github.com/sesafoundation/sesn/eth/downloader"
 )
 
 const (
