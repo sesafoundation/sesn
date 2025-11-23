@@ -59,7 +59,8 @@ const (
 
 type EthAPIBackend struct {
     extRPCEnabled bool
-    eth           *eth.Ethereum
+    //eth           *eth.Ethereum
+	backend       Backend  
     gpo           *gasprice.Oracle
 	preconfMu       sync.RWMutex
 	preconfReceipts map[common.Hash]*preconf.PreconfReceipt
