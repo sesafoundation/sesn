@@ -58,6 +58,7 @@ type EthAPIBackend struct {
 	preconfMu       sync.RWMutex
 	preconfReceipts map[common.Hash]*preconf.PreconfReceipt
 	preconfFeed     event.Feed
+}
 
 func NewEthAPIBackend(ext bool, eth *Ethereum) *EthAPIBackend {
     return &EthAPIBackend{
