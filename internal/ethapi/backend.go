@@ -39,7 +39,7 @@ import (
 	// "github.com/sesafoundation/sesn/internal/preconfapi"
 	 preconfapi "github.com/sesafoundation/sesn/internal/preconfapi"
 	  "github.com/sesafoundation/sesn/miner"
-	  ethtypes "github.com/sesafoundation/sesn/eth/protocols/eth"
+	  //ethtypes "github.com/sesafoundation/sesn/eth/protocols/eth"
 )
 
 // Backend interface provides the common API services (that are provided by
@@ -100,12 +100,12 @@ type Backend interface {
     LoadPreconfReceipt(common.Hash) *preconf.PreconfReceipt
     PreconfSubscribe(chan *preconf.PreconfReceipt) event.Subscription
 
-	BlockChain() *core.BlockChain
-	Miner() *miner.Miner
+	//BlockChain() *core.BlockChain
+	//Miner() *miner.Miner
 	//ProtocolManager() *ProtocolManager
-	ProtocolManager() *ethtypes.ProtocolManager
-	NetVersion() int
-	NodeInfo() interface{}
+	//ProtocolManager() *ethtypes.ProtocolManager
+	//NetVersion() int
+	//NodeInfo() interface{}
 }
 
 

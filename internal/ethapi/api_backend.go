@@ -49,15 +49,15 @@ const (
 )
 
 type EthAPIBackend struct {
-    extRPCEnabled   bool
-    backend         Backend          // ← pointer to full Ethereum backend (interface)
-    gpo             *gasprice.Oracle // injected later
+    backend Backend
+    extRPCEnabled bool
+    gpo *gasprice.Oracle
 
-    // PRECONF
     preconfMu       sync.RWMutex
     preconfReceipts map[common.Hash]*preconf.PreconfReceipt
     preconfFeed     event.Feed
 }
+
 
 
 
