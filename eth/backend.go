@@ -77,7 +77,7 @@ type Ethereum struct {
 	bloomIndexer      *core.ChainIndexer             // Bloom indexer operating during block imports
 	closeBloomHandler chan struct{}
 
-	APIBackend *EthAPIBackend
+		APIBackend *EthAPIBackend
 
 	miner     *miner.Miner
 	gasPrice  *big.Int
@@ -154,7 +154,7 @@ func New(stack *node.Node, config *Config) (*Ethereum, error) {
 	//eth.APIBackend = NewEthAPIBackend(stack.Config().ExtRPCEnabled(), eth)
 	eth.APIBackend = &EthAPIBackend{
     extRPCEnabled:    stack.Config().ExtRPCEnabled(),
-    eth:              eth,
+    backend:            eth,
     gpo:              nil, // oracle set later
     //PreconfReceipts:  make(map[common.Hash]*preconf.PreconfReceipt),
 	preconfReceipts: make(map[common.Hash]*preconf.PreconfReceipt),
@@ -230,7 +230,7 @@ func New(stack *node.Node, config *Config) (*Ethereum, error) {
 	//eth.APIBackend = NewEthAPIBackend(stack.Config().ExtRPCEnabled(), eth)
 	eth.APIBackend = &EthAPIBackend{
     extRPCEnabled:    stack.Config().ExtRPCEnabled(),
-    eth:              eth,
+    backend:             eth,
     gpo:              nil, // oracle set later
     //PreconfReceipts:  make(map[common.Hash]*preconf.PreconfReceipt),
 	preconfReceipts: make(map[common.Hash]*preconf.PreconfReceipt),

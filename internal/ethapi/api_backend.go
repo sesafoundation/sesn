@@ -72,7 +72,7 @@ type EthAPIBackend struct {
 func NewEthAPIBackend(ext bool, eth *Ethereum) *EthAPIBackend {
     return &EthAPIBackend{
         extRPCEnabled:   ext,
-        eth:             eth,
+        backend:            eth,
         //PreconfReceipts: make(map[common.Hash]*preconf.PreconfReceipt),
 		preconfReceipts: make(map[common.Hash]*preconf.PreconfReceipt),
     }
