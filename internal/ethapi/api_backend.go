@@ -47,24 +47,15 @@ const (
     bloomRetrievalWait  = 50 * time.Millisecond
 )
 
-// EthAPIBackend implements ethapi.Backend for full nodes
-//type EthAPIBackend struct {
-//	extRPCEnabled bool
-//	eth           *Ethereum
-//	gpo           *gasprice.Oracle	
-//	preconfMu       sync.RWMutex
-//	preconfReceipts map[common.Hash]*preconf.PreconfReceipt
-//	preconfFeed     event.Feed
-//}
-
 type EthAPIBackend struct {
-    extRPCEnabled bool
-    //eth           *eth.Ethereum
-	backend       Backend  
-    gpo           *gasprice.Oracle
-	preconfMu       sync.RWMutex
-	preconfReceipts map[common.Hash]*preconf.PreconfReceipt
-	preconfFeed     event.Feed
+    extRPCEnabled   bool
+    backend         Backend          // ← pointer to full Ethereum backend (interface)
+    gpo             *gasprice.Oracle // injected later
+
+    // PRECONF
+    preconfMu       sync.RWMutex
+    preconfReceipts map[common.Hash]*preconf.PreconfReceipt
+    preconfFeed     event.Feed
 }
 
 
@@ -73,10 +64,24 @@ func NewEthAPIBackend(ext bool, eth *Ethereum) *EthAPIBackend {
     return &EthAPIBackend{
         extRPCEnabled:   ext,
         backend:            eth,
-        //PreconfReceipts: make(map[common.Hash]*preconf.PreconfReceipt),
 		preconfReceipts: make(map[common.Hash]*preconf.PreconfReceipt),
     }
 }
+
+func (b *EthAPIBackend) BlockChain() *core.BlockChain         { return b.backend.BlockChain() }
+func (b *EthAPIBackend) TxPool() *core.TxPool                  { return b.backend.TxPool() }
+func (b *EthAPIBackend) AccountManager() *accounts.Manager     { return b.backend.AccountManager() }
+func (b *EthAPIBackend) ProtocolVersion() int                  { return b.backend.ProtocolVersion() }
+func (b *EthAPIBackend) Miner() *miner.Miner                   { return b.backend.Miner() }
+func (b *EthAPIBackend) ProtocolManager() interface{}          { return b.backend.ProtocolManager() }
+func (b *EthAPIBackend) NetVersion() uint64                    { return b.backend.NetVersion() }
+func (b *EthAPIBackend) ChainConfig() *params.ChainConfig      { return b.backend.ChainConfig() }
+func (b *EthAPIBackend) NodeInfo() interface{}                 { return b.backend.NodeInfo() }
+func (b *EthAPIBackend) SubscribeChainHead(ch chan<- core.ChainHeadEvent) event.Subscription {
+    return b.backend.SubscribeChainHead(ch)
+}
+
+
 
 
 // ChainConfig returns the active chain configuration.
@@ -84,26 +89,31 @@ func (b *EthAPIBackend) ChainConfig() *params.ChainConfig {
 	return b.backend.blockchain.Config()
 }
 
+// ---------------- Core chain access ----------------
+
 func (b *EthAPIBackend) CurrentBlock() *types.Block {
-	return b.backend.blockchain.CurrentBlock()
+	return b.backend.BlockChain().CurrentBlock()
 }
 
 func (b *EthAPIBackend) SetHead(number uint64) {
-	b.backend.protocolManager.downloader.Cancel()
-	b.backend.blockchain.SetHead(number)
+	// cancel any in-progress download, then move head
+	if dl := b.backend.Downloader(); dl != nil {
+		dl.Cancel()
+	}
+	b.backend.BlockChain().SetHead(number)
 }
 
 func (b *EthAPIBackend) HeaderByNumber(ctx context.Context, number rpc.BlockNumber) (*types.Header, error) {
 	// Pending block is only known by the miner
 	if number == rpc.PendingBlockNumber {
-		block := b.backend.miner.PendingBlock()
+		block := b.backend.Miner().PendingBlock()
 		return block.Header(), nil
 	}
 	// Otherwise resolve and return the block
 	if number == rpc.LatestBlockNumber {
-		return b.backend.blockchain.CurrentBlock().Header(), nil
+		return b.backend.BlockChain().CurrentBlock().Header(), nil
 	}
-	return b.backend.blockchain.GetHeaderByNumber(uint64(number)), nil
+	return b.backend.BlockChain().GetHeaderByNumber(uint64(number)), nil
 }
 
 func (b *EthAPIBackend) HeaderByNumberOrHash(ctx context.Context, blockNrOrHash rpc.BlockNumberOrHash) (*types.Header, error) {
@@ -111,11 +121,11 @@ func (b *EthAPIBackend) HeaderByNumberOrHash(ctx context.Context, blockNrOrHash 
 		return b.HeaderByNumber(ctx, blockNr)
 	}
 	if hash, ok := blockNrOrHash.Hash(); ok {
-		header := b.backend.blockchain.GetHeaderByHash(hash)
+		header := b.backend.BlockChain().GetHeaderByHash(hash)
 		if header == nil {
 			return nil, errors.New("header for hash not found")
 		}
-		if blockNrOrHash.RequireCanonical && b.backend.blockchain.GetCanonicalHash(header.Number.Uint64()) != hash {
+		if blockNrOrHash.RequireCanonical && b.backend.BlockChain().GetCanonicalHash(header.Number.Uint64()) != hash {
 			return nil, errors.New("hash is not currently canonical")
 		}
 		return header, nil
@@ -124,24 +134,24 @@ func (b *EthAPIBackend) HeaderByNumberOrHash(ctx context.Context, blockNrOrHash 
 }
 
 func (b *EthAPIBackend) HeaderByHash(ctx context.Context, hash common.Hash) (*types.Header, error) {
-	return b.backend.blockchain.GetHeaderByHash(hash), nil
+	return b.backend.BlockChain().GetHeaderByHash(hash), nil
 }
 
 func (b *EthAPIBackend) BlockByNumber(ctx context.Context, number rpc.BlockNumber) (*types.Block, error) {
 	// Pending block is only known by the miner
 	if number == rpc.PendingBlockNumber {
-		block := b.backend.miner.PendingBlock()
+		block := b.backend.Miner().PendingBlock()
 		return block, nil
 	}
 	// Otherwise resolve and return the block
 	if number == rpc.LatestBlockNumber {
-		return b.backend.blockchain.CurrentBlock(), nil
+		return b.backend.BlockChain().CurrentBlock(), nil
 	}
-	return b.backend.blockchain.GetBlockByNumber(uint64(number)), nil
+	return b.backend.BlockChain().GetBlockByNumber(uint64(number)), nil
 }
 
 func (b *EthAPIBackend) BlockByHash(ctx context.Context, hash common.Hash) (*types.Block, error) {
-	return b.backend.blockchain.GetBlockByHash(hash), nil
+	return b.backend.BlockChain().GetBlockByHash(hash), nil
 }
 
 func (b *EthAPIBackend) BlockByNumberOrHash(ctx context.Context, blockNrOrHash rpc.BlockNumberOrHash) (*types.Block, error) {
@@ -149,14 +159,14 @@ func (b *EthAPIBackend) BlockByNumberOrHash(ctx context.Context, blockNrOrHash r
 		return b.BlockByNumber(ctx, blockNr)
 	}
 	if hash, ok := blockNrOrHash.Hash(); ok {
-		header := b.backend.blockchain.GetHeaderByHash(hash)
+		header := b.backend.BlockChain().GetHeaderByHash(hash)
 		if header == nil {
 			return nil, errors.New("header for hash not found")
 		}
-		if blockNrOrHash.RequireCanonical && b.backend.blockchain.GetCanonicalHash(header.Number.Uint64()) != hash {
+		if blockNrOrHash.RequireCanonical && b.backend.BlockChain().GetCanonicalHash(header.Number.Uint64()) != hash {
 			return nil, errors.New("hash is not currently canonical")
 		}
-		block := b.backend.blockchain.GetBlock(hash, header.Number.Uint64())
+		block := b.backend.BlockChain().GetBlock(hash, header.Number.Uint64())
 		if block == nil {
 			return nil, errors.New("header found, but block body is missing")
 		}
@@ -165,10 +175,12 @@ func (b *EthAPIBackend) BlockByNumberOrHash(ctx context.Context, blockNrOrHash r
 	return nil, errors.New("invalid arguments; neither block nor hash specified")
 }
 
+// ---------------- State access ----------------
+
 func (b *EthAPIBackend) StateAndHeaderByNumber(ctx context.Context, number rpc.BlockNumber) (*state.StateDB, *types.Header, error) {
 	// Pending state is only known by the miner
 	if number == rpc.PendingBlockNumber {
-		block, state := b.backend.miner.Pending()
+		block, state := b.backend.Miner().Pending()
 		return state, block.Header(), nil
 	}
 	// Otherwise resolve the block number and return its state
@@ -195,7 +207,7 @@ func (b *EthAPIBackend) StateAndHeaderByNumberOrHash(ctx context.Context, blockN
 		if header == nil {
 			return nil, nil, errors.New("header for hash not found")
 		}
-		if blockNrOrHash.RequireCanonical && b.backend.blockchain.GetCanonicalHash(header.Number.Uint64()) != hash {
+		if blockNrOrHash.RequireCanonical && b.backend.BlockChain().GetCanonicalHash(header.Number.Uint64()) != hash {
 			return nil, nil, errors.New("hash is not currently canonical")
 		}
 		stateDb, err := b.backend.BlockChain().StateAt(header.Root)
@@ -204,12 +216,14 @@ func (b *EthAPIBackend) StateAndHeaderByNumberOrHash(ctx context.Context, blockN
 	return nil, nil, errors.New("invalid arguments; neither block nor hash specified")
 }
 
+// ---------------- Receipts / logs / TD / EVM ----------------
+
 func (b *EthAPIBackend) GetReceipts(ctx context.Context, hash common.Hash) (types.Receipts, error) {
-	return b.backend.blockchain.GetReceiptsByHash(hash), nil
+	return b.backend.BlockChain().GetReceiptsByHash(hash), nil
 }
 
 func (b *EthAPIBackend) GetLogs(ctx context.Context, hash common.Hash) ([][]*types.Log, error) {
-	receipts := b.backend.blockchain.GetReceiptsByHash(hash)
+	receipts := b.backend.BlockChain().GetReceiptsByHash(hash)
 	if receipts == nil {
 		return nil, nil
 	}
@@ -221,23 +235,25 @@ func (b *EthAPIBackend) GetLogs(ctx context.Context, hash common.Hash) ([][]*typ
 }
 
 func (b *EthAPIBackend) GetTd(ctx context.Context, hash common.Hash) *big.Int {
-	return b.backend.blockchain.GetTdByHash(hash)
+	return b.backend.BlockChain().GetTdByHash(hash)
 }
 
 func (b *EthAPIBackend) GetEVM(ctx context.Context, msg core.Message, state *state.StateDB, header *types.Header) (*vm.EVM, func() error, error) {
 	vmError := func() error { return nil }
 
 	txContext := core.NewEVMTxContext(msg)
-	context := core.NewEVMBlockContext(header, b.backend.BlockChain(), nil)
-	return vm.NewEVM(context, txContext, state, b.backend.blockchain.Config(), *b.backend.blockchain.GetVMConfig()), vmError, nil
+	blockCtx := core.NewEVMBlockContext(header, b.backend.BlockChain(), nil)
+	return vm.NewEVM(blockCtx, txContext, state, b.backend.BlockChain().Config(), *b.backend.BlockChain().GetVMConfig()), vmError, nil
 }
+
+// ---------------- Subscriptions ----------------
 
 func (b *EthAPIBackend) SubscribeRemovedLogsEvent(ch chan<- core.RemovedLogsEvent) event.Subscription {
 	return b.backend.BlockChain().SubscribeRemovedLogsEvent(ch)
 }
 
 func (b *EthAPIBackend) SubscribePendingLogsEvent(ch chan<- []*types.Log) event.Subscription {
-	return b.backend.miner.SubscribePendingLogs(ch)
+	return b.backend.Miner().SubscribePendingLogs(ch)
 }
 
 func (b *EthAPIBackend) SubscribeChainEvent(ch chan<- core.ChainEvent) event.Subscription {
@@ -256,12 +272,14 @@ func (b *EthAPIBackend) SubscribeLogsEvent(ch chan<- []*types.Log) event.Subscri
 	return b.backend.BlockChain().SubscribeLogsEvent(ch)
 }
 
+// ---------------- Tx pool access ----------------
+
 func (b *EthAPIBackend) SendTx(ctx context.Context, signedTx *types.Transaction) error {
-	return b.backend.txPool.AddLocal(signedTx)
+	return b.backend.TxPool().AddLocal(signedTx)
 }
 
 func (b *EthAPIBackend) GetPoolTransactions() (types.Transactions, error) {
-	pending, err := b.backend.txPool.Pending()
+	pending, err := b.backend.TxPool().Pending()
 	if err != nil {
 		return nil, err
 	}
@@ -273,7 +291,7 @@ func (b *EthAPIBackend) GetPoolTransactions() (types.Transactions, error) {
 }
 
 func (b *EthAPIBackend) GetPoolTransaction(hash common.Hash) *types.Transaction {
-	return b.backend.txPool.Get(hash)
+	return b.backend.TxPool().Get(hash)
 }
 
 func (b *EthAPIBackend) GetTransaction(ctx context.Context, txHash common.Hash) (*types.Transaction, common.Hash, uint64, uint64, error) {
@@ -282,11 +300,11 @@ func (b *EthAPIBackend) GetTransaction(ctx context.Context, txHash common.Hash) 
 }
 
 func (b *EthAPIBackend) GetPoolNonce(ctx context.Context, addr common.Address) (uint64, error) {
-	return b.backend.txPool.Nonce(addr), nil
+	return b.backend.TxPool().Nonce(addr), nil
 }
 
 func (b *EthAPIBackend) Stats() (pending int, queued int) {
-	return b.backend.txPool.Stats()
+	return b.backend.TxPool().Stats()
 }
 
 func (b *EthAPIBackend) TxPoolContent() (map[common.Address]types.Transactions, map[common.Address]types.Transactions) {
@@ -300,6 +318,8 @@ func (b *EthAPIBackend) TxPool() *core.TxPool {
 func (b *EthAPIBackend) SubscribeNewTxsEvent(ch chan<- core.NewTxsEvent) event.Subscription {
 	return b.backend.TxPool().SubscribeNewTxsEvent(ch)
 }
+
+// ---------------- Sync / network / config ----------------
 
 func (b *EthAPIBackend) Downloader() *downloader.Downloader {
 	return b.backend.Downloader()
@@ -330,30 +350,30 @@ func (b *EthAPIBackend) ExtRPCEnabled() bool {
 }
 
 func (b *EthAPIBackend) RPCGasCap() uint64 {
-	return b.backend.config.RPCGasCap
+	return b.backend.RPCGasCap()
 }
 
 func (b *EthAPIBackend) RPCTxFeeCap() float64 {
-	return b.backend.config.RPCTxFeeCap
+	return b.backend.RPCTxFeeCap()
 }
 
 func (b *EthAPIBackend) BloomStatus() (uint64, uint64) {
-	sections, _, _ := b.backend.bloomIndexer.Sections()
+	sections, _, _ := b.backend.BloomIndexer().Sections()
 	return params.BloomBitsBlocks, sections
 }
 
 func (b *EthAPIBackend) ServiceFilter(ctx context.Context, session *bloombits.MatcherSession) {
 	for i := 0; i < bloomFilterThreads; i++ {
-		go session.Multiplex(bloomRetrievalBatch, bloomRetrievalWait, b.backend.bloomRequests)
+		go session.Multiplex(bloomRetrievalBatch, bloomRetrievalWait, b.backend.BloomRequests())
 	}
 }
 
 func (b *EthAPIBackend) Engine() consensus.Engine {
-	return b.backend.engine
+	return b.backend.Engine()
 }
 
 func (b *EthAPIBackend) CurrentHeader() *types.Header {
-	return b.backend.blockchain.CurrentHeader()
+	return b.backend.BlockChain().CurrentHeader()
 }
 
 func (b *EthAPIBackend) Miner() *miner.Miner {
@@ -364,36 +384,28 @@ func (b *EthAPIBackend) StartMining(threads int) error {
 	return b.backend.StartMining(threads)
 }
 
+// ---------------- PRECONF integration ----------------
 
-// GetPreconfReceipt returns receipt + boolean existence indicator
-func (b *EthAPIBackend) GetPreconfReceipt(hash common.Hash) (*preconf.PreconfReceipt, bool) {
-    b.preconfMu.RLock()
-    r, ok := b.preconfReceipts[hash]
-    b.preconfMu.RUnlock()
-    return r, ok
-}
-
-// PreconfSubscribe registers a subscriber WS channel
-func (b *EthAPIBackend) PreconfSubscribe(ch chan *preconf.PreconfReceipt) event.Subscription {
-    return b.PreconfFeed.Subscribe(ch)
-}
-
-
+// StorePreconfReceipt implements preconfapi.PreconfBackend
 func (b *EthAPIBackend) StorePreconfReceipt(h common.Hash, r *preconf.PreconfReceipt) {
-    b.preconfMu.Lock()
-    b.preconfReceipts[h] = r
-    b.preconfMu.Unlock()
+	b.preconfMu.Lock()
+	b.preconfReceipts[h] = r
+	b.preconfMu.Unlock()
+	b.preconfFeed.Send(r)
 }
 
+// LoadPreconfReceipt implements preconfapi.PreconfBackend
 func (b *EthAPIBackend) LoadPreconfReceipt(h common.Hash) *preconf.PreconfReceipt {
-    b.preconfMu.RLock()
-    r := b.preconfReceipts[h]
-    b.preconfMu.RUnlock()
-    return r
+	b.preconfMu.RLock()
+	r := b.preconfReceipts[h]
+	b.preconfMu.RUnlock()
+	return r
 }
 
+// PreconfSubscribe implements preconfapi.PreconfBackend
 func (b *EthAPIBackend) PreconfSubscribe(ch chan *preconf.PreconfReceipt) event.Subscription {
-    return b.preconfFeed.Subscribe(ch)
+	return b.preconfFeed.Subscribe(ch)
 }
+
 
 
