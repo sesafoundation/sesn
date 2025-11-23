@@ -106,7 +106,39 @@ type Backend interface {
 	//ProtocolManager() *ethtypes.ProtocolManager
 	//NetVersion() int
 	//NodeInfo() interface{}
+
+	    // blockchain
+    BlockChain() *core.BlockChain
+    CurrentBlock() *types.Block
+    CurrentHeader() *types.Header
+    SetHead(uint64)
+
+    // mining
+    Miner() *miner.Miner
+    StartMining(int) error
+
+    // txpool
+    TxPool() *core.TxPool
+    SendTx(context.Context, *types.Transaction) error
+
+    // sync / networking
+    Downloader() *downloader.Downloader
+    ProtocolVersion() int
+    NetVersion() uint64
+    NodeInfo() interface{}
+
+    // config + database
+    ChainDb() ethdb.Database
+    ChainConfig() *params.ChainConfig
+    AccountManager() *accounts.Manager
+    Engine() consensus.Engine
+
+    // RPC safety
+    RPCGasCap() uint64
+    RPCTxFeeCap() float64
 }
+
+
 
 
 
