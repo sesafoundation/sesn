@@ -38,7 +38,7 @@ import (
 	 "github.com/sesafoundation/sesn/preconf"
 	// "github.com/sesafoundation/sesn/internal/preconfapi"
 	 preconfapi "github.com/sesafoundation/sesn/internal/preconfapi"
-	//  "github.com/sesafoundation/sesn/miner"
+	 "github.com/sesafoundation/sesn/miner"
 	  //ethtypes "github.com/sesafoundation/sesn/eth/protocols/eth"
 )
 

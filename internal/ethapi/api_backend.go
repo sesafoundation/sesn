@@ -23,7 +23,7 @@ import (
     "github.com/sesafoundation/sesn/ethdb"
 	"github.com/sesafoundation/sesn/eth/gasprice"
 	"github.com/sesafoundation/sesn/eth/downloader"
-	"github.com/sesafoundation/sesn/miner"
+	//"github.com/sesafoundation/sesn/miner"
 	"github.com/ethereum/go-ethereum/core/state"
 	//core_state "github.com/ethereum/go-ethereum/core/state"
 )
