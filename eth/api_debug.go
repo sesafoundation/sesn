@@ -68,7 +68,7 @@ func (api *PrivateDebugAPI) ChaindbCompact() error {
 
 // SetHead rewinds the head of the blockchain to a previous block.
 func (api *PrivateDebugAPI) SetHead(number hexutil.Uint64) {
-	api.eth.SetHead(uint64(number))
+	api.eth.APIBackend.SetHead(uint64(number))
 }
 
 
@@ -87,7 +87,8 @@ func NewPublicDebugAPI(eth *Ethereum) *PublicDebugAPI {
 
 // GetBlockRlp retrieves the RLP encoded for of a single block.
 func (api *PublicDebugAPI) GetBlockRlp(ctx context.Context, number uint64) (string, error) {
-	    block, _ := api.eth.BlockByNumber(ctx, rpc.BlockNumber(number))
+	    block, _ := api.eth.APIBackend.BlockByNumber(ctx, rpc.BlockNumber(number))
+//eth.APIBackend.
 	if block == nil {
 		return "", fmt.Errorf("block #%d not found", number)
 	}
@@ -104,7 +105,7 @@ func (api *PublicDebugAPI) GetBlockRlp(ctx context.Context, number uint64) (stri
 // This is a temporary method to debug the externalsigner integration,
 // TODO: Remove this method when the integration is mature
 func (api *PublicDebugAPI) TestSignCliqueBlock(ctx context.Context, address common.Address, number uint64) (common.Address, error) {
-	block, _ := api.eth.BlockByNumber(ctx, rpc.BlockNumber(number))
+	block, _ := api.eth.APIBackend.BlockByNumber(ctx, rpc.BlockNumber(number))
 	if block == nil {
 		return common.Address{}, fmt.Errorf("block #%d not found", number)
 	}
@@ -139,7 +140,7 @@ func (api *PublicDebugAPI) TestSignCliqueBlock(ctx context.Context, address comm
 
 // PrintBlock retrieves a block and returns its pretty printed form.
 func (api *PublicDebugAPI) PrintBlock(ctx context.Context, number uint64) (string, error) {
-	block, _ := api.eth.BlockByNumber(ctx, rpc.BlockNumber(number))
+	block, _ := api.eth.APIBackend.BlockByNumber(ctx, rpc.BlockNumber(number))
 	if block == nil {
 		return "", fmt.Errorf("block #%d not found", number)
 	}
@@ -148,7 +149,7 @@ func (api *PublicDebugAPI) PrintBlock(ctx context.Context, number uint64) (strin
 
 // SeedHash retrieves the seed hash of a block.
 func (api *PublicDebugAPI) SeedHash(ctx context.Context, number uint64) (string, error) {
-	block, _ := api.eth.BlockByNumber(ctx, rpc.BlockNumber(number))
+	block, _ := api.eth.APIBackend.BlockByNumber(ctx, rpc.BlockNumber(number))
 	if block == nil {
 		return "", fmt.Errorf("block #%d not found", number)
 	}
