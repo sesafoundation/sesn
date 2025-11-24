@@ -76,8 +76,9 @@ type Ethereum struct {
 	bloomRequests     chan chan *bloombits.Retrieval // Channel receiving bloom data retrieval requests
 	bloomIndexer      *core.ChainIndexer             // Bloom indexer operating during block imports
 	closeBloomHandler chan struct{}
+	
+	APIBackend *ethapi.EthAPIBackend
 
-		APIBackend *EthAPIBackend
 
 	miner     *miner.Miner
 	gasPrice  *big.Int
@@ -156,6 +157,7 @@ func New(stack *node.Node, config *Config) (*Ethereum, error) {
 	// Assign API backend without import cycle
 	// -------------------------------------------------------
 	eth.APIBackend = ethapi.NewEthAPIBackend(stack.Config().ExtRPCEnabled(), eth)
+	
 
 
 	// This is the correct API to pass `eth` into
