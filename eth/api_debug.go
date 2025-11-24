@@ -1,5 +1,36 @@
 package eth
 
+import (
+	"bytes"
+	"context"
+	"errors"
+	"fmt"
+	"math/big"
+	"strings"
+	"time"
+
+	"github.com/davecgh/go-spew/spew"
+	"github.com/sesafoundation/sesn/accounts"
+	"github.com/sesafoundation/sesn/accounts/abi"
+	"github.com/sesafoundation/sesn/accounts/keystore"
+	"github.com/sesafoundation/sesn/accounts/scwallet"
+	"github.com/sesafoundation/sesn/common"
+	"github.com/sesafoundation/sesn/common/hexutil"
+	"github.com/sesafoundation/sesn/common/math"
+	"github.com/sesafoundation/sesn/consensus/clique"
+	"github.com/sesafoundation/sesn/consensus/ethash"
+	"github.com/sesafoundation/sesn/core"
+	"github.com/sesafoundation/sesn/core/types"
+	"github.com/sesafoundation/sesn/core/vm"
+	"github.com/sesafoundation/sesn/crypto"
+	"github.com/sesafoundation/sesn/log"
+	"github.com/sesafoundation/sesn/p2p"
+	"github.com/sesafoundation/sesn/params"
+	"github.com/sesafoundation/sesn/rlp"
+	"github.com/sesafoundation/sesn/rpc"
+	"github.com/tyler-smith/go-bip39"
+)
+
 // PrivateDebugAPI is the collection of Ethereum APIs exposed over the private
 // debugging endpoint.
 type PrivateDebugAPI struct {

@@ -176,18 +176,6 @@ func GetAPIs(apiBackend Backend) []rpc.API {
 			Public:    true,
 		},
 		{
-			Namespace: "debug",
-			Version:   "1.0",
-			Service:   NewPublicDebugAPI(apiBackend),
-			Public:    true,
-		},
-		{
-			Namespace: "debug",
-			Version:   "1.0",
-			Service:   NewPrivateDebugAPI(apiBackend),
-			Public:    false,
-		},
-		{
 			Namespace: "eth",
 			Version:   "1.0",
 			Service:   NewPublicAccountAPI(apiBackend.AccountManager()),
