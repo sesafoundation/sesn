@@ -157,9 +157,8 @@ func New(stack *node.Node, config *Config) (*Ethereum, error) {
 	// Assign API backend without import cycle
 	// -------------------------------------------------------
 	eth.APIBackend = ethapi.NewEthAPIBackend(stack.Config().ExtRPCEnabled(), eth)
+	///new
 	
-
-
 	// This is the correct API to pass `eth` into
 	ethAPI := ethapi.NewPublicBlockChainAPI(eth)
 
@@ -231,14 +230,16 @@ func New(stack *node.Node, config *Config) (*Ethereum, error) {
 	eth.miner.SetExtra(makeExtraData(config.Miner.ExtraData))
 
 	// 🔥 PRECONF/RPC SAFE API BACKEND
-	eth.APIBackend = ethapi.NewEthAPIBackend(stack.Config().ExtRPCEnabled(), eth)
+	//eth.APIBackend = ethapi.NewEthAPIBackend(stack.Config().ExtRPCEnabled(), eth)
 
-	// Gas price oracle (must be AFTER NewEthAPIBackend)
+		// inside New(stack *node.Node, config *Config)
+	eth.APIBackend = ethapi.NewEthAPIBackend(stack.Config().ExtRPCEnabled(), eth)
 	gpoParams := config.GPO
 	if gpoParams.Default == nil {
     gpoParams.Default = config.Miner.GasPrice
 	}
-	eth.APIBackend.gpo = gasprice.NewOracle(eth.APIBackend, gpoParams)
+	oracle := gasprice.NewOracle(eth.APIBackend, gpoParams)
+	eth.APIBackend.SetOracle(oracle)
 
 	/////
 	eth.dialCandidates, err = eth.setupDiscovery()
