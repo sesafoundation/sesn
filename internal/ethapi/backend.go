@@ -48,12 +48,12 @@ type Backend interface {
     // Downloader / Chain Management
    // Downloader() *downloader.Downloader
    // ProtocolVersion() int
-    SuggestPrice(ctx context.Context) (*big.Int, error)
-    ChainDb() ethdb.Database
+    //SuggestPrice(ctx context.Context) (*big.Int, error)
+    //ChainDb() ethdb.Database
    // AccountManager() *accounts.Manager
     ExtRPCEnabled() bool
-    RPCGasCap() uint64
-    RPCTxFeeCap() float64
+    //RPCGasCap() uint64
+    //RPCTxFeeCap() float64
 
     // Blockchain Queries
    // SetHead(number uint64)
@@ -108,7 +108,7 @@ type Backend interface {
 	//NodeInfo() interface{}
 
 	    // blockchain
-    BlockChain() *core.BlockChain
+   // BlockChain() *core.BlockChain
     CurrentBlock() *types.Block
    // CurrentHeader() *types.Header
     SetHead(uint64)
@@ -118,29 +118,60 @@ type Backend interface {
     //StartMining(int) error
 
     // txpool
-    TxPool() *core.TxPool
+    //TxPool() *core.TxPool
     SendTx(context.Context, *types.Transaction) error
 
     // sync / networking
-    Downloader() *downloader.Downloader
-    ProtocolVersion() int
-    NetVersion() uint64
-    NodeInfo() interface{}
+   // Downloader() *downloader.Downloader
+ //   ProtocolVersion() int
+   // NetVersion() uint64
+   // NodeInfo() interface{}
 
     // config + database
    // ChainDb() ethdb.Database
-    ChainConfig() *params.ChainConfig
-    AccountManager() *accounts.Manager
-    Engine() consensus.Engine
+   // ChainConfig() *params.ChainConfig
+    //AccountManager() *accounts.Manager
+   // Engine() consensus.Engine
 
-	Miner() *miner.Miner
-	StartMining(int) error
+	//Miner() *miner.Miner
+	//StartMining(int) error
 
 	EthVersion() int 
 
     // RPC safety
     //RPCGasCap() uint64
     //RPCTxFeeCap() float64
+/////////////new
+	BlockChain() *core.BlockChain
+    ChainConfig() *params.ChainConfig
+    Engine() consensus.Engine
+
+    // mining
+    Miner() *miner.Miner
+    StartMining(int) error
+
+    // tx pool
+    TxPool() *core.TxPool
+
+    // sync / networking
+    Downloader() *downloader.Downloader
+    ProtocolVersion() int
+    NetVersion() uint64
+
+    // database + accounts
+    ChainDb() ethdb.Database
+    AccountManager() *accounts.Manager
+    EventMux() *event.TypeMux      // 🔥 required by api_backend.go
+
+    // RPC safety
+    RPCGasCap() uint64
+    RPCTxFeeCap() float64
+
+    // gas oracle
+    SuggestPrice(context.Context) (*big.Int, error)
+
+    // misc
+    NodeInfo() interface{}
 }
 
 

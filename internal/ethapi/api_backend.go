@@ -21,6 +21,8 @@ import (
 	"github.com/sesafoundation/sesn/params"
 	"github.com/sesafoundation/sesn/preconf"
 	"github.com/sesafoundation/sesn/rpc"
+	"github.com/sesafoundation/sesn/core/vm"
+    "github.com/sesafoundation/sesn/miner"
 )
 
 // NOTE: Backend interface is defined in backend.go and is implemented by *eth.Ethereum.
