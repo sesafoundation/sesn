@@ -20,24 +20,28 @@ func (api *PrivateAdminAPI) SetEtherbase(addr common.Address) {
 }
 
 // AddPeer connects to an enode:// URL.
-func (api *PrivateAdminAPI) AddPeer(url string) error {
-	n, err := enode.Parse(enode.ValidSchemes, url)
-	if err != nil {
-		return err
-	}
-	return api.eth.p2pServer.AddPeer(n)
-}
 
-// RemovePeer disconnects from an enode:// URL.
-func (api *PrivateAdminAPI) RemovePeer(url string) error {
-	n, err := enode.Parse(enode.ValidSchemes, url)
-	if err != nil {
-		return err
-	}
-	return api.eth.p2pServer.RemovePeer(n)
-}
 
 // Peers returns information about connected peers.
 func (api *PrivateAdminAPI) Peers() interface{} {
 	return api.eth.p2pServer.PeersInfo()
+}
+
+
+func (api *PrivateAdminAPI) AddPeer(url string) error {
+    n, err := enode.Parse(enode.ValidSchemes, url)
+    if err != nil {
+        return err
+    }
+    api.eth.p2pServer.AddPeer(n) // no return value
+    return nil
+}
+
+func (api *PrivateAdminAPI) RemovePeer(url string) error {
+    n, err := enode.Parse(enode.ValidSchemes, url)
+    if err != nil {
+        return err
+    }
+    api.eth.p2pServer.RemovePeer(n) // no return value
+    return nil
 }

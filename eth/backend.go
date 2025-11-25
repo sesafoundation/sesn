@@ -24,6 +24,8 @@ import (
 	"runtime"
 	"sync"
 	"sync/atomic"
+	"context"
+	
 
 	"github.com/sesafoundation/sesn/accounts"
 	"github.com/sesafoundation/sesn/common"
@@ -52,6 +54,7 @@ import (
 	"github.com/sesafoundation/sesn/params"
 	"github.com/sesafoundation/sesn/rlp"
 	"github.com/sesafoundation/sesn/rpc"
+	"github.com/sesafoundation/sesn/core/state"
 )
 
 // Ethereum implements the Ethereum full node service.
@@ -498,7 +501,7 @@ func (s *Ethereum) IsMining() bool      { return s.miner.Mining() }
 func (s *Ethereum) Miner() *miner.Miner { return s.miner }
 
 func (s *Ethereum) AccountManager() *accounts.Manager { return s.accountManager }
-func (s *Ethereum) BlockChain() *core.BlockChain      { return s.blockchain }
+//func (s *Ethereum) BlockChain() *core.BlockChain      { return s.blockchain }
 func (s *Ethereum) TxPool() *core.TxPool              { return s.txPool }
 func (s *Ethereum) EventMux() *event.TypeMux          { return s.eventMux }
 func (s *Ethereum) Engine() consensus.Engine          { return s.engine }
