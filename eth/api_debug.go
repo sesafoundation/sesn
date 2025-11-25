@@ -5,7 +5,7 @@ import (
 	"encoding/hex"
 
 	"github.com/sesafoundation/sesn/common/hexutil"
-	"github.com/sesafoundation/sesn/core/types"
+	//"github.com/sesafoundation/sesn/core/types"
 	"github.com/sesafoundation/sesn/rlp"
 )
 

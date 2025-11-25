@@ -152,7 +152,9 @@ func New(stack *node.Node, config *Config) (*Ethereum, error) {
 	}
 
 	// Public blockchain API for consensus engines (uses *Ethereum directly as Backend)
-	ethAPI := ethapi.NewPublicBlockChainAPI(eth)
+	//ethAPI := ethapi.NewPublicBlockChainAPI(eth)
+	ethAPI := ethapi.NewPublicBlockChainAPI(eth.APIBackend)
+
 
 	// Create consensus engine
 	eth.engine = CreateConsensusEngine(stack, chainConfig, &config.Ethash, config.Miner.Notify, config.Miner.Noverify, chainDb, ethAPI)
@@ -558,3 +560,31 @@ func (s *Ethereum) Stop() error {
 	s.eventMux.Stop()
 	return nil
 }
+
+///new
+// ---- Implementation required by ethapi.Backend ----
+
+func (s *Ethereum) BlockChain() *core.BlockChain {
+	return s.blockchain
+}
+
+func (s *Ethereum) BlockByHash(ctx context.Context, hash common.Hash) (*types.Block, error) {
+	return s.blockchain.GetBlockByHash(hash), nil
+}
+
+func (s *Ethereum) HeaderByNumber(ctx context.Context, number rpc.BlockNumber) (*types.Header, error) {
+	return s.blockchain.HeaderByNumber(ctx, number)
+}
+
+func (s *Ethereum) HeaderByHash(ctx context.Context, hash common.Hash) (*types.Header, error) {
+	return s.blockchain.HeaderByHash(ctx, hash)
+}
+
+func (s *Ethereum) StateAndHeaderByNumber(ctx context.Context, number rpc.BlockNumber) (*state.StateDB, *types.Header, error) {
+	return s.APIBackend.StateAndHeaderByNumber(ctx, number)
+}
+
+func (s *Ethereum) StateAndHeaderByNumberOrHash(ctx context.Context, bh rpc.BlockNumberOrHash) (*state.StateDB, *types.Header, error) {
+	return s.APIBackend.StateAndHeaderByNumberOrHash(ctx, bh)
+}
+

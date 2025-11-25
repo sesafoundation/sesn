@@ -2,6 +2,7 @@ package eth
 
 import (
 	"github.com/sesafoundation/sesn/common"
+	"github.com/sesafoundation/sesn/p2p/enode"
 )
 
 // PrivateAdminAPI exposes node admin operations over RPC.
@@ -13,20 +14,27 @@ func NewPrivateAdminAPI(eth *Ethereum) *PrivateAdminAPI {
 	return &PrivateAdminAPI{eth: eth}
 }
 
-// SetEtherbase changes the mining reward address.
+// SetEtherbase sets the mining reward address.
 func (api *PrivateAdminAPI) SetEtherbase(addr common.Address) {
 	api.eth.SetEtherbase(addr)
 }
 
-// AddPeer connects to the given enode URL string.
-// Example: "enode://....@ip:port"
+// AddPeer connects to an enode:// URL.
 func (api *PrivateAdminAPI) AddPeer(url string) error {
-	return api.eth.p2pServer.AddPeer(url)
+	n, err := enode.Parse(enode.ValidSchemes, url)
+	if err != nil {
+		return err
+	}
+	return api.eth.p2pServer.AddPeer(n)
 }
 
-// RemovePeer disconnects from the given enode URL string.
+// RemovePeer disconnects from an enode:// URL.
 func (api *PrivateAdminAPI) RemovePeer(url string) error {
-	return api.eth.p2pServer.RemovePeer(url)
+	n, err := enode.Parse(enode.ValidSchemes, url)
+	if err != nil {
+		return err
+	}
+	return api.eth.p2pServer.RemovePeer(n)
 }
 
 // Peers returns information about connected peers.
