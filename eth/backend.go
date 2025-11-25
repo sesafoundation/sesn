@@ -156,7 +156,9 @@ func New(stack *node.Node, config *Config) (*Ethereum, error) {
 	// -------------------------------------------------------
 	// Assign API backend without import cycle
 	// -------------------------------------------------------
-	eth.APIBackend = ethapi.NewEthAPIBackend(stack.Config().ExtRPCEnabled(), eth)
+	//eth.APIBackend = ethapi.NewEthAPIBackend(stack.Config().ExtRPCEnabled(), eth)
+	s.APIBackend = ethapi.NewEthAPIBackend(stack.Config().ExtRPCEnabled(), s)
+
 	///new
 	
 	// This is the correct API to pass `eth` into
