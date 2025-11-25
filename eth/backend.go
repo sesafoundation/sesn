@@ -235,7 +235,9 @@ func New(stack *node.Node, config *Config) (*Ethereum, error) {
 	//eth.APIBackend = ethapi.NewEthAPIBackend(stack.Config().ExtRPCEnabled(), eth)
 
 		// inside New(stack *node.Node, config *Config)
-	eth.APIBackend = ethapi.NewEthAPIBackend(stack.Config().ExtRPCEnabled(), eth)
+	s.APIBackend = ethapi.NewEthAPIBackend(stack.Config().ExtRPCEnabled(), s)
+
+	//eth.APIBackend = ethapi.NewEthAPIBackend(stack.Config().ExtRPCEnabled(), eth)
 	gpoParams := config.GPO
 	if gpoParams.Default == nil {
     gpoParams.Default = config.Miner.GasPrice
