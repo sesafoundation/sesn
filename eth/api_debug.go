@@ -39,7 +39,8 @@ type PrivateDebugAPI struct {
 
 // NewPrivateDebugAPI creates a new API definition for the private debug methods
 // of the Ethereum service.
-func NewPrivateDebugAPI(e *Ethereum) *PrivateDebugAPI {
+//func NewPrivateDebugAPI(e *Ethereum) *PrivateDebugAPI {
+func NewPrivateDebugAPI(b *EthAPIBackend) *PrivateDebugAPI
     return &PrivateDebugAPI{eth: e}
 }
 
@@ -81,7 +82,8 @@ type PublicDebugAPI struct {
 
 // NewPublicDebugAPI creates a new API definition for the public debug methods
 // of the Ethereum service.
-func NewPublicDebugAPI(eth *Ethereum) *PublicDebugAPI {
+//func NewPublicDebugAPI(eth *Ethereum) *PublicDebugAPI {
+func NewPublicDebugAPI(b *EthAPIBackend) *PublicDebugAPI
 	return &PublicDebugAPI{eth: eth}
 }
 
