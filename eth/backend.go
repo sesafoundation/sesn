@@ -567,22 +567,6 @@ func (s *Ethereum) Stop() error {
 ///new
 // ---- Implementation required by ethapi.Backend ----
 
-func (s *Ethereum) BlockChain() *core.BlockChain {
-	return s.blockchain
-}
-
-func (s *Ethereum) BlockByHash(ctx context.Context, hash common.Hash) (*types.Block, error) {
-	return s.blockchain.GetBlockByHash(hash), nil
-}
-
-func (s *Ethereum) HeaderByNumber(ctx context.Context, number rpc.BlockNumber) (*types.Header, error) {
-	return s.blockchain.HeaderByNumber(ctx, number)
-}
-
-func (s *Ethereum) HeaderByHash(ctx context.Context, hash common.Hash) (*types.Header, error) {
-	return s.blockchain.HeaderByHash(ctx, hash)
-}
-
 func (s *Ethereum) StateAndHeaderByNumber(ctx context.Context, number rpc.BlockNumber) (*state.StateDB, *types.Header, error) {
 	return s.APIBackend.StateAndHeaderByNumber(ctx, number)
 }
@@ -591,3 +575,39 @@ func (s *Ethereum) StateAndHeaderByNumberOrHash(ctx context.Context, bh rpc.Bloc
 	return s.APIBackend.StateAndHeaderByNumberOrHash(ctx, bh)
 }
 
+//new
+// === ethapi.Backend interface compatibility ===
+
+func (s *Ethereum) BlockChain() *core.BlockChain {
+    return s.blockchain
+}
+
+func (s *Ethereum) BlockByNumber(ctx context.Context, number rpc.BlockNumber) (*types.Block, error) {
+    switch number {
+    case rpc.PendingBlockNumber:
+        return s.miner.PendingBlock(), nil
+    case rpc.LatestBlockNumber:
+        return s.blockchain.CurrentBlock(), nil
+    default:
+        return s.blockchain.GetBlockByNumber(uint64(number)), nil
+    }
+}
+
+func (s *Ethereum) BlockByHash(ctx context.Context, hash common.Hash) (*types.Block, error) {
+    return s.blockchain.GetBlockByHash(hash), nil
+}
+
+func (s *Ethereum) HeaderByNumber(ctx context.Context, number rpc.BlockNumber) (*types.Header, error) {
+    switch number {
+    case rpc.PendingBlockNumber:
+        return s.miner.PendingBlock().Header(), nil
+    case rpc.LatestBlockNumber:
+        return s.blockchain.CurrentBlock().Header(), nil
+    default:
+        return s.blockchain.GetHeaderByNumber(uint64(number)), nil
+    }
+}
+
+func (s *Ethereum) HeaderByHash(ctx context.Context, hash common.Hash) (*types.Header, error) {
+    return s.blockchain.GetHeaderByHash(hash), nil
+}
