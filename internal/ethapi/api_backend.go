@@ -31,23 +31,26 @@ import (
 //   - provide a gas-price oracle backend (gasprice.OracleBackend)
 //   - add preconf (mini-block) receipt storage + subscriptions.
 
-type EthAPIBackend struct {
-	backend       Backend
-	extRPCEnabled bool
-	gpo           *gasprice.Oracle
 
-	preconfMu       sync.RWMutex
-	preconfReceipts map[common.Hash]*preconf.PreconfReceipt
-	preconfFeed     event.Feed
+type EthAPIBackend struct {
+    eth *eth.Ethereum
+    extRPCEnabled bool
+    gpo *gasprice.Oracle
+
+    preconfMu       sync.RWMutex
+    preconfReceipts map[common.Hash]*preconf.PreconfReceipt
+    preconfFeed     event.Feed
 }
 
 // NewEthAPIBackend constructs the wrapper used by eth.Ethereum.
-func NewEthAPIBackend(extRPC bool, backend Backend) *EthAPIBackend {
-	return &EthAPIBackend{
-		backend:         backend,
-		extRPCEnabled:   extRPC,
-		preconfReceipts: make(map[common.Hash]*preconf.PreconfReceipt),
-	}
+
+
+func NewEthAPIBackend(extRPC bool, eth *eth.Ethereum) *EthAPIBackend {
+    return &EthAPIBackend{
+        eth:             eth,
+        extRPCEnabled:   extRPC,
+        preconfReceipts: make(map[common.Hash]*preconf.PreconfReceipt),
+    }
 }
 
 // SetOracle sets the gas price oracle instance used by SuggestPrice.
@@ -60,11 +63,11 @@ func (b *EthAPIBackend) SetOracle(o *gasprice.Oracle) {
 // -----------------------------------------------------------------------------
 
 func (b *EthAPIBackend) Downloader() *downloader.Downloader {
-	return b.backend.Downloader()
+	return b.eth.Downloader()
 }
 
 func (b *EthAPIBackend) ProtocolVersion() int {
-	return b.backend.ProtocolVersion()
+	return b.eth.ProtocolVersion()
 }
 
 // gasprice.OracleBackend + ethapi.Backend
@@ -76,11 +79,11 @@ func (b *EthAPIBackend) SuggestPrice(ctx context.Context) (*big.Int, error) {
 }
 
 func (b *EthAPIBackend) ChainDb() ethdb.Database {
-	return b.backend.ChainDb()
+	return b.eth.ChainDb()
 }
 
 func (b *EthAPIBackend) AccountManager() *accounts.Manager {
-	return b.backend.AccountManager()
+	return b.eth.AccountManager()
 }
 
 func (b *EthAPIBackend) ExtRPCEnabled() bool {
@@ -88,23 +91,23 @@ func (b *EthAPIBackend) ExtRPCEnabled() bool {
 }
 
 func (b *EthAPIBackend) RPCGasCap() uint64 {
-	return b.backend.RPCGasCap()
+	return b.eth.RPCGasCap()
 }
 
 func (b *EthAPIBackend) RPCTxFeeCap() float64 {
-	return b.backend.RPCTxFeeCap()
+	return b.eth.RPCTxFeeCap()
 }
 
 func (b *EthAPIBackend) EventMux() *event.TypeMux {
-	return b.backend.EventMux()
+	return b.eth.EventMux()
 }
 
 func (b *EthAPIBackend) ChainConfig() *params.ChainConfig {
-	return b.backend.ChainConfig()
+	return b.eth.ChainConfig()
 }
 
 func (b *EthAPIBackend) Engine() consensus.Engine {
-	return b.backend.Engine()
+	return b.eth.Engine()
 }
 
 // -----------------------------------------------------------------------------
@@ -112,63 +115,63 @@ func (b *EthAPIBackend) Engine() consensus.Engine {
 // -----------------------------------------------------------------------------
 
 func (b *EthAPIBackend) SetHead(number uint64) {
-	b.backend.SetHead(number)
+	b.eth.SetHead(number)
 }
 
 func (b *EthAPIBackend) CurrentHeader() *types.Header {
-	return b.backend.CurrentHeader()
+	return b.eth.CurrentHeader()
 }
 
 func (b *EthAPIBackend) CurrentBlock() *types.Block {
-	return b.backend.CurrentBlock()
+	return b.eth.CurrentBlock()
 }
 
 func (b *EthAPIBackend) HeaderByNumber(ctx context.Context, number rpc.BlockNumber) (*types.Header, error) {
-	return b.backend.HeaderByNumber(ctx, number)
+	return b.eth.HeaderByNumber(ctx, number)
 }
 
 func (b *EthAPIBackend) HeaderByHash(ctx context.Context, hash common.Hash) (*types.Header, error) {
-	return b.backend.HeaderByHash(ctx, hash)
+	return b.eth.HeaderByHash(ctx, hash)
 }
 
 func (b *EthAPIBackend) HeaderByNumberOrHash(ctx context.Context, bh rpc.BlockNumberOrHash) (*types.Header, error) {
-	return b.backend.HeaderByNumberOrHash(ctx, bh)
+	return b.eth.HeaderByNumberOrHash(ctx, bh)
 }
 
 func (b *EthAPIBackend) BlockByNumber(ctx context.Context, number rpc.BlockNumber) (*types.Block, error) {
-	return b.backend.BlockByNumber(ctx, number)
+	return b.eth.BlockByNumber(ctx, number)
 }
 
 func (b *EthAPIBackend) BlockByHash(ctx context.Context, hash common.Hash) (*types.Block, error) {
-	return b.backend.BlockByHash(ctx, hash)
+	return b.eth.BlockByHash(ctx, hash)
 }
 
 func (b *EthAPIBackend) BlockByNumberOrHash(ctx context.Context, bh rpc.BlockNumberOrHash) (*types.Block, error) {
-	return b.backend.BlockByNumberOrHash(ctx, bh)
+	return b.eth.BlockByNumberOrHash(ctx, bh)
 }
 
 func (b *EthAPIBackend) StateAndHeaderByNumber(ctx context.Context, number rpc.BlockNumber) (*state.StateDB, *types.Header, error) {
-	return b.backend.StateAndHeaderByNumber(ctx, number)
+	return b.eth.StateAndHeaderByNumber(ctx, number)
 }
 
 func (b *EthAPIBackend) StateAndHeaderByNumberOrHash(ctx context.Context, bh rpc.BlockNumberOrHash) (*state.StateDB, *types.Header, error) {
-	return b.backend.StateAndHeaderByNumberOrHash(ctx, bh)
+	return b.eth.StateAndHeaderByNumberOrHash(ctx, bh)
 }
 
 func (b *EthAPIBackend) GetReceipts(ctx context.Context, hash common.Hash) (types.Receipts, error) {
-	return b.backend.GetReceipts(ctx, hash)
+	return b.eth.GetReceipts(ctx, hash)
 }
 
 func (b *EthAPIBackend) GetLogs(ctx context.Context, hash common.Hash) ([][]*types.Log, error) {
-	return b.backend.GetLogs(ctx, hash)
+	return b.eth.GetLogs(ctx, hash)
 }
 
 func (b *EthAPIBackend) GetTd(ctx context.Context, hash common.Hash) *big.Int {
-	return b.backend.GetTd(ctx, hash)
+	return b.eth.GetTd(ctx, hash)
 }
 
 func (b *EthAPIBackend) GetEVM(ctx context.Context, msg core.Message, st *state.StateDB, header *types.Header) (*vm.EVM, func() error, error) {
-	return b.backend.GetEVM(ctx, msg, st, header)
+	return b.eth.GetEVM(ctx, msg, st, header)
 }
 
 // -----------------------------------------------------------------------------
@@ -176,27 +179,27 @@ func (b *EthAPIBackend) GetEVM(ctx context.Context, msg core.Message, st *state.
 // -----------------------------------------------------------------------------
 
 func (b *EthAPIBackend) SubscribeChainEvent(ch chan<- core.ChainEvent) event.Subscription {
-	return b.backend.SubscribeChainEvent(ch)
+	return b.eth.SubscribeChainEvent(ch)
 }
 
 func (b *EthAPIBackend) SubscribeChainHeadEvent(ch chan<- core.ChainHeadEvent) event.Subscription {
-	return b.backend.SubscribeChainHeadEvent(ch)
+	return b.eth.SubscribeChainHeadEvent(ch)
 }
 
 func (b *EthAPIBackend) SubscribeChainSideEvent(ch chan<- core.ChainSideEvent) event.Subscription {
-	return b.backend.SubscribeChainSideEvent(ch)
+	return b.eth.SubscribeChainSideEvent(ch)
 }
 
 func (b *EthAPIBackend) SubscribeLogsEvent(ch chan<- []*types.Log) event.Subscription {
-	return b.backend.SubscribeLogsEvent(ch)
+	return b.eth.SubscribeLogsEvent(ch)
 }
 
 func (b *EthAPIBackend) SubscribePendingLogsEvent(ch chan<- []*types.Log) event.Subscription {
-	return b.backend.SubscribePendingLogsEvent(ch)
+	return b.eth.SubscribePendingLogsEvent(ch)
 }
 
 func (b *EthAPIBackend) SubscribeRemovedLogsEvent(ch chan<- core.RemovedLogsEvent) event.Subscription {
-	return b.backend.SubscribeRemovedLogsEvent(ch)
+	return b.eth.SubscribeRemovedLogsEvent(ch)
 }
 
 // -----------------------------------------------------------------------------
@@ -204,35 +207,35 @@ func (b *EthAPIBackend) SubscribeRemovedLogsEvent(ch chan<- core.RemovedLogsEven
 // -----------------------------------------------------------------------------
 
 func (b *EthAPIBackend) SendTx(ctx context.Context, signedTx *types.Transaction) error {
-	return b.backend.SendTx(ctx, signedTx)
+	return b.eth.SendTx(ctx, signedTx)
 }
 
 func (b *EthAPIBackend) GetTransaction(ctx context.Context, txHash common.Hash) (*types.Transaction, common.Hash, uint64, uint64, error) {
-	return b.backend.GetTransaction(ctx, txHash)
+	return b.eth.GetTransaction(ctx, txHash)
 }
 
 func (b *EthAPIBackend) GetPoolTransactions() (types.Transactions, error) {
-	return b.backend.GetPoolTransactions()
+	return b.eth.GetPoolTransactions()
 }
 
 func (b *EthAPIBackend) GetPoolTransaction(txHash common.Hash) *types.Transaction {
-	return b.backend.GetPoolTransaction(txHash)
+	return b.eth.GetPoolTransaction(txHash)
 }
 
 func (b *EthAPIBackend) GetPoolNonce(ctx context.Context, addr common.Address) (uint64, error) {
-	return b.backend.GetPoolNonce(ctx, addr)
+	return b.eth.GetPoolNonce(ctx, addr)
 }
 
 func (b *EthAPIBackend) Stats() (pending int, queued int) {
-	return b.backend.Stats()
+	return b.eth.Stats()
 }
 
 func (b *EthAPIBackend) TxPoolContent() (map[common.Address]types.Transactions, map[common.Address]types.Transactions) {
-	return b.backend.TxPoolContent()
+	return b.eth.TxPoolContent()
 }
 
 func (b *EthAPIBackend) SubscribeNewTxsEvent(ch chan<- core.NewTxsEvent) event.Subscription {
-	return b.backend.SubscribeNewTxsEvent(ch)
+	return b.eth.SubscribeNewTxsEvent(ch)
 }
 
 // -----------------------------------------------------------------------------
@@ -240,11 +243,11 @@ func (b *EthAPIBackend) SubscribeNewTxsEvent(ch chan<- core.NewTxsEvent) event.S
 // -----------------------------------------------------------------------------
 
 func (b *EthAPIBackend) BloomStatus() (uint64, uint64) {
-	return b.backend.BloomStatus()
+	return b.eth.BloomStatus()
 }
 
 func (b *EthAPIBackend) ServiceFilter(ctx context.Context, session *bloombits.MatcherSession) {
-	b.backend.ServiceFilter(ctx, session)
+	b.eth.ServiceFilter(ctx, session)
 }
 
 // -----------------------------------------------------------------------------
@@ -252,11 +255,11 @@ func (b *EthAPIBackend) ServiceFilter(ctx context.Context, session *bloombits.Ma
 // -----------------------------------------------------------------------------
 
 func (b *EthAPIBackend) Miner() *miner.Miner {
-	return b.backend.Miner()
+	return b.eth.Miner()
 }
 
 func (b *EthAPIBackend) StartMining(threads int) error {
-	return b.backend.StartMining(threads)
+	return b.eth.StartMining(threads)
 }
 
 // -----------------------------------------------------------------------------

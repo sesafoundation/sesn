@@ -317,7 +317,7 @@ func (s *Ethereum) APIs() []rpc.API {
     apis := ethapi.GetAPIs(s.APIBackend)
 
     // Consensus engine APIs
-    apis = append(apis, s.engine.APIs(s.BlockChain())...)
+    apis = append(apis, b.eth.engine.APIs(s.BlockChain())...)
 
     // Local node APIs
     local := []rpc.API{
@@ -336,7 +336,7 @@ func (s *Ethereum) APIs() []rpc.API {
         {
             Namespace: "eth",
             Version:   "1.0",
-            Service:   downloader.NewPublicDownloaderAPI(s.protocolManager.downloader, s.eventMux),
+            Service:   downloader.NewPublicDownloaderAPI(s.protocolManager.downloader, b.etheventMux),
             Public:    true,
         },
         {
@@ -372,7 +372,7 @@ func (s *Ethereum) APIs() []rpc.API {
         {
             Namespace: "net",
             Version:   "1.0",
-            Service:   s.netRPCService,
+            Service:   b.eth.netRPCService,
             Public:    true,
         },
     }
@@ -387,13 +387,13 @@ func (s *Ethereum) ResetWithGenesisBlock(gb *types.Block) {
 
 func (s *Ethereum) Etherbase() (eb common.Address, err error) {
 	s.lock.RLock()
-	etherbase := s.etherbase
+	etherbase := b.eth.etherbase
 	s.lock.RUnlock()
 
 	if etherbase != (common.Address{}) {
 		return etherbase, nil
 	}
-	if wallets := s.AccountManager().Wallets(); len(wallets) > 0 {
+	if wallets := b.eth.AccountManager().Wallets(); len(wallets) > 0 {
 		if accounts := wallets[0].Accounts(); len(accounts) > 0 {
 			etherbase := accounts[0].Address
 
@@ -414,21 +414,21 @@ func (s *Ethereum) Etherbase() (eb common.Address, err error) {
 // We regard two types of accounts as local miner account: etherbase
 // and accounts specified via `txpool.locals` flag.
 func (s *Ethereum) isLocalBlock(block *types.Block) bool {
-	author, err := s.engine.Author(block.Header())
+	author, err := b.eth.engine.Author(block.Header())
 	if err != nil {
 		log.Warn("Failed to retrieve block author", "number", block.NumberU64(), "hash", block.Hash(), "err", err)
 		return false
 	}
 	// Check whether the given address is etherbase.
 	s.lock.RLock()
-	etherbase := s.etherbase
+	etherbase := b.eth.etherbase
 	s.lock.RUnlock()
 	if author == etherbase {
 		return true
 	}
 	// Check whether the given address is specified by `txpool.local`
 	// CLI flag.
-	for _, account := range s.config.TxPool.Locals {
+	for _, account := range b.eth.config.TxPool.Locals {
 		if account == author {
 			return true
 		}
@@ -456,13 +456,13 @@ func (s *Ethereum) shouldPreserve(block *types.Block) bool {
 	// is A, F and G sign the block of round5 and reject the block of opponents
 	// and in the round6, the last available signer B is offline, the whole
 	// network is stuck.
-	if _, ok := s.engine.(*clique.Clique); ok {
+	if _, ok := b.eth.engine.(*clique.Clique); ok {
 		return false
 	}
-	if _, ok := s.engine.(*sonium.Sonium); ok {
+	if _, ok := b.eth.engine.(*sonium.Sonium); ok {
 		return false
 	}
-	return s.isLocalBlock(block)
+	return b.eth.isLocalBlock(block)
 }
 
 // SetEtherbase sets the mining reward address.
@@ -482,7 +482,7 @@ func (s *Ethereum) StartMining(threads int) error {
 	type threaded interface {
 		SetThreads(threads int)
 	}
-	if th, ok := s.engine.(threaded); ok {
+	if th, ok := b.eth.engine.(threaded); ok {
 		log.Info("Updated mining threads", "threads", threads)
 		if threads == 0 {
 			threads = -1 // Disable the miner from within
@@ -493,26 +493,26 @@ func (s *Ethereum) StartMining(threads int) error {
 	if !s.IsMining() {
 		// Propagate the initial price point to the transaction pool
 		s.lock.RLock()
-		price := s.gasPrice
+		price := b.eth.gasPrice
 		s.lock.RUnlock()
 		s.txPool.SetGasPrice(price)
 
 		// Configure the local mining address
-		eb, err := s.Etherbase()
+		eb, err := b.eth.Etherbase()
 		if err != nil {
 			log.Error("Cannot start mining without etherbase", "err", err)
 			return fmt.Errorf("etherbase missing: %v", err)
 		}
-		if clique, ok := s.engine.(*clique.Clique); ok {
-			wallet, err := s.accountManager.Find(accounts.Account{Address: eb})
+		if clique, ok := b.eth.engine.(*clique.Clique); ok {
+			wallet, err := b.eth.accountManager.Find(accounts.Account{Address: eb})
 			if wallet == nil || err != nil {
 				log.Error("Etherbase account unavailable locally", "err", err)
 				return fmt.Errorf("signer missing: %v", err)
 			}
 			clique.Authorize(eb, wallet.SignData)
 		}
-		if sonium, ok := s.engine.(*sonium.Sonium); ok {
-			wallet, err := s.accountManager.Find(accounts.Account{Address: eb})
+		if sonium, ok := b.eth.engine.(*sonium.Sonium); ok {
+			wallet, err := b.eth.accountManager.Find(accounts.Account{Address: eb})
 			if wallet == nil || err != nil {
 				log.Error("Etherbase account unavailable locally", "err", err)
 				return fmt.Errorf("signer missing: %v", err)
@@ -523,7 +523,7 @@ func (s *Ethereum) StartMining(threads int) error {
 		// introduced to speed sync times.
 		atomic.StoreUint32(&s.protocolManager.acceptTxs, 1)
 
-		go s.miner.Start(eb)
+		go b.eth.miner.Start(eb)
 	}
 	return nil
 }
@@ -535,38 +535,38 @@ func (s *Ethereum) StopMining() {
 	type threaded interface {
 		SetThreads(threads int)
 	}
-	if th, ok := s.engine.(threaded); ok {
+	if th, ok := b.eth.engine.(threaded); ok {
 		th.SetThreads(-1)
 	}
 	// Stop the block creating itself
 	s.miner.Stop()
 }
 
-func (s *Ethereum) IsMining() bool      { return s.miner.Mining() }
-func (s *Ethereum) Miner() *miner.Miner { return s.miner }
+func (s *Ethereum) IsMining() bool      { return b.eth.miner.Mining() }
+func (s *Ethereum) Miner() *miner.Miner { return b.eth.miner }
 
-func (s *Ethereum) AccountManager() *accounts.Manager  { return s.accountManager }
-func (s *Ethereum) BlockChain() *core.BlockChain       { return s.blockchain }
-func (s *Ethereum) TxPool() *core.TxPool               { return s.txPool }
-func (s *Ethereum) EventMux() *event.TypeMux           { return s.eventMux }
-func (s *Ethereum) Engine() consensus.Engine           { return s.engine }
-func (s *Ethereum) ChainDb() ethdb.Database            { return s.chainDb }
+func (s *Ethereum) AccountManager() *accounts.Manager  { return b.eth.accountManager }
+func (s *Ethereum) BlockChain() *core.BlockChain       { return b.eth.blockchain }
+func (s *Ethereum) TxPool() *core.TxPool               { return b.eth.txPool }
+func (s *Ethereum) EventMux() *event.TypeMux           { return b.eth.eventMux }
+func (s *Ethereum) Engine() consensus.Engine           { return b.eth.engine }
+func (s *Ethereum) ChainDb() ethdb.Database            { return b.eth.chainDb }
 func (s *Ethereum) IsListening() bool                  { return true } // Always listening
 func (s *Ethereum) EthVersion() int                    { return int(ProtocolVersions[0]) }
-func (s *Ethereum) NetVersion() uint64                 { return s.networkID }
-func (s *Ethereum) Downloader() *downloader.Downloader { return s.protocolManager.downloader }
+func (s *Ethereum) NetVersion() uint64                 { return b.eth.networkID }
+func (s *Ethereum) Downloader() *downloader.Downloader { return b.eth.protocolManager.downloader }
 func (s *Ethereum) Synced() bool                       { return atomic.LoadUint32(&s.protocolManager.acceptTxs) == 1 }
-func (s *Ethereum) ArchiveMode() bool                  { return s.config.NoPruning }
-func (s *Ethereum) BloomIndexer() *core.ChainIndexer   { return s.bloomIndexer }
+func (s *Ethereum) ArchiveMode() bool                  { return b.eth.config.NoPruning }
+func (s *Ethereum) BloomIndexer() *core.ChainIndexer   { return b.eth.bloomIndexer }
 
 // Protocols returns all the currently configured
 // network protocols to start.
 func (s *Ethereum) Protocols() []p2p.Protocol {
 	protos := make([]p2p.Protocol, len(ProtocolVersions))
 	for i, vsn := range ProtocolVersions {
-		protos[i] = s.protocolManager.makeProtocol(vsn)
+		protos[i] = b.eth.protocolManager.makeProtocol(vsn)
 		protos[i].Attributes = []enr.Entry{s.currentEthEntry()}
-		protos[i].DialCandidates = s.dialCandidates
+		protos[i].DialCandidates = b.eth.dialCandidates
 	}
 	return protos
 }
@@ -580,12 +580,12 @@ func (s *Ethereum) Start() error {
 	s.startBloomHandlers(params.BloomBitsBlocks)
 
 	// Figure out a max peers count based on the server limits
-	maxPeers := s.p2pServer.MaxPeers
-	if s.config.LightServ > 0 {
-		if s.config.LightPeers >= s.p2pServer.MaxPeers {
-			return fmt.Errorf("invalid peer config: light peer count (%d) >= total peer count (%d)", s.config.LightPeers, s.p2pServer.MaxPeers)
+	maxPeers := b.eth.p2pServer.MaxPeers
+	if b.eth.config.LightServ > 0 {
+		if b.eth.config.LightPeers >= b.eth.p2pServer.MaxPeers {
+			return fmt.Errorf("invalid peer config: light peer count (%d) >= total peer count (%d)", b.eth.config.LightPeers, b.eth.p2pServer.MaxPeers)
 		}
-		maxPeers -= s.config.LightPeers
+		maxPeers -= b.eth.config.LightPeers
 	}
 	// Start the networking layer and the light server if requested
 	s.protocolManager.Start(maxPeers)
