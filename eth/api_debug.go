@@ -16,11 +16,11 @@ import (
 // ----------------------------------------------------------------------
 
 type PublicDebugAPI struct {
-	eth *Ethereum
+	 backend ethapi.Backend
 }
 
 func NewPublicDebugAPI(eth *Ethereum) *PublicDebugAPI {
-	return &PublicDebugAPI{eth: eth}
+	return &PublicDebugAPI{backend: backend}
 }
 
 type PrivateDebugAPI struct {

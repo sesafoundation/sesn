@@ -387,13 +387,94 @@ func (api *PrivateDebugAPI) TraceBadBlock(ctx context.Context, hash common.Hash,
 // StandardTraceBlockToFile dumps the structured logs created during the
 // execution of EVM to the local file system and returns a list of files
 // to the caller.
+
 func (api *PrivateDebugAPI) StandardTraceBlockToFile(ctx context.Context, hash common.Hash, config *StdTraceConfig) ([]string, error) {
-	block := api.backend.BlockChain().GetBlockByHash(hash)
-	if block == nil {
-		return nil, fmt.Errorf("block %#x not found", hash)
-	}
-	return api.standardTraceBlockToFile(ctx, block, config)
+    block := api.backend.BlockChain().GetBlockByHash(hash)
+    if block == nil {
+        return nil, fmt.Errorf("block %#x not found", hash)
+    }
+
+    // If tracing a specific transaction ensure block contains it
+    if config != nil && config.TxHash != (common.Hash{}) {
+        if !containsTx(block, config.TxHash) {
+            return nil, fmt.Errorf("transaction %#x not found in block", config.TxHash)
+        }
+    }
+
+    // Parent state DB
+    parent := api.backend.BlockChain().GetBlock(block.ParentHash(), block.NumberU64()-1)
+    if parent == nil {
+        return nil, fmt.Errorf("parent %#x not found", block.ParentHash())
+    }
+    reexec := defaultTraceReexec
+    if config != nil && config.Reexec != nil {
+        reexec = *config.Reexec
+    }
+    statedb, err := api.computeStateDB(parent, reexec)
+    if err != nil {
+        return nil, err
+    }
+
+    signer := types.MakeSigner(api.backend.BlockChain().Config(), block.Number())
+    vmctx := core.NewEVMBlockContext(block.Header(), api.backend.BlockChain(), nil)
+
+    var (
+        logCfg    vm.LogConfig
+        dumps     []string
+    )
+    if config != nil {
+        logCfg = config.LogConfig
+    }
+    logCfg.Debug = true
+
+    for i, tx := range block.Transactions() {
+        msg, _ := tx.AsMessage(signer)
+        txctx := core.NewEVMTxContext(msg)
+
+        var vmConf vm.Config
+        var file *os.File
+        var writer *bufio.Writer
+
+        // If this TX must be logged → create trace file + tracer config
+        if config == nil || config.TxHash == (common.Hash{}) || config.TxHash == tx.Hash() {
+            prefix := fmt.Sprintf("block_%#x_%d_%#x_", block.Hash().Bytes()[:4], i, tx.Hash().Bytes()[:4])
+            file, err = ioutil.TempFile(os.TempDir(), prefix)
+            if err != nil {
+                return nil, err
+            }
+            writer = bufio.NewWriter(file)
+            vmConf = vm.Config{
+                Debug:                   true,
+                Tracer:                  vm.NewJSONLogger(&logCfg, writer),
+                EnablePreimageRecording: true,
+            }
+            dumps = append(dumps, file.Name())
+        }
+
+        // Execute
+        evm := vm.NewEVM(vmctx, txctx, statedb, api.backend.BlockChain().Config(), vmConf)
+        if _, err := core.ApplyMessage(evm, msg, new(core.GasPool).AddGas(msg.Gas())); err != nil {
+            return dumps, err
+        }
+
+        // Finalize and sync trie
+        statedb.Finalise(evm.ChainConfig().IsEIP158(block.Number()))
+
+        if writer != nil {
+            writer.Flush()
+        }
+        if file != nil {
+            file.Close()
+            log.Info("Wrote standard trace", "file", file.Name())
+        }
+
+        if config != nil && config.TxHash == tx.Hash() {
+            break
+        }
+    }
+    return dumps, nil
 }
+
 
 // StandardTraceBadBlockToFile dumps the structured logs created during the
 // execution of EVM against a block pulled from the pool of bad ones to the
