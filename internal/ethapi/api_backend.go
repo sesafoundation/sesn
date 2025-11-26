@@ -213,3 +213,4 @@ func (b *EthAPIBackend) StateAndHeaderByNumberOrHash(ctx context.Context, bh rpc
     }
     st, err := b.backend.BlockChain().StateAt(block.Root())
     return st, block.Header(), err
+}
