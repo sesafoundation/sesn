@@ -157,7 +157,9 @@ func (api *PrivateDebugAPI) traceChain(ctx context.Context, start, end *types.Bl
     database := state.NewDatabaseWithConfig(api.backend.ChainDb(), &trie.Config{Cache: 16, Preimages: true})
 
     if number := start.NumberU64(); number > 0 {
-        parent := api.backend.BlockChain().GetBlock(start.ParentHash(), number-1)
+       // parent := api.backend.BlockChain().GetBlock(start.ParentHash(), number-1)
+	   parent := api.backend.BlockChain().GetBlock(block.ParentHash(), block.NumberU64()-1)
+
         if parent == nil {
             return nil, fmt.Errorf("parent block #%d not found", number-1)
         }
@@ -326,11 +328,11 @@ func (api *PrivateDebugAPI) TraceBlockByNumber(ctx context.Context, number rpc.B
 
 	switch number {
 	case rpc.PendingBlockNumber:
-		block = api.eth.miner.PendingBlock()
+		block = api.backend.Miner().PendingBlock()
 	case rpc.LatestBlockNumber:
-		block = api.eth.blockchain.CurrentBlock()
+		block = api.backend.BlockChain().CurrentBlock()
 	default:
-		block = api.eth.blockchain.GetBlockByNumber(uint64(number))
+		block = api.backend.BlockChain().GetBlockByNumber(uint64(number))
 	}
 	// Trace the block if it was found
 	if block == nil {
@@ -342,7 +344,7 @@ func (api *PrivateDebugAPI) TraceBlockByNumber(ctx context.Context, number rpc.B
 // TraceBlockByHash returns the structured logs created during the execution of
 // EVM and returns them as a JSON object.
 func (api *PrivateDebugAPI) TraceBlockByHash(ctx context.Context, hash common.Hash, config *TraceConfig) ([]*txTraceResult, error) {
-	block := api.eth.blockchain.GetBlockByHash(hash)
+	block := api.backend.BlockChain().GetBlockByHash(hash)
 	if block == nil {
 		return nil, fmt.Errorf("block %#x not found", hash)
 	}
@@ -373,7 +375,7 @@ func (api *PrivateDebugAPI) TraceBlockFromFile(ctx context.Context, file string,
 // EVM against a block pulled from the pool of bad ones and returns them as a JSON
 // object.
 func (api *PrivateDebugAPI) TraceBadBlock(ctx context.Context, hash common.Hash, config *TraceConfig) ([]*txTraceResult, error) {
-	blocks := api.eth.blockchain.BadBlocks()
+	blocks := api.backend.BlockChain().BadBlocks()
 	for _, block := range blocks {
 		if block.Hash() == hash {
 			return api.traceBlock(ctx, block, config)
@@ -386,7 +388,7 @@ func (api *PrivateDebugAPI) TraceBadBlock(ctx context.Context, hash common.Hash,
 // execution of EVM to the local file system and returns a list of files
 // to the caller.
 func (api *PrivateDebugAPI) StandardTraceBlockToFile(ctx context.Context, hash common.Hash, config *StdTraceConfig) ([]string, error) {
-	block := api.eth.blockchain.GetBlockByHash(hash)
+	block := api.backend.BlockChain().GetBlockByHash(hash)
 	if block == nil {
 		return nil, fmt.Errorf("block %#x not found", hash)
 	}
@@ -397,7 +399,7 @@ func (api *PrivateDebugAPI) StandardTraceBlockToFile(ctx context.Context, hash c
 // execution of EVM against a block pulled from the pool of bad ones to the
 // local file system and returns a list of files to the caller.
 func (api *PrivateDebugAPI) StandardTraceBadBlockToFile(ctx context.Context, hash common.Hash, config *StdTraceConfig) ([]string, error) {
-	blocks := api.eth.blockchain.BadBlocks()
+	blocks := api.backend.BlockChain().BadBlocks()
 	for _, block := range blocks {
 		if block.Hash() == hash {
 			return api.standardTraceBlockToFile(ctx, block, config)
@@ -411,10 +413,12 @@ func (api *PrivateDebugAPI) StandardTraceBadBlockToFile(ctx context.Context, has
 // per transaction, dependent on the requestd tracer.
 func (api *PrivateDebugAPI) traceBlock(ctx context.Context, block *types.Block, config *TraceConfig) ([]*txTraceResult, error) {
 	// Create the parent state database
-	if err := api.eth.engine.VerifyHeader(api.eth.blockchain, block.Header(), true); err != nil {
+	if err := api.backend.Engine().VerifyHeader(api.backend.BlockChain(), block.Header(), true); err != nil {
 		return nil, err
 	}
-	parent := api.eth.blockchain.GetBlock(block.ParentHash(), block.NumberU64()-1)
+	//parent := api.backend.BlockChain().GetBlock(block.ParentHash(), block.NumberU64()-1)
+	parent := api.backend.BlockChain().GetBlock(block.ParentHash(), block.NumberU64()-1)
+
 	if parent == nil {
 		return nil, fmt.Errorf("parent %#x not found", block.ParentHash())
 	}
@@ -428,7 +432,7 @@ func (api *PrivateDebugAPI) traceBlock(ctx context.Context, block *types.Block, 
 	}
 	// Execute all the transaction contained within the block concurrently
 	var (
-		signer = types.MakeSigner(api.eth.blockchain.Config(), block.Number())
+		signer = types.MakeSigner(api.backend.BlockChain().Config(), block.Number())
 
 		txs     = block.Transactions()
 		results = make([]*txTraceResult, len(txs))
@@ -440,7 +444,7 @@ func (api *PrivateDebugAPI) traceBlock(ctx context.Context, block *types.Block, 
 	if threads > len(txs) {
 		threads = len(txs)
 	}
-	blockCtx := core.NewEVMBlockContext(block.Header(), api.eth.blockchain, nil)
+	blockCtx := core.NewEVMBlockContext(block.Header(), api.backend.BlockChain(), nil)
 	for th := 0; th < threads; th++ {
 		pend.Add(1)
 		go func() {
@@ -466,13 +470,13 @@ func (api *PrivateDebugAPI) traceBlock(ctx context.Context, block *types.Block, 
 		// Generate the next state snapshot fast without tracing
 		msg, _ := tx.AsMessage(signer)
 		txContext := core.NewEVMTxContext(msg)
-		if pos, ok := api.eth.engine.(consensus.PoS); ok {
+		if pos, ok := api.backend.Engine().(consensus.PoS); ok {
 			if isSystemTx, _ := pos.IsSystemTransaction(tx, block.Header()); isSystemTx {
 				balance := statedb.GetBalance(consensus.FeeRecoder)
 				if balance.Cmp(common.Big0) > 0 {
 					statedb.SetBalance(consensus.FeeRecoder, big.NewInt(0))
 				}
-				blockReward := sonium.CalcBlockReward(api.eth.blockchain.Config(), block.Number())
+				blockReward := sonium.CalcBlockReward(api.backend.BlockChain().Config(), block.Number())
 				reward := big.NewInt(0).Set(balance)
 				reward = reward.Add(reward, blockReward)
 				if reward.Cmp(common.Big0) > 0 {
@@ -480,7 +484,9 @@ func (api *PrivateDebugAPI) traceBlock(ctx context.Context, block *types.Block, 
 				}
 			}
 		}
-		vmenv := vm.NewEVM(blockCtx, txContext, statedb, api.eth.blockchain.Config(), vm.Config{})
+		//vmenv := vm.NewEVM(blockCtx, txContext, statedb, api.backend.BlockChain().Config(), vm.Config{})
+		vmenv := vm.NewEVM(vmctx, txContext, statedb, api.backend.BlockChain().Config(), vmConf)
+
 		if _, err := core.ApplyMessage(vmenv, msg, new(core.GasPool).AddGas(msg.Gas())); err != nil {
 			failed = err
 			break
@@ -510,10 +516,12 @@ func (api *PrivateDebugAPI) standardTraceBlockToFile(ctx context.Context, block 
 		}
 	}
 	// Create the parent state database
-	if err := api.eth.engine.VerifyHeader(api.eth.blockchain, block.Header(), true); err != nil {
+	if err := api.backend.Engine().VerifyHeader(api.backend.BlockChain(), block.Header(), true); err != nil {
 		return nil, err
 	}
-	parent := api.eth.blockchain.GetBlock(block.ParentHash(), block.NumberU64()-1)
+	//parent := api.backend.BlockChain().GetBlock(block.ParentHash(), block.NumberU64()-1)
+	parent := api.backend.BlockChain().GetBlock(block.ParentHash(), block.NumberU64()-1)
+
 	if parent == nil {
 		return nil, fmt.Errorf("parent %#x not found", block.ParentHash())
 	}
@@ -538,10 +546,10 @@ func (api *PrivateDebugAPI) standardTraceBlockToFile(ctx context.Context, block 
 
 	// Execute transaction, either tracing all or just the requested one
 	var (
-		signer      = types.MakeSigner(api.eth.blockchain.Config(), block.Number())
+		signer      = types.MakeSigner(api.backend.BlockChain().Config(), block.Number())
 		dumps       []string
-		chainConfig = api.eth.blockchain.Config()
-		vmctx       = core.NewEVMBlockContext(block.Header(), api.eth.blockchain, nil)
+		chainConfig = api.backend.BlockChain().Config()
+		vmctx       = core.NewEVMBlockContext(block.Header(), api.backend.BlockChain(), nil)
 		canon       = true
 	)
 	// Check if there are any overrides: the caller may wish to enable a future
@@ -593,7 +601,9 @@ func (api *PrivateDebugAPI) standardTraceBlockToFile(ctx context.Context, block 
 			}
 		}
 		// Execute the transaction and flush any traces to disk
-		vmenv := vm.NewEVM(vmctx, txContext, statedb, chainConfig, vmConf)
+		//vmenv := vm.NewEVM(vmctx, txContext, statedb, chainConfig, vmConf)
+		vmenv := vm.NewEVM(vmctx, txContext, statedb, api.backend.BlockChain().Config(), vmConf)
+
 		_, err = core.ApplyMessage(vmenv, msg, new(core.GasPool).AddGas(msg.Gas()))
 		if writer != nil {
 			writer.Flush()
@@ -633,16 +643,16 @@ func containsTx(block *types.Block, hash common.Hash) bool {
 // attempted to be reexecuted to generate the desired state.
 func (api *PrivateDebugAPI) computeStateDB(block *types.Block, reexec uint64) (*state.StateDB, error) {
 	// If we have the state fully available, use that
-	statedb, err := api.eth.blockchain.StateAt(block.Root())
+	statedb, err := api.backend.BlockChain().StateAt(block.Root())
 	if err == nil {
 		return statedb, nil
 	}
 	// Otherwise try to reexec blocks until we find a state or reach our limit
 	origin := block.NumberU64()
-	database := state.NewDatabaseWithConfig(api.eth.ChainDb(), &trie.Config{Cache: 16, Preimages: true})
+	database := state.NewDatabaseWithConfig(api.backend.ChainDb(), &trie.Config{Cache: 16, Preimages: true})
 
 	for i := uint64(0); i < reexec; i++ {
-		block = api.eth.blockchain.GetBlock(block.ParentHash(), block.NumberU64()-1)
+		block = api.backend.BlockChain().GetBlock(block.ParentHash(), block.NumberU64()-1)
 		if block == nil {
 			break
 		}
@@ -671,15 +681,15 @@ func (api *PrivateDebugAPI) computeStateDB(block *types.Block, reexec uint64) (*
 			logged = time.Now()
 		}
 		// Retrieve the next block to regenerate and process it
-		if block = api.eth.blockchain.GetBlockByNumber(block.NumberU64() + 1); block == nil {
+		if block = api.backend.BlockChain().GetBlockByNumber(block.NumberU64() + 1); block == nil {
 			return nil, fmt.Errorf("block #%d not found", block.NumberU64()+1)
 		}
-		_, _, _, err := api.eth.blockchain.Processor().Process(block, statedb, vm.Config{})
+		_, _, _, err := api.backend.BlockChain().Processor().Process(block, statedb, vm.Config{})
 		if err != nil {
 			return nil, fmt.Errorf("processing block %d failed: %v", block.NumberU64(), err)
 		}
 		// Finalize the state so any modifications are written to the trie
-		root, err := statedb.Commit(api.eth.blockchain.Config().IsEIP158(block.Number()))
+		root, err := statedb.Commit(api.backend.BlockChain().Config().IsEIP158(block.Number()))
 		if err != nil {
 			return nil, err
 		}
@@ -701,7 +711,7 @@ func (api *PrivateDebugAPI) computeStateDB(block *types.Block, reexec uint64) (*
 // and returns them as a JSON object.
 func (api *PrivateDebugAPI) TraceTransaction(ctx context.Context, hash common.Hash, config *TraceConfig) (interface{}, error) {
 	// Retrieve the transaction and assemble its EVM context
-	tx, blockHash, _, index := rawdb.ReadTransaction(api.eth.ChainDb(), hash)
+	tx, blockHash, _, index := rawdb.ReadTransaction(api.backend.ChainDb(), hash)
 	if tx == nil {
 		return nil, fmt.Errorf("transaction %#x not found", hash)
 	}
@@ -710,7 +720,7 @@ func (api *PrivateDebugAPI) TraceTransaction(ctx context.Context, hash common.Ha
 		reexec = *config.Reexec
 	}
 	// Retrieve the block
-	block := api.eth.blockchain.GetBlockByHash(blockHash)
+	block := api.backend.BlockChain().GetBlockByHash(blockHash)
 	if block == nil {
 		return nil, fmt.Errorf("block %#x not found", blockHash)
 	}
@@ -727,14 +737,14 @@ func (api *PrivateDebugAPI) TraceTransaction(ctx context.Context, hash common.Ha
 // You can provide -2 as a block number to trace on top of the pending block.
 func (api *PrivateDebugAPI) TraceCall(ctx context.Context, args ethapi.CallArgs, blockNrOrHash rpc.BlockNumberOrHash, config *TraceConfig) (interface{}, error) {
 	// First try to retrieve the state
-	statedb, header, err := api.eth.APIBackend.StateAndHeaderByNumberOrHash(ctx, blockNrOrHash)
+	statedb, header, err := api.backend.StateAndHeaderByNumberOrHash(ctx, blockNrOrHash)
 	if err != nil {
 		// Try to retrieve the specified block
 		var block *types.Block
 		if hash, ok := blockNrOrHash.Hash(); ok {
-			block = api.eth.blockchain.GetBlockByHash(hash)
+			block = api.backend.BlockChain().GetBlockByHash(hash)
 		} else if number, ok := blockNrOrHash.Number(); ok {
-			block = api.eth.blockchain.GetBlockByNumber(uint64(number))
+			block = api.backend.BlockChain().GetBlockByNumber(uint64(number))
 		}
 		if block == nil {
 			return nil, fmt.Errorf("block %v not found: %v", blockNrOrHash, err)
@@ -751,8 +761,8 @@ func (api *PrivateDebugAPI) TraceCall(ctx context.Context, args ethapi.CallArgs,
 	}
 
 	// Execute the trace
-	msg := args.ToMessage(api.eth.APIBackend.RPCGasCap())
-	vmctx := core.NewEVMBlockContext(header, api.eth.blockchain, nil)
+	msg := args.ToMessage(api.backend.RPCGasCap())
+	vmctx := core.NewEVMBlockContext(header, api.backend.BlockChain(), nil)
 	return api.traceTx(ctx, msg, vmctx, statedb, config)
 }
 
@@ -794,15 +804,15 @@ func (api *PrivateDebugAPI) traceTx(ctx context.Context, message core.Message, v
 		tracer = vm.NewStructLogger(config.LogConfig)
 	}
 	// Run the transaction with tracing enabled.
-	vmenv := vm.NewEVM(vmctx, txContext, statedb, api.eth.blockchain.Config(), vm.Config{Debug: true, Tracer: tracer})
-	if pos, ok := api.eth.engine.(consensus.PoS); ok && pos.IsSystemContract(message.To()) && message.From() == vmctx.Coinbase && message.GasPrice().Cmp(big.NewInt(0)) == 0 {
+	vmenv := vm.NewEVM(vmctx, txContext, statedb, api.backend.BlockChain().Config(), vm.Config{Debug: true, Tracer: tracer})
+	if pos, ok := api.backend.Engine().(consensus.PoS); ok && pos.IsSystemContract(message.To()) && message.From() == vmctx.Coinbase && message.GasPrice().Cmp(big.NewInt(0)) == 0 {
 		balance := statedb.GetBalance(consensus.FeeRecoder)
 		reward := big.NewInt(0)
 		if balance.Cmp(common.Big0) > 0 {
 			statedb.SetBalance(consensus.FeeRecoder, big.NewInt(0))
 			reward = reward.Add(reward, balance)
 		}
-		blockReward := sonium.CalcBlockReward(api.eth.blockchain.Config(), vmctx.BlockNumber)
+		blockReward := sonium.CalcBlockReward(api.backend.BlockChain().Config(), vmctx.BlockNumber)
 		reward = reward.Add(reward, blockReward)
 		if reward.Cmp(common.Big0) > 0 {
 			statedb.AddBalance(vmctx.Coinbase, reward)
@@ -838,7 +848,8 @@ func (api *PrivateDebugAPI) traceTx(ctx context.Context, message core.Message, v
 // computeTxEnv returns the execution environment of a certain transaction.
 func (api *PrivateDebugAPI) computeTxEnv(block *types.Block, txIndex int, reexec uint64) (core.Message, vm.BlockContext, *state.StateDB, error) {
 	// Create the parent state database
-	parent := api.eth.blockchain.GetBlock(block.ParentHash(), block.NumberU64()-1)
+	//parent := api.backend.BlockChain().GetBlock(block.ParentHash(), block.NumberU64()-1)
+	parent := api.backend.BlockChain().GetBlock(block.ParentHash(), block.NumberU64()-1)
 	if parent == nil {
 		return nil, vm.BlockContext{}, nil, fmt.Errorf("parent %#x not found", block.ParentHash())
 	}
@@ -852,19 +863,19 @@ func (api *PrivateDebugAPI) computeTxEnv(block *types.Block, txIndex int, reexec
 	}
 
 	// Recompute transactions up to the target index.
-	signer := types.MakeSigner(api.eth.blockchain.Config(), block.Number())
+	signer := types.MakeSigner(api.backend.BlockChain().Config(), block.Number())
 
 	for idx, tx := range block.Transactions() {
 		// Assemble the transaction call message and return if the requested offset
 		msg, _ := tx.AsMessage(signer)
 		txContext := core.NewEVMTxContext(msg)
-		if pos, ok := api.eth.engine.(consensus.PoS); ok {
+		if pos, ok := api.backend.Engine().(consensus.PoS); ok {
 			if isSystemTx, _ := pos.IsSystemTransaction(tx, block.Header()); isSystemTx {
 				balance := statedb.GetBalance(consensus.FeeRecoder)
 				if balance.Cmp(common.Big0) > 0 {
 					statedb.SetBalance(consensus.FeeRecoder, big.NewInt(0))
 				}
-				blockReward := sonium.CalcBlockReward(api.eth.blockchain.Config(), block.Number())
+				blockReward := sonium.CalcBlockReward(api.backend.BlockChain().Config(), block.Number())
 				reward := big.NewInt(0).Set(balance)
 				reward = reward.Add(reward, blockReward)
 				if reward.Cmp(common.Big0) > 0 {
@@ -872,12 +883,14 @@ func (api *PrivateDebugAPI) computeTxEnv(block *types.Block, txIndex int, reexec
 				}
 			}
 		}
-		context := core.NewEVMBlockContext(block.Header(), api.eth.blockchain, nil)
+		context := core.NewEVMBlockContext(block.Header(), api.backend.BlockChain(), nil)
 		if idx == txIndex {
 			return msg, context, statedb, nil
 		}
 		// Not yet the searched for transaction, execute on top of the current state
-		vmenv := vm.NewEVM(context, txContext, statedb, api.eth.blockchain.Config(), vm.Config{})
+		//vmenv := vm.NewEVM(context, txContext, statedb, api.backend.BlockChain().Config(), vm.Config{})
+		vmenv := vm.NewEVM(vmctx, txContext, statedb, api.backend.BlockChain().Config(), vmConf)
+
 		if _, err := core.ApplyMessage(vmenv, msg, new(core.GasPool).AddGas(tx.Gas())); err != nil {
 			return nil, vm.BlockContext{}, nil, fmt.Errorf("transaction %#x failed: %v", tx.Hash(), err)
 		}

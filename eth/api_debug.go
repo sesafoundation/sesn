@@ -7,6 +7,8 @@ import (
 	"github.com/sesafoundation/sesn/common/hexutil"
 	//"github.com/sesafoundation/sesn/core/types"
 	"github.com/sesafoundation/sesn/rlp"
+	"github.com/sesafoundation/sesn/internal/ethapi"
+
 )
 
 // ----------------------------------------------------------------------
@@ -21,9 +23,19 @@ func NewPublicDebugAPI(eth *Ethereum) *PublicDebugAPI {
 	return &PublicDebugAPI{eth: eth}
 }
 
+type PrivateDebugAPI struct {
+    backend ethapi.Backend
+}
+
+func NewPrivateDebugAPI(backend ethapi.Backend) *PrivateDebugAPI {
+    return &PrivateDebugAPI{backend: backend}
+}
+
 // GetBlockRlp returns the RLP encoding of the given block number.
 func (api *PublicDebugAPI) GetBlockRlp(_ context.Context, number uint64) (string, error) {
-	block := api.eth.blockchain.GetBlockByNumber(number)
+	//block := api.eth.blockchain.GetBlockByNumber(number)
+	block := api.backend.BlockChain().GetBlockByNumber(number)
+
 	if block == nil {
 		return "", nil
 	}
@@ -36,7 +48,9 @@ func (api *PublicDebugAPI) GetBlockRlp(_ context.Context, number uint64) (string
 
 // DumpBlock returns a minimal dump of the block (header + tx list).
 func (api *PublicDebugAPI) DumpBlock(_ context.Context, number uint64) (map[string]interface{}, error) {
-	block := api.eth.blockchain.GetBlockByNumber(number)
+	//block := api.eth.blockchain.GetBlockByNumber(number)
+	block := api.backend.BlockChain().GetBlockByNumber(number)
+
 	if block == nil {
 		return nil, nil
 	}
@@ -49,20 +63,7 @@ func (api *PublicDebugAPI) DumpBlock(_ context.Context, number uint64) (map[stri
 	return out, nil
 }
 
-// ----------------------------------------------------------------------
-// PrivateDebugAPI – internal / tracing-oriented helpers
-// ----------------------------------------------------------------------
 
-type PrivateDebugAPI struct {
-    backend ethapi.Backend
-}
-
-
-
-
-func NewPrivateDebugAPI(backend ethapi.Backend) *PrivateDebugAPI {
-    return &PrivateDebugAPI{backend: backend}
-}
 
 // SetHead rewinds/forwards the canonical chain head to the given block number.
 
