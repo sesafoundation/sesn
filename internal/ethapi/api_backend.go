@@ -93,9 +93,9 @@ func (b *EthAPIBackend) BlockByNumberOrHash(ctx context.Context, bh rpc.BlockNum
 func (b *EthAPIBackend) StateAndHeaderByNumber(ctx context.Context, n rpc.BlockNumber) (*state.StateDB, *types.Header, error) {
 	return b.backend.StateAndHeaderByNumber(ctx, n)
 }
-func (b *EthAPIBackend) StateAndHeaderByNumberOrHash(ctx context.Context, bh rpc.BlockNumberOrHash) (*state.StateDB, *types.Header, error) {
-	return b.backend.StateAndHeaderByNumberOrHash(ctx, bh)
-}
+//func (b *EthAPIBackend) StateAndHeaderByNumberOrHash(ctx context.Context, bh rpc.BlockNumberOrHash) (*state.StateDB, *types.Header, error) {
+//	return b.backend.StateAndHeaderByNumberOrHash(ctx, bh)
+//}
 func (b *EthAPIBackend) GetReceipts(ctx context.Context, hash common.Hash) (types.Receipts, error) {
 	return b.backend.GetReceipts(ctx, hash)
 }
