@@ -200,6 +200,4 @@ func (b *EthAPIBackend) EthVersion() int {
 }
 
 // BloomStatus forwards bloom bit indexing status
-func (b *EthAPIBackend) BloomStatus() (uint64, uint64) {
-    return b.backend.BloomStatus()
-}
+
