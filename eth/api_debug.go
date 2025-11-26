@@ -57,10 +57,12 @@ type PrivateDebugAPI struct {
     backend ethapi.Backend
 }
 
-func NewPrivateDebugAPI(b ethapi.Backend) *PrivateDebugAPI {
-    return &PrivateDebugAPI{backend: b}
-}
 
+
+
+func NewPrivateDebugAPI(backend ethapi.Backend) *PrivateDebugAPI {
+    return &PrivateDebugAPI{backend: backend}
+}
 
 // SetHead rewinds/forwards the canonical chain head to the given block number.
 

@@ -103,53 +103,12 @@ type txTraceTask struct {
 	index   int            // Transaction offset in the block
 }
 
-// TraceChain returns the structured logs created during the execution of EVM
-// between two blocks (excluding start) and returns them as a JSON object.
-//func (api *PrivateDebugAPI) TraceChain(ctx context.Context, start, end rpc.BlockNumber, config *TraceConfig) (*rpc.Subscription, error) {
-//	// Fetch the block interval that we want to trace
-//	var from, to *types.Block
-//
-//	switch start {
-//	case rpc.PendingBlockNumber:
-//		from = api.eth.miner.PendingBlock()
-//	case rpc.LatestBlockNumber:
-//		from = api.eth.blockchain.CurrentBlock()
-//	default:
-//		from = api.eth.blockchain.GetBlockByNumber(uint64(start))
-//	}
-//	switch end {
-//	case rpc.PendingBlockNumber:
-//		to = api.eth.miner.PendingBlock()
-//	case rpc.LatestBlockNumber:
-//		to = api.eth.blockchain.CurrentBlock()
-//	default:
-//		to = api.eth.blockchain.GetBlockByNumber(uint64(end))
-//	}
-//	// Trace the chain if we've found all our blocks
-//	if from == nil {
-//		return nil, fmt.Errorf("starting block #%d not found", start)
-//	}
-//	if to == nil {
-//		return nil, fmt.Errorf("end block #%d not found", end)
-//	}
-//	if from.Number().Cmp(to.Number()) >= 0 {
-//		return nil, fmt.Errorf("end block (#%d) needs to come after start block (#%d)", end, start)
-//	}
-//	return api.traceChain(ctx, from, to, config)
-//}
-//new
 
+func (api *PrivateDebugAPI) TraceChain(ctx context.Context, start, end rpc.BlockNumber, config *TraceConfig) (*rpc.Subscription, error) {
 
-func (api *PrivateDebugAPI) TraceChain(
-    ctx context.Context,
-    start, end rpc.BlockNumber,
-    config *TraceConfig,
-) (*rpc.Subscription, error) {
+    var from, to *types.Block
 
-    // Resolve start block
-    var from *types.Block
     if start == rpc.PendingBlockNumber {
-        // pending is only known by miner
         if api.backend.Miner() != nil {
             from = api.backend.Miner().PendingBlock()
         }
@@ -159,8 +118,6 @@ func (api *PrivateDebugAPI) TraceChain(
         from, _ = api.backend.BlockByNumber(ctx, start)
     }
 
-    // Resolve end block
-    var to *types.Block
     if end == rpc.PendingBlockNumber {
         if api.backend.Miner() != nil {
             to = api.backend.Miner().PendingBlock()
@@ -171,7 +128,6 @@ func (api *PrivateDebugAPI) TraceChain(
         to, _ = api.backend.BlockByNumber(ctx, end)
     }
 
-    // Validate resolved blocks
     if from == nil {
         return nil, fmt.Errorf("starting block #%d not found", start)
     }
@@ -179,228 +135,187 @@ func (api *PrivateDebugAPI) TraceChain(
         return nil, fmt.Errorf("end block #%d not found", end)
     }
     if from.Number().Cmp(to.Number()) >= 0 {
-        return nil, fmt.Errorf(
-            "end block (#%d) needs to come after start block (#%d)",
-            end, start,
-        )
+        return nil, fmt.Errorf("end block (#%d) must be after start block (#%d)", end, start)
     }
 
-    // Perform chain tracing
     return api.traceChain(ctx, from, to, config)
 }
+
 
 // traceChain configures a new tracer according to the provided configuration, and
 // executes all the transactions contained within. The return value will be one item
 // per transaction, dependent on the requested tracer.
 func (api *PrivateDebugAPI) traceChain(ctx context.Context, start, end *types.Block, config *TraceConfig) (*rpc.Subscription, error) {
-	// Tracing a chain is a **long** operation, only do with subscriptions
-	notifier, supported := rpc.NotifierFromContext(ctx)
-	if !supported {
-		return &rpc.Subscription{}, rpc.ErrNotificationsUnsupported
-	}
-	sub := notifier.CreateSubscription()
 
-	// Ensure we have a valid starting state before doing any work
-	origin := start.NumberU64()
-	database := state.NewDatabaseWithConfig(api.eth.ChainDb(), &trie.Config{Cache: 16, Preimages: true})
+    notifier, ok := rpc.NotifierFromContext(ctx)
+    if !ok {
+        return &rpc.Subscription{}, rpc.ErrNotificationsUnsupported
+    }
+    sub := notifier.CreateSubscription()
 
-	if number := start.NumberU64(); number > 0 {
-		start = api.eth.blockchain.GetBlock(start.ParentHash(), start.NumberU64()-1)
-		if start == nil {
-			return nil, fmt.Errorf("parent block #%d not found", number-1)
-		}
-	}
-	statedb, err := state.New(start.Root(), database, nil)
-	if err != nil {
-		// If the starting state is missing, allow some number of blocks to be reexecuted
-		reexec := defaultTraceReexec
-		if config != nil && config.Reexec != nil {
-			reexec = *config.Reexec
-		}
-		// Find the most recent block that has the state available
-		for i := uint64(0); i < reexec; i++ {
-			start = api.eth.blockchain.GetBlock(start.ParentHash(), start.NumberU64()-1)
-			if start == nil {
-				break
-			}
-			if statedb, err = state.New(start.Root(), database, nil); err == nil {
-				break
-			}
-		}
-		// If we still don't have the state available, bail out
-		if err != nil {
-			switch err.(type) {
-			case *trie.MissingNodeError:
-				return nil, errors.New("required historical state unavailable")
-			default:
-				return nil, err
-			}
-		}
-	}
-	// Execute all the transaction contained within the chain concurrently for each block
-	blocks := int(end.NumberU64() - origin)
+    // initial state: parent of start block
+    database := state.NewDatabaseWithConfig(api.backend.ChainDb(), &trie.Config{Cache: 16, Preimages: true})
 
-	threads := runtime.NumCPU()
-	if threads > blocks {
-		threads = blocks
-	}
-	var (
-		pend    = new(sync.WaitGroup)
-		tasks   = make(chan *blockTraceTask, threads)
-		results = make(chan *blockTraceTask, threads)
-	)
-	for th := 0; th < threads; th++ {
-		pend.Add(1)
-		go func() {
-			defer pend.Done()
+    if number := start.NumberU64(); number > 0 {
+        parent := api.backend.BlockChain().GetBlock(start.ParentHash(), number-1)
+        if parent == nil {
+            return nil, fmt.Errorf("parent block #%d not found", number-1)
+        }
+        start = parent
+    }
 
-			// Fetch and execute the next block trace tasks
-			for task := range tasks {
-				signer := types.MakeSigner(api.eth.blockchain.Config(), task.block.Number())
-				blockCtx := core.NewEVMBlockContext(task.block.Header(), api.eth.blockchain, nil)
-				// Trace all the transactions contained within
-				for i, tx := range task.block.Transactions() {
-					msg, _ := tx.AsMessage(signer)
-					res, err := api.traceTx(ctx, msg, blockCtx, task.statedb, config)
-					if err != nil {
-						task.results[i] = &txTraceResult{Error: err.Error()}
-						log.Warn("Tracing failed", "hash", tx.Hash(), "block", task.block.NumberU64(), "err", err)
-						break
-					}
-					// Only delete empty objects if EIP158/161 (a.k.a Spurious Dragon) is in effect
-					task.statedb.Finalise(api.eth.blockchain.Config().IsEIP158(task.block.Number()))
-					task.results[i] = &txTraceResult{Result: res}
-				}
-				// Stream the result back to the user or abort on teardown
-				select {
-				case results <- task:
-				case <-notifier.Closed():
-					return
-				}
-			}
-		}()
-	}
-	// Start a goroutine to feed all the blocks into the tracers
-	begin := time.Now()
+    statedb, err := state.New(start.Root(), database, nil)
+    if err != nil {
+        reexec := uint64(128)
+        if config != nil && config.Reexec != nil {
+            reexec = *config.Reexec
+        }
+        for i := uint64(0); i < reexec; i++ {
+            start = api.backend.BlockChain().GetBlock(start.ParentHash(), start.NumberU64()-1)
+            if start == nil {
+                break
+            }
+            if statedb, err = state.New(start.Root(), database, nil); err == nil {
+                break
+            }
+        }
+        if err != nil {
+            return nil, errors.New("required historical state unavailable")
+        }
+    }
 
-	go func() {
-		var (
-			logged time.Time
-			number uint64
-			traced uint64
-			failed error
-			proot  common.Hash
-		)
-		// Ensure everything is properly cleaned up on any exit path
-		defer func() {
-			close(tasks)
-			pend.Wait()
+    blocksCount := int(end.NumberU64() - start.NumberU64())
+    workers := runtime.NumCPU()
+    if workers > blocksCount {
+        workers = blocksCount
+    }
 
-			switch {
-			case failed != nil:
-				log.Warn("Chain tracing failed", "start", start.NumberU64(), "end", end.NumberU64(), "transactions", traced, "elapsed", time.Since(begin), "err", failed)
-			case number < end.NumberU64():
-				log.Warn("Chain tracing aborted", "start", start.NumberU64(), "end", end.NumberU64(), "abort", number, "transactions", traced, "elapsed", time.Since(begin))
-			default:
-				log.Info("Chain tracing finished", "start", start.NumberU64(), "end", end.NumberU64(), "transactions", traced, "elapsed", time.Since(begin))
-			}
-			close(results)
-		}()
-		// Feed all the blocks both into the tracer, as well as fast process concurrently
-		for number = start.NumberU64() + 1; number <= end.NumberU64(); number++ {
-			// Stop tracing if interruption was requested
-			select {
-			case <-notifier.Closed():
-				return
-			default:
-			}
-			// Print progress logs if long enough time elapsed
-			if time.Since(logged) > 8*time.Second {
-				if number > origin {
-					nodes, imgs := database.TrieDB().Size()
-					log.Info("Tracing chain segment", "start", origin, "end", end.NumberU64(), "current", number, "transactions", traced, "elapsed", time.Since(begin), "memory", nodes+imgs)
-				} else {
-					log.Info("Preparing state for chain trace", "block", number, "start", origin, "elapsed", time.Since(begin))
-				}
-				logged = time.Now()
-			}
-			// Retrieve the next block to trace
-			block := api.eth.blockchain.GetBlockByNumber(number)
-			if block == nil {
-				failed = fmt.Errorf("block #%d not found", number)
-				break
-			}
-			// Send the block over to the concurrent tracers (if not in the fast-forward phase)
-			if number > origin {
-				txs := block.Transactions()
+    pend := new(sync.WaitGroup)
+    tasks := make(chan *blockTraceTask, workers)
+    results := make(chan *blockTraceTask, workers)
 
-				select {
-				case tasks <- &blockTraceTask{statedb: statedb.Copy(), block: block, rootref: proot, results: make([]*txTraceResult, len(txs))}:
-				case <-notifier.Closed():
-					return
-				}
-				traced += uint64(len(txs))
-			}
-			// Generate the next state snapshot fast without tracing
-			_, _, _, err := api.eth.blockchain.Processor().Process(block, statedb, vm.Config{})
-			if err != nil {
-				failed = err
-				break
-			}
-			// Finalize the state so any modifications are written to the trie
-			root, err := statedb.Commit(api.eth.blockchain.Config().IsEIP158(block.Number()))
-			if err != nil {
-				failed = err
-				break
-			}
-			if err := statedb.Reset(root); err != nil {
-				failed = err
-				break
-			}
-			// Reference the trie twice, once for us, once for the tracer
-			database.TrieDB().Reference(root, common.Hash{})
-			if number >= origin {
-				database.TrieDB().Reference(root, common.Hash{})
-			}
-			// Dereference all past tries we ourselves are done working with
-			if proot != (common.Hash{}) {
-				database.TrieDB().Dereference(proot)
-			}
-			proot = root
+    for w := 0; w < workers; w++ {
+        pend.Add(1)
+        go func() {
+            defer pend.Done()
+            for task := range tasks {
+                signer := types.MakeSigner(api.backend.BlockChain().Config(), task.block.Number())
+                blockCtx := core.NewEVMBlockContext(task.block.Header(), api.backend.BlockChain(), nil)
 
-			// TODO(karalabe): Do we need the preimages? Won't they accumulate too much?
-		}
-	}()
+                for i, tx := range task.block.Transactions() {
+                    msg, _ := tx.AsMessage(signer)
+                    res, err := api.traceTx(ctx, msg, blockCtx, task.statedb, config)
+                    if err != nil {
+                        task.results[i] = &txTraceResult{Error: err.Error()}
+                        break
+                    }
+                    task.statedb.Finalise(api.backend.BlockChain().Config().IsEIP158(task.block.Number()))
+                    task.results[i] = &txTraceResult{Result: res}
+                }
 
-	// Keep reading the trace results and stream the to the user
-	go func() {
-		var (
-			done = make(map[uint64]*blockTraceResult)
-			next = origin + 1
-		)
-		for res := range results {
-			// Queue up next received result
-			result := &blockTraceResult{
-				Block:  hexutil.Uint64(res.block.NumberU64()),
-				Hash:   res.block.Hash(),
-				Traces: res.results,
-			}
-			done[uint64(result.Block)] = result
+                select {
+                case results <- task:
+                case <-notifier.Closed():
+                    return
+                }
+            }
+        }()
+    }
 
-			// Dereference any paret tries held in memory by this task
-			database.TrieDB().Dereference(res.rootref)
+    begin := time.Now()
 
-			// Stream completed traces to the user, aborting on the first error
-			for result, ok := done[next]; ok; result, ok = done[next] {
-				if len(result.Traces) > 0 || next == end.NumberU64() {
-					notifier.Notify(sub.ID, result)
-				}
-				delete(done, next)
-				next++
-			}
-		}
-	}()
-	return sub, nil
+    go func() {
+        var (
+            logged time.Time
+            number uint64 = start.NumberU64()
+            traced uint64
+            failed error
+            proot  common.Hash
+        )
+
+        defer func() {
+            close(tasks)
+            pend.Wait()
+            close(results)
+            if failed != nil {
+                log.Warn("Chain tracing failed", "start", start.NumberU64(), "end", end.NumberU64(), "err", failed)
+            } else {
+                log.Info("Chain tracing finished", "start", start.NumberU64(), "end", end.NumberU64(), "txs", traced, "elapsed", time.Since(begin))
+            }
+        }()
+
+        for number < end.NumberU64() {
+            number++
+
+            block := api.backend.BlockChain().GetBlockByNumber(number)
+            if block == nil {
+                failed = fmt.Errorf("block #%d not found", number)
+                return
+            }
+
+            if number > start.NumberU64() {
+                txs := block.Transactions()
+                select {
+                case tasks <- &blockTraceTask{statedb: statedb.Copy(), block: block, rootref: proot, results: make([]*txTraceResult, len(txs))}:
+                case <-notifier.Closed():
+                    return
+                }
+                traced += uint64(len(txs))
+            }
+
+            _, _, _, err := api.backend.BlockChain().Processor().Process(block, statedb, vm.Config{})
+            if err != nil {
+                failed = err
+                return
+            }
+
+            root, err := statedb.Commit(api.backend.BlockChain().Config().IsEIP158(block.Number()))
+            if err != nil {
+                failed = err
+                return
+            }
+            if err := statedb.Reset(root); err != nil {
+                failed = err
+                return
+            }
+            database.TrieDB().Reference(root, common.Hash{})
+            if proot != (common.Hash{}) {
+                database.TrieDB().Dereference(proot)
+            }
+            proot = root
+
+            if time.Since(logged) > 8*time.Second {
+                log.Info("Tracing chain progress", "current", number, "elapsed", time.Since(begin))
+                logged = time.Now()
+            }
+        }
+    }()
+
+    go func() {
+        done := make(map[uint64]*blockTraceResult)
+        next := start.NumberU64() + 1
+
+        for res := range results {
+            result := &blockTraceResult{
+                Block:  hexutil.Uint64(res.block.NumberU64()),
+                Hash:   res.block.Hash(),
+                Traces: res.results,
+            }
+            done[uint64(result.Block)] = result
+
+            for {
+                r, ok := done[next]
+                if !ok {
+                    break
+                }
+                notifier.Notify(sub.ID, r)
+                delete(done, next)
+                next++
+            }
+        }
+    }()
+
+    return sub, nil
 }
 
 // TraceBlockByNumber returns the structured logs created during the execution of
