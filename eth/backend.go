@@ -611,3 +611,15 @@ func (s *Ethereum) HeaderByNumber(ctx context.Context, number rpc.BlockNumber) (
 func (s *Ethereum) HeaderByHash(ctx context.Context, hash common.Hash) (*types.Header, error) {
     return s.blockchain.GetHeaderByHash(hash), nil
 }
+
+func (b *EthAPIBackend) StateAndHeaderByNumberOrHash(ctx context.Context, bh rpc.BlockNumberOrHash) (*state.StateDB, *types.Header, error) {
+    if bh.BlockNumber != nil {
+        return b.StateAndHeaderByNumber(ctx, *bh.BlockNumber)
+    }
+    block, err := b.BlockByHash(ctx, bh.Hash)
+    if err != nil || block == nil {
+        return nil, nil, errors.New("block not found")
+    }
+    st, err := b.backend.BlockChain().StateAt(block.Root())
+    return st, block.Header(), err
+}
