@@ -105,37 +105,88 @@ type txTraceTask struct {
 
 // TraceChain returns the structured logs created during the execution of EVM
 // between two blocks (excluding start) and returns them as a JSON object.
-func (api *PrivateDebugAPI) TraceChain(ctx context.Context, start, end rpc.BlockNumber, config *TraceConfig) (*rpc.Subscription, error) {
-	// Fetch the block interval that we want to trace
-	var from, to *types.Block
+//func (api *PrivateDebugAPI) TraceChain(ctx context.Context, start, end rpc.BlockNumber, config *TraceConfig) (*rpc.Subscription, error) {
+//	// Fetch the block interval that we want to trace
+//	var from, to *types.Block
+//
+//	switch start {
+//	case rpc.PendingBlockNumber:
+//		from = api.eth.miner.PendingBlock()
+//	case rpc.LatestBlockNumber:
+//		from = api.eth.blockchain.CurrentBlock()
+//	default:
+//		from = api.eth.blockchain.GetBlockByNumber(uint64(start))
+//	}
+//	switch end {
+//	case rpc.PendingBlockNumber:
+//		to = api.eth.miner.PendingBlock()
+//	case rpc.LatestBlockNumber:
+//		to = api.eth.blockchain.CurrentBlock()
+//	default:
+//		to = api.eth.blockchain.GetBlockByNumber(uint64(end))
+//	}
+//	// Trace the chain if we've found all our blocks
+//	if from == nil {
+//		return nil, fmt.Errorf("starting block #%d not found", start)
+//	}
+//	if to == nil {
+//		return nil, fmt.Errorf("end block #%d not found", end)
+//	}
+//	if from.Number().Cmp(to.Number()) >= 0 {
+//		return nil, fmt.Errorf("end block (#%d) needs to come after start block (#%d)", end, start)
+//	}
+//	return api.traceChain(ctx, from, to, config)
+//}
+//new
 
-	switch start {
-	case rpc.PendingBlockNumber:
-		from = api.eth.miner.PendingBlock()
-	case rpc.LatestBlockNumber:
-		from = api.eth.blockchain.CurrentBlock()
-	default:
-		from = api.eth.blockchain.GetBlockByNumber(uint64(start))
-	}
-	switch end {
-	case rpc.PendingBlockNumber:
-		to = api.eth.miner.PendingBlock()
-	case rpc.LatestBlockNumber:
-		to = api.eth.blockchain.CurrentBlock()
-	default:
-		to = api.eth.blockchain.GetBlockByNumber(uint64(end))
-	}
-	// Trace the chain if we've found all our blocks
-	if from == nil {
-		return nil, fmt.Errorf("starting block #%d not found", start)
-	}
-	if to == nil {
-		return nil, fmt.Errorf("end block #%d not found", end)
-	}
-	if from.Number().Cmp(to.Number()) >= 0 {
-		return nil, fmt.Errorf("end block (#%d) needs to come after start block (#%d)", end, start)
-	}
-	return api.traceChain(ctx, from, to, config)
+
+func (api *PrivateDebugAPI) TraceChain(
+    ctx context.Context,
+    start, end rpc.BlockNumber,
+    config *TraceConfig,
+) (*rpc.Subscription, error) {
+
+    // Resolve start block
+    var from *types.Block
+    if start == rpc.PendingBlockNumber {
+        // pending is only known by miner
+        if api.backend.Miner() != nil {
+            from = api.backend.Miner().PendingBlock()
+        }
+    } else if start == rpc.LatestBlockNumber {
+        from = api.backend.CurrentBlock()
+    } else {
+        from, _ = api.backend.BlockByNumber(ctx, start)
+    }
+
+    // Resolve end block
+    var to *types.Block
+    if end == rpc.PendingBlockNumber {
+        if api.backend.Miner() != nil {
+            to = api.backend.Miner().PendingBlock()
+        }
+    } else if end == rpc.LatestBlockNumber {
+        to = api.backend.CurrentBlock()
+    } else {
+        to, _ = api.backend.BlockByNumber(ctx, end)
+    }
+
+    // Validate resolved blocks
+    if from == nil {
+        return nil, fmt.Errorf("starting block #%d not found", start)
+    }
+    if to == nil {
+        return nil, fmt.Errorf("end block #%d not found", end)
+    }
+    if from.Number().Cmp(to.Number()) >= 0 {
+        return nil, fmt.Errorf(
+            "end block (#%d) needs to come after start block (#%d)",
+            end, start,
+        )
+    }
+
+    // Perform chain tracing
+    return api.traceChain(ctx, from, to, config)
 }
 
 // traceChain configures a new tracer according to the provided configuration, and

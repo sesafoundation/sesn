@@ -58,6 +58,8 @@ func NewPublicEthereumAPI(b Backend) *PublicEthereumAPI {
 	return &PublicEthereumAPI{b}
 }
 
+
+
 // GasPrice returns a suggestion for a gas price.
 func (s *PublicEthereumAPI) GasPrice(ctx context.Context) (*hexutil.Big, error) {
 	price, err := s.b.SuggestPrice(ctx)
@@ -529,9 +531,14 @@ type PublicBlockChainAPI struct {
 	b Backend
 }
 
+
 // NewPublicBlockChainAPI creates a new Ethereum blockchain API.
+//func NewPublicBlockChainAPI(b Backend) *PublicBlockChainAPI {
+//	return &PublicBlockChainAPI{b}
+//}
+
 func NewPublicBlockChainAPI(b Backend) *PublicBlockChainAPI {
-	return &PublicBlockChainAPI{b}
+    return &PublicBlockChainAPI{b: b}
 }
 
 // ChainId returns the chainID value for transaction replay protection.
