@@ -204,14 +204,15 @@ func (b *EthAPIBackend) NetVersion() uint64 {
 }
 
 func (b *EthAPIBackend) StateAndHeaderByNumberOrHash(ctx context.Context, bh rpc.BlockNumberOrHash) (*state.StateDB, *types.Header, error) {
-    // Case 1: Numeric block reference
-    if bh.BlockNumber() != nil {
-        return b.StateAndHeaderByNumber(ctx, *bh.BlockNumber())
+
+    // If BlockNumber is set
+    if bh.BlockNumber != nil {
+        return b.StateAndHeaderByNumber(ctx, *bh.BlockNumber)
     }
 
-    // Case 2: Hash block reference
-    if bh.Hash() != nil {
-        block, err := b.BlockByHash(ctx, *bh.Hash())
+    // If BlockHash is set
+    if h, ok := bh.Hash(); ok {
+        block, err := b.BlockByHash(ctx, h)
         if err != nil {
             return nil, nil, err
         }
@@ -226,7 +227,8 @@ func (b *EthAPIBackend) StateAndHeaderByNumberOrHash(ctx context.Context, bh rpc
         return st, block.Header(), nil
     }
 
-    // Neither number nor hash provided
-    return nil, nil, errors.New("invalid block identifier (neither number nor hash set)")
+    // Neither number nor hash
+    return nil, nil, errors.New("invalid BlockNumberOrHash: neither blockNumber nor blockHash specified")
 }
+
 
