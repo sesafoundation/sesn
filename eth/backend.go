@@ -361,6 +361,24 @@ func (s *Ethereum) APIs() []rpc.API {
 	return append(apis, local...)
 }
 
+// BlockByNumberOrHash implements flexible block lookup for ethapi.Backend
+func (s *Ethereum) BlockByNumberOrHash(ctx context.Context, bh rpc.BlockNumberOrHash) (*types.Block, error) {
+    if num, ok := bh.Number(); ok {
+        return s.BlockByNumber(ctx, num)
+    }
+    if hash, ok := bh.Hash(); ok {
+        hdr := s.blockchain.GetHeaderByHash(hash)
+        if hdr == nil {
+            return nil, nil
+        }
+        return s.blockchain.GetBlock(hash, hdr.Number.Uint64()), nil
+    }
+    return nil, errors.New("invalid BlockNumberOrHash")
+}
+
+
+
+
 func (s *Ethereum) ResetWithGenesisBlock(gb *types.Block) {
 	s.blockchain.ResetWithGenesisBlock(gb)
 }
@@ -623,3 +641,4 @@ func (b *EthAPIBackend) StateAndHeaderByNumberOrHash(ctx context.Context, bh rpc
     st, err := b.backend.BlockChain().StateAt(block.Root())
     return st, block.Header(), err
 }
+
