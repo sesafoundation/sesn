@@ -95,7 +95,7 @@ type Ethereum struct {
 
 // New creates a new Ethereum object (including the initialisation of the common Ethereum object)
 func New(stack *node.Node, config *Config) (*Ethereum, error) {
-	// Ensure configuration values are compatible and sane
+	// ---- Safety / config checks ----
 	if config.SyncMode == downloader.LightSync {
 		return nil, errors.New("can't run eth.Ethereum in light sync mode, use les.LightEthereum")
 	}
@@ -114,7 +114,6 @@ func New(stack *node.Node, config *Config) (*Ethereum, error) {
 		log.Warn("Miner gas floor invalid", "provided", config.Miner.GasFloor, "updated", params.MinGasTarget)
 		config.Miner.GasFloor = params.MinGasTarget
 	}
-
 	if config.NoPruning && config.TrieDirtyCache > 0 {
 		if config.SnapshotCache > 0 {
 			config.TrieCleanCache += config.TrieDirtyCache * 3 / 5
@@ -129,7 +128,7 @@ func New(stack *node.Node, config *Config) (*Ethereum, error) {
 		"dirty", common.StorageSize(config.TrieDirtyCache)*1024*1024,
 	)
 
-	// Assemble the Ethereum object
+	// ---- Assemble Ethereum object ----
 	chainDb, err := stack.OpenDatabaseWithFreezer("chaindata", config.DatabaseCache, config.DatabaseHandles, config.DatabaseFreezer, "eth/db/chaindata/")
 	if err != nil {
 		return nil, err
@@ -154,28 +153,21 @@ func New(stack *node.Node, config *Config) (*Ethereum, error) {
 		p2pServer:         stack.Server(),
 	}
 
-	// Public blockchain API for consensus engines (uses *Ethereum directly as Backend)
-	//ethAPI := ethapi.NewPublicBlockChainAPI(eth)
+	// ---- (1) Create internal Backend wrapper used by RPC + consensus ----
+	eth.APIBackend = ethapi.NewEthAPIBackend(stack.Config().ExtRPCEnabled(), eth)
+
+	// ---- (2) Public chain API for consensus engines (must use APIBackend) ----
 	ethAPI := ethapi.NewPublicBlockChainAPI(eth.APIBackend)
 
-
-	// Create consensus engine
+	// ---- (3) Create consensus engine ----
 	eth.engine = CreateConsensusEngine(stack, chainConfig, &config.Ethash, config.Miner.Notify, config.Miner.Noverify, chainDb, ethAPI)
 
+	// ---- Continue blockchain init ----
 	bcVersion := rawdb.ReadDatabaseVersion(chainDb)
-	dbVer := "<nil>"
-	if bcVersion != nil {
-		dbVer = fmt.Sprintf("%d", *bcVersion)
-	}
-	log.Info("Initialising Ethereum protocol", "versions", ProtocolVersions, "network", config.NetworkId, "dbversion", dbVer)
-
-	if !config.SkipBcVersionCheck {
-		if bcVersion != nil && *bcVersion > core.BlockChainVersion {
-			return nil, fmt.Errorf("database version is v%d, Geth %s only supports v%d", *bcVersion, params.VersionWithMeta, core.BlockChainVersion)
-		} else if bcVersion == nil || *bcVersion < core.BlockChainVersion {
-			log.Warn("Upgrade blockchain database version", "from", dbVer, "to", core.BlockChainVersion)
-			rawdb.WriteDatabaseVersion(chainDb, core.BlockChainVersion)
-		}
+	if bcVersion != nil && *bcVersion > core.BlockChainVersion {
+		return nil, fmt.Errorf("database version is v%d, Geth %s only supports v%d", *bcVersion, params.VersionWithMeta, core.BlockChainVersion)
+	} else if bcVersion == nil || *bcVersion < core.BlockChainVersion {
+		rawdb.WriteDatabaseVersion(chainDb, core.BlockChainVersion)
 	}
 
 	vmConfig := vm.Config{
@@ -194,14 +186,11 @@ func New(stack *node.Node, config *Config) (*Ethereum, error) {
 		SnapshotLimit:       config.SnapshotCache,
 		Preimages:           config.Preimages,
 	}
-
 	eth.blockchain, err = core.NewBlockChain(chainDb, cacheConfig, chainConfig, eth.engine, vmConfig, eth.shouldPreserve, &config.TxLookupLimit)
 	if err != nil {
 		return nil, err
 	}
-	// Rewind the chain in case of an incompatible config upgrade.
 	if compat, ok := genesisErr.(*params.ConfigCompatError); ok {
-		log.Warn("Rewinding chain to upgrade configuration", "err", compat)
 		eth.blockchain.SetHead(compat.RewindTo)
 		rawdb.WriteChainConfig(chainDb, genesisHash, chainConfig)
 	}
@@ -212,7 +201,6 @@ func New(stack *node.Node, config *Config) (*Ethereum, error) {
 	}
 	eth.txPool = core.NewTxPool(config.TxPool, chainConfig, eth.blockchain)
 
-	// Permit the downloader to use the trie cache allowance during fast sync
 	cacheLimit := cacheConfig.TrieCleanLimit + cacheConfig.TrieDirtyLimit + cacheConfig.SnapshotLimit
 	checkpoint := config.Checkpoint
 	if checkpoint == nil {
@@ -225,10 +213,7 @@ func New(stack *node.Node, config *Config) (*Ethereum, error) {
 	eth.miner = miner.New(eth, &config.Miner, chainConfig, eth.EventMux(), eth.engine, eth.isLocalBlock)
 	eth.miner.SetExtra(makeExtraData(config.Miner.ExtraData))
 
-	// ---- Create internal API backend wrapper (used by internal/ethapi + gas oracle + preconf) ----
-	eth.APIBackend = ethapi.NewEthAPIBackend(stack.Config().ExtRPCEnabled(), eth)
-
-	// Gas price oracle
+	// ---- Gas Oracle ----
 	gpoParams := config.GPO
 	if gpoParams.Default == nil {
 		gpoParams.Default = config.Miner.GasPrice
@@ -241,10 +226,7 @@ func New(stack *node.Node, config *Config) (*Ethereum, error) {
 		return nil, err
 	}
 
-	// Start the RPC service
 	eth.netRPCService = ethapi.NewPublicNetAPI(eth.p2pServer, eth.NetVersion())
-
-	// Register the backend on the node
 	stack.RegisterAPIs(eth.APIs())
 	stack.RegisterProtocols(eth.Protocols())
 	stack.RegisterLifecycle(eth)
@@ -630,16 +612,6 @@ func (s *Ethereum) HeaderByHash(ctx context.Context, hash common.Hash) (*types.H
     return s.blockchain.GetHeaderByHash(hash), nil
 }
 
-func (b *EthAPIBackend) StateAndHeaderByNumberOrHash(ctx context.Context, bh rpc.BlockNumberOrHash) (*state.StateDB, *types.Header, error) {
-    if bh.BlockNumber != nil {
-        return b.StateAndHeaderByNumber(ctx, *bh.BlockNumber)
-    }
-    block, err := b.BlockByHash(ctx, bh.Hash)
-    if err != nil || block == nil {
-        return nil, nil, errors.New("block not found")
-    }
-    st, err := b.backend.BlockChain().StateAt(block.Root())
-    return st, block.Header(), err
 }
 
 

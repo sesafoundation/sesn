@@ -54,18 +54,19 @@ func (api *PublicDebugAPI) DumpBlock(_ context.Context, number uint64) (map[stri
 // ----------------------------------------------------------------------
 
 type PrivateDebugAPI struct {
-	eth *Ethereum
+    backend ethapi.Backend
 }
 
-func NewPrivateDebugAPI(eth *Ethereum) *PrivateDebugAPI {
-	return &PrivateDebugAPI{eth: eth}
+func NewPrivateDebugAPI(b ethapi.Backend) *PrivateDebugAPI {
+    return &PrivateDebugAPI{backend: b}
 }
+
 
 // SetHead rewinds/forwards the canonical chain head to the given block number.
-func (api *PrivateDebugAPI) SetHead(number hexutil.Uint64) {
-	api.eth.blockchain.SetHead(uint64(number))
-}
 
+func (api *PrivateDebugAPI) SetHead(number hexutil.Uint64) {
+    api.backend.SetHead(uint64(number))
+}
 // NOTE: All trace* methods (TraceCall, TraceTransaction, etc.) are implemented
 // in api_tracer.go as methods on *PrivateDebugAPI. This file only defines the
 // struct and SetHead. As long as api_tracer.go also uses `type PrivateDebugAPI`

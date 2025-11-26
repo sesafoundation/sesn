@@ -199,5 +199,17 @@ func (b *EthAPIBackend) EthVersion() int {
     return b.backend.EthVersion()
 }
 
-// BloomStatus forwards bloom bit indexing status
+func (b *EthAPIBackend) NetVersion() uint64 {
+    return b.backend.NetVersion()
+}
 
+func (b *EthAPIBackend) StateAndHeaderByNumberOrHash(ctx context.Context, bh rpc.BlockNumberOrHash) (*state.StateDB, *types.Header, error) {
+    if bh.BlockNumber != nil {
+        return b.StateAndHeaderByNumber(ctx, *bh.BlockNumber)
+    }
+    block, err := b.BlockByHash(ctx, bh.Hash)
+    if err != nil || block == nil {
+        return nil, nil, errors.New("block not found")
+    }
+    st, err := b.backend.BlockChain().StateAt(block.Root())
+    return st, block.Header(), err
