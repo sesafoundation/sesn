@@ -612,9 +612,6 @@ func (s *Ethereum) HeaderByHash(ctx context.Context, hash common.Hash) (*types.H
     return s.blockchain.GetHeaderByHash(hash), nil
 }
 
-}
-
-
 func (s *Ethereum) BloomStatus() (uint64, uint64) {
     sections, _, _ := s.bloomIndexer.Sections()
     return params.BloomBitsBlocks, sections
