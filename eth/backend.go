@@ -642,3 +642,8 @@ func (b *EthAPIBackend) StateAndHeaderByNumberOrHash(ctx context.Context, bh rpc
     return st, block.Header(), err
 }
 
+
+func (s *Ethereum) BloomStatus() (uint64, uint64) {
+    sections, _, _ := s.bloomIndexer.Sections()
+    return params.BloomBitsBlocks, sections
+}

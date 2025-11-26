@@ -193,3 +193,13 @@ func (b *EthAPIBackend) LoadPreconfReceipt(h common.Hash) *preconf.PreconfReceip
 func (b *EthAPIBackend) PreconfSubscribe(ch chan *preconf.PreconfReceipt) event.Subscription {
 	return b.preconfFeed.Subscribe(ch)
 }
+
+// EthVersion returns the ETH protocol version for RPC
+func (b *EthAPIBackend) EthVersion() int {
+    return b.backend.EthVersion()
+}
+
+// BloomStatus forwards bloom bit indexing status
+func (b *EthAPIBackend) BloomStatus() (uint64, uint64) {
+    return b.backend.BloomStatus()
+}
