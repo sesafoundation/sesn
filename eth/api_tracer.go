@@ -103,31 +103,58 @@ type txTraceTask struct {
 	index   int            // Transaction offset in the block
 }
 
+func containsTx(block *types.Block, hash common.Hash) bool {
+    for _, tx := range block.Transactions() {
+        if tx.Hash() == hash {
+            return true
+        }
+    }
+    return false
+}
 
-func (api *PrivateDebugAPI) TraceChain(ctx context.Context, start, end rpc.BlockNumber, config *TraceConfig) (*rpc.Subscription, error) {
+
+
+func (api *PrivateDebugAPI) TraceChain(
+    ctx context.Context,
+    start, end rpc.BlockNumber,
+    config *TraceConfig,
+) (*rpc.Subscription, error) {
 
     var from, to *types.Block
 
+    // ---- Resolve start block ----
     if start == rpc.PendingBlockNumber {
-        if api.backend.Miner() != nil {
-            from = api.backend.Miner().PendingBlock()
+        miner := api.backend.Miner()
+        if miner != nil {
+            from = miner.PendingBlock()
         }
     } else if start == rpc.LatestBlockNumber {
         from = api.backend.CurrentBlock()
     } else {
-        from, _ = api.backend.BlockByNumber(ctx, start)
+        var err error
+        from, err = api.backend.BlockByNumber(ctx, start)
+        if err != nil {
+            return nil, err
+        }
     }
 
+    // ---- Resolve end block ----
     if end == rpc.PendingBlockNumber {
-        if api.backend.Miner() != nil {
-            to = api.backend.Miner().PendingBlock()
+        miner := api.backend.Miner()
+        if miner != nil {
+            to = miner.PendingBlock()
         }
     } else if end == rpc.LatestBlockNumber {
         to = api.backend.CurrentBlock()
     } else {
-        to, _ = api.backend.BlockByNumber(ctx, end)
+        var err error
+        to, err = api.backend.BlockByNumber(ctx, end)
+        if err != nil {
+            return nil, err
+        }
     }
 
+    // ---- Validation ----
     if from == nil {
         return nil, fmt.Errorf("starting block #%d not found", start)
     }
@@ -138,14 +165,20 @@ func (api *PrivateDebugAPI) TraceChain(ctx context.Context, start, end rpc.Block
         return nil, fmt.Errorf("end block (#%d) must be after start block (#%d)", end, start)
     }
 
+    // ---- Continue to chain tracing ----
     return api.traceChain(ctx, from, to, config)
 }
+
 
 
 // traceChain configures a new tracer according to the provided configuration, and
 // executes all the transactions contained within. The return value will be one item
 // per transaction, dependent on the requested tracer.
-func (api *PrivateDebugAPI) traceChain(ctx context.Context, start, end *types.Block, config *TraceConfig) (*rpc.Subscription, error) {
+func (api *PrivateDebugAPI) traceChain(
+    ctx context.Context,
+    start, end *types.Block,
+    config *TraceConfig,
+) (*rpc.Subscription, error) {
 
     notifier, ok := rpc.NotifierFromContext(ctx)
     if !ok {
@@ -153,19 +186,18 @@ func (api *PrivateDebugAPI) traceChain(ctx context.Context, start, end *types.Bl
     }
     sub := notifier.CreateSubscription()
 
-    // initial state: parent of start block
     database := state.NewDatabaseWithConfig(api.backend.ChainDb(), &trie.Config{Cache: 16, Preimages: true})
 
+    // ensure we start from parent of `start`
     if number := start.NumberU64(); number > 0 {
-       // parent := api.backend.BlockChain().GetBlock(start.ParentHash(), number-1)
-	   parent := api.backend.BlockChain().GetBlock(block.ParentHash(), block.NumberU64()-1)
-
+        parent := api.backend.BlockChain().GetBlock(start.ParentHash(), number-1)
         if parent == nil {
             return nil, fmt.Errorf("parent block #%d not found", number-1)
         }
         start = parent
     }
 
+    // load state or reexec
     statedb, err := state.New(start.Root(), database, nil)
     if err != nil {
         reexec := uint64(128)
@@ -191,11 +223,15 @@ func (api *PrivateDebugAPI) traceChain(ctx context.Context, start, end *types.Bl
     if workers > blocksCount {
         workers = blocksCount
     }
+    if workers < 1 { // prevent deadlock if only 1 block difference
+        workers = 1
+    }
 
     pend := new(sync.WaitGroup)
     tasks := make(chan *blockTraceTask, workers)
     results := make(chan *blockTraceTask, workers)
 
+    // concurrent workers
     for w := 0; w < workers; w++ {
         pend.Add(1)
         go func() {
@@ -226,15 +262,15 @@ func (api *PrivateDebugAPI) traceChain(ctx context.Context, start, end *types.Bl
 
     begin := time.Now()
 
+    // feed blocks
     go func() {
         var (
             logged time.Time
-            number uint64 = start.NumberU64()
+            number = start.NumberU64()
             traced uint64
             failed error
             proot  common.Hash
         )
-
         defer func() {
             close(tasks)
             pend.Wait()
@@ -248,29 +284,36 @@ func (api *PrivateDebugAPI) traceChain(ctx context.Context, start, end *types.Bl
 
         for number < end.NumberU64() {
             number++
-
             block := api.backend.BlockChain().GetBlockByNumber(number)
             if block == nil {
                 failed = fmt.Errorf("block #%d not found", number)
                 return
             }
 
+            // submit block work
             if number > start.NumberU64() {
                 txs := block.Transactions()
+                task := &blockTraceTask{
+                    statedb: statedb.Copy(),
+                    block:   block,
+                    rootref: proot,
+                    results: make([]*txTraceResult, len(txs)),
+                }
+
                 select {
-                case tasks <- &blockTraceTask{statedb: statedb.Copy(), block: block, rootref: proot, results: make([]*txTraceResult, len(txs))}:
+                case tasks <- task:
                 case <-notifier.Closed():
                     return
                 }
+
                 traced += uint64(len(txs))
             }
 
-            _, _, _, err := api.backend.BlockChain().Processor().Process(block, statedb, vm.Config{})
-            if err != nil {
+            // fast-apply block state
+            if _, _, _, err := api.backend.BlockChain().Processor().Process(block, statedb, vm.Config{}); err != nil {
                 failed = err
                 return
             }
-
             root, err := statedb.Commit(api.backend.BlockChain().Config().IsEIP158(block.Number()))
             if err != nil {
                 failed = err
@@ -293,24 +336,25 @@ func (api *PrivateDebugAPI) traceChain(ctx context.Context, start, end *types.Bl
         }
     }()
 
+    // stream results
     go func() {
         done := make(map[uint64]*blockTraceResult)
         next := start.NumberU64() + 1
 
         for res := range results {
-            result := &blockTraceResult{
+            r := &blockTraceResult{
                 Block:  hexutil.Uint64(res.block.NumberU64()),
                 Hash:   res.block.Hash(),
                 Traces: res.results,
             }
-            done[uint64(result.Block)] = result
+            done[uint64(r.Block)] = r
 
             for {
-                r, ok := done[next]
+                rr, ok := done[next]
                 if !ok {
                     break
                 }
-                notifier.Notify(sub.ID, r)
+                notifier.Notify(sub.ID, rr)
                 delete(done, next)
                 next++
             }
@@ -319,6 +363,7 @@ func (api *PrivateDebugAPI) traceChain(ctx context.Context, start, end *types.Bl
 
     return sub, nil
 }
+
 
 // TraceBlockByNumber returns the structured logs created during the execution of
 // EVM and returns them as a JSON object.
@@ -486,7 +531,7 @@ func (api *PrivateDebugAPI) StandardTraceBadBlockToFile(ctx context.Context, has
 	blocks := api.backend.BlockChain().BadBlocks()
 	for _, block := range blocks {
 		if block.Hash() == hash {
-			return api.standardTraceBlockToFile(ctx, block, config)
+			return api.StandardTraceBlockToFile(ctx, block, config)
 		}
 	}
 	return nil, fmt.Errorf("bad block %#x not found", hash)
@@ -848,7 +893,14 @@ func (api *PrivateDebugAPI) traceTx(ctx context.Context, message core.Message, v
 		tracer = vm.NewStructLogger(config.LogConfig)
 	}
 	// Run the transaction with tracing enabled.
-	vmenv := vm.NewEVM(vmctx, txContext, statedb, api.backend.BlockChain().Config(), vm.Config{Debug: true, Tracer: tracer})
+	//vmenv := vm.NewEVM(vmctx, txContext, statedb, api.backend.BlockChain().Config(), vm.Config{Debug: true, Tracer: tracer})
+	evm := vm.NewEVM(vmctx, txContext, statedb, api.backend.BlockChain().Config(), vm.Config{
+    Debug:  true,
+    Tracer: tracer,
+		})
+	result, err := core.ApplyMessage(evm, message, new(core.GasPool).AddGas(message.Gas()))
+
+	//
 	if pos, ok := api.backend.Engine().(consensus.PoS); ok && pos.IsSystemContract(message.To()) && message.From() == vmctx.Coinbase && message.GasPrice().Cmp(big.NewInt(0)) == 0 {
 		balance := statedb.GetBalance(consensus.FeeRecoder)
 		reward := big.NewInt(0)

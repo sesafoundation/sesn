@@ -321,23 +321,24 @@ func (s *Ethereum) APIs() []rpc.API {
 			Public:    false,
 		},
 		{
-    		Namespace: "debug",
-    		Version:   "1.0",
-    		Service:   NewPublicDebugAPI(s),   // ✅ pass *Ethereum
-    		Public:    true,
-		},
-	 	{
-    		Namespace: "debug",
-    		Version:   "1.0",
-    		Service:   NewPrivateDebugAPI(s),  // ✅ pass *Ethereum
-    		Public:    false,
-		},
-		{
 			Namespace: "net",
 			Version:   "1.0",
 			Service:   s.netRPCService,
 			Public:    true,
 		},
+		{
+   		 	Namespace: "debug",
+    		Version:   "1.0",
+    		Service:   NewPublicDebugAPI(s.APIBackend),
+    		Public:    true,
+		},
+		{
+    		Namespace: "debug",
+    		Version:   "1.0",
+    		Service:   NewPrivateDebugAPI(s.APIBackend),
+    		Public:    false,
+		},
+
 	}
 
 	return append(apis, local...)
