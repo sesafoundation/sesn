@@ -332,7 +332,8 @@ func (api *PrivateDebugAPI) TraceBlockByNumber(ctx context.Context, number rpc.B
 	case rpc.LatestBlockNumber:
 		block = api.backend.BlockChain().CurrentBlock()
 	default:
-		block = api.backend.BlockChain().GetBlockByNumber(uint64(number))
+		//block = api.backend.BlockChain().GetBlockByNumber(uint64(number))
+		block, _ := api.backend.BlockByNumber(ctx, number)
 	}
 	// Trace the block if it was found
 	if block == nil {
@@ -344,7 +345,9 @@ func (api *PrivateDebugAPI) TraceBlockByNumber(ctx context.Context, number rpc.B
 // TraceBlockByHash returns the structured logs created during the execution of
 // EVM and returns them as a JSON object.
 func (api *PrivateDebugAPI) TraceBlockByHash(ctx context.Context, hash common.Hash, config *TraceConfig) ([]*txTraceResult, error) {
+	//block := api.backend.BlockChain().GetBlockByHash(hash)
 	block := api.backend.BlockChain().GetBlockByHash(hash)
+
 	if block == nil {
 		return nil, fmt.Errorf("block %#x not found", hash)
 	}
@@ -589,135 +592,93 @@ func (api *PrivateDebugAPI) traceBlock(ctx context.Context, block *types.Block, 
 // standardTraceBlockToFile configures a new tracer which uses standard JSON output,
 // and traces either a full block or an individual transaction. The return value will
 // be one filename per transaction traced.
-func (api *PrivateDebugAPI) standardTraceBlockToFile(ctx context.Context, block *types.Block, config *StdTraceConfig) ([]string, error) {
-	// If we're tracing a single transaction, make sure it's present
-	if config != nil && config.TxHash != (common.Hash{}) {
-		if !containsTx(block, config.TxHash) {
-			return nil, fmt.Errorf("transaction %#x not found in block", config.TxHash)
-		}
-	}
-	// Create the parent state database
-	if err := api.backend.Engine().VerifyHeader(api.backend.BlockChain(), block.Header(), true); err != nil {
-		return nil, err
-	}
-	//parent := api.backend.BlockChain().GetBlock(block.ParentHash(), block.NumberU64()-1)
-	parent := api.backend.BlockChain().GetBlock(block.ParentHash(), block.NumberU64()-1)
+func (api *PrivateDebugAPI) StandardTraceBlockToFile(ctx context.Context, hash common.Hash, config *StdTraceConfig) ([]string, error) {
+    block := api.backend.BlockChain().GetBlockByHash(hash)
+    if block == nil {
+        return nil, fmt.Errorf("block %#x not found", hash)
+    }
 
-	if parent == nil {
-		return nil, fmt.Errorf("parent %#x not found", block.ParentHash())
-	}
-	reexec := defaultTraceReexec
-	if config != nil && config.Reexec != nil {
-		reexec = *config.Reexec
-	}
-	statedb, err := api.computeStateDB(parent, reexec)
-	if err != nil {
-		return nil, err
-	}
-	// Retrieve the tracing configurations, or use default values
-	var (
-		logConfig vm.LogConfig
-		txHash    common.Hash
-	)
-	if config != nil {
-		logConfig = config.LogConfig
-		txHash = config.TxHash
-	}
-	logConfig.Debug = true
+    // If tracing a specific transaction ensure block contains it
+    if config != nil && config.TxHash != (common.Hash{}) {
+        if !containsTx(block, config.TxHash) {
+            return nil, fmt.Errorf("transaction %#x not found in block", config.TxHash)
+        }
+    }
 
-	// Execute transaction, either tracing all or just the requested one
-	var (
-		signer      = types.MakeSigner(api.backend.BlockChain().Config(), block.Number())
-		dumps       []string
-		chainConfig = api.backend.BlockChain().Config()
-		vmctx       = core.NewEVMBlockContext(block.Header(), api.backend.BlockChain(), nil)
-		canon       = true
-	)
-	// Check if there are any overrides: the caller may wish to enable a future
-	// fork when executing this block. Note, such overrides are only applicable to the
-	// actual specified block, not any preceding blocks that we have to go through
-	// in order to obtain the state.
-	// Therefore, it's perfectly valid to specify `"futureForkBlock": 0`, to enable `futureFork`
+    // Parent state DB
+    parent := api.backend.BlockChain().GetBlock(block.ParentHash(), block.NumberU64()-1)
+    if parent == nil {
+        return nil, fmt.Errorf("parent %#x not found", block.ParentHash())
+    }
+    reexec := defaultTraceReexec
+    if config != nil && config.Reexec != nil {
+        reexec = *config.Reexec
+    }
+    statedb, err := api.computeStateDB(parent, reexec)
+    if err != nil {
+        return nil, err
+    }
 
-	if config != nil && config.Overrides != nil {
-		// Copy the config, to not screw up the main config
-		// Note: the Clique-part is _not_ deep copied
-		chainConfigCopy := new(params.ChainConfig)
-		*chainConfigCopy = *chainConfig
-		chainConfig = chainConfigCopy
-		if yolov2 := config.LogConfig.Overrides.YoloV2Block; yolov2 != nil {
-			chainConfig.YoloV2Block = yolov2
-			canon = false
-		}
-	}
-	for i, tx := range block.Transactions() {
-		// Prepare the trasaction for un-traced execution
-		var (
-			msg, _    = tx.AsMessage(signer)
-			txContext = core.NewEVMTxContext(msg)
-			vmConf    vm.Config
-			dump      *os.File
-			writer    *bufio.Writer
-			err       error
-		)
-		// If the transaction needs tracing, swap out the configs
-		if tx.Hash() == txHash || txHash == (common.Hash{}) {
-			// Generate a unique temporary file to dump it into
-			prefix := fmt.Sprintf("block_%#x-%d-%#x-", block.Hash().Bytes()[:4], i, tx.Hash().Bytes()[:4])
-			if !canon {
-				prefix = fmt.Sprintf("%valt-", prefix)
-			}
-			dump, err = ioutil.TempFile(os.TempDir(), prefix)
-			if err != nil {
-				return nil, err
-			}
-			dumps = append(dumps, dump.Name())
+    signer := types.MakeSigner(api.backend.BlockChain().Config(), block.Number())
+    vmctx := core.NewEVMBlockContext(block.Header(), api.backend.BlockChain(), nil)
 
-			// Swap out the noop logger to the standard tracer
-			writer = bufio.NewWriter(dump)
-			vmConf = vm.Config{
-				Debug:                   true,
-				Tracer:                  vm.NewJSONLogger(&logConfig, writer),
-				EnablePreimageRecording: true,
-			}
-		}
-		// Execute the transaction and flush any traces to disk
-		//vmenv := vm.NewEVM(vmctx, txContext, statedb, chainConfig, vmConf)
-		vmenv := vm.NewEVM(vmctx, txContext, statedb, api.backend.BlockChain().Config(), vmConf)
+    var (
+        logCfg    vm.LogConfig
+        dumps     []string
+    )
+    if config != nil {
+        logCfg = config.LogConfig
+    }
+    logCfg.Debug = true
 
-		_, err = core.ApplyMessage(vmenv, msg, new(core.GasPool).AddGas(msg.Gas()))
-		if writer != nil {
-			writer.Flush()
-		}
-		if dump != nil {
-			dump.Close()
-			log.Info("Wrote standard trace", "file", dump.Name())
-		}
-		if err != nil {
-			return dumps, err
-		}
-		// Finalize the state so any modifications are written to the trie
-		// Only delete empty objects if EIP158/161 (a.k.a Spurious Dragon) is in effect
-		statedb.Finalise(vmenv.ChainConfig().IsEIP158(block.Number()))
+    for i, tx := range block.Transactions() {
+        msg, _ := tx.AsMessage(signer)
+        txctx := core.NewEVMTxContext(msg)
 
-		// If we've traced the transaction we were looking for, abort
-		if tx.Hash() == txHash {
-			break
-		}
-	}
-	return dumps, nil
+        var vmConf vm.Config
+        var file *os.File
+        var writer *bufio.Writer
+
+        // If this TX must be logged → create trace file + tracer config
+        if config == nil || config.TxHash == (common.Hash{}) || config.TxHash == tx.Hash() {
+            prefix := fmt.Sprintf("block_%#x_%d_%#x_", block.Hash().Bytes()[:4], i, tx.Hash().Bytes()[:4])
+            file, err = ioutil.TempFile(os.TempDir(), prefix)
+            if err != nil {
+                return nil, err
+            }
+            writer = bufio.NewWriter(file)
+            vmConf = vm.Config{
+                Debug:                   true,
+                Tracer:                  vm.NewJSONLogger(&logCfg, writer),
+                EnablePreimageRecording: true,
+            }
+            dumps = append(dumps, file.Name())
+        }
+
+        // Execute
+        evm := vm.NewEVM(vmctx, txctx, statedb, api.backend.BlockChain().Config(), vmConf)
+        if _, err := core.ApplyMessage(evm, msg, new(core.GasPool).AddGas(msg.Gas())); err != nil {
+            return dumps, err
+        }
+
+        // Finalize and sync trie
+        statedb.Finalise(evm.ChainConfig().IsEIP158(block.Number()))
+
+        if writer != nil {
+            writer.Flush()
+        }
+        if file != nil {
+            file.Close()
+            log.Info("Wrote standard trace", "file", file.Name())
+        }
+
+        if config != nil && config.TxHash == tx.Hash() {
+            break
+        }
+    }
+    return dumps, nil
 }
 
-// containsTx reports whether the transaction with a certain hash
-// is contained within the specified block.
-func containsTx(block *types.Block, hash common.Hash) bool {
-	for _, tx := range block.Transactions() {
-		if tx.Hash() == hash {
-			return true
-		}
-	}
-	return false
-}
 
 // computeStateDB retrieves the state database associated with a certain block.
 // If no state is locally available for the given block, a number of blocks are
@@ -851,6 +812,8 @@ func (api *PrivateDebugAPI) TraceCall(ctx context.Context, args ethapi.CallArgs,
 // executes the given message in the provided environment. The return value will
 // be tracer dependent.
 func (api *PrivateDebugAPI) traceTx(ctx context.Context, message core.Message, vmctx vm.BlockContext, statedb *state.StateDB, config *TraceConfig) (interface{}, error) {
+
+
 	// Assemble the structured logger or the JavaScript tracer
 	var (
 		tracer    vm.Tracer
