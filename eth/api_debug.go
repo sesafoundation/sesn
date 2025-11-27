@@ -21,6 +21,7 @@ type PrivateDebugAPI struct {
 	backend ethapi.Backend
 }
 
+
 // NewPublicDebugAPI creates a new instance of PublicDebugAPI using the shared ethapi.Backend.
 func NewPublicDebugAPI(backend ethapi.Backend) *PublicDebugAPI {
 	return &PublicDebugAPI{backend: backend}
@@ -51,3 +52,4 @@ func (api *PublicDebugAPI) GetBlockRlp(ctx context.Context, number uint64) (stri
 func (api *PrivateDebugAPI) SetHead(number hexutil.Uint64) {
 	api.backend.SetHead(uint64(number))
 }
+

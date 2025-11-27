@@ -80,216 +80,355 @@ type txTraceTask struct {
 	index   int
 }
 
-//
-// TraceChain
-//
-func (api *PrivateDebugAPI) TraceChain(ctx context.Context, start, end rpc.BlockNumber, config *TraceConfig) (*rpc.Subscription, error) {
-	var from, to *types.Block
+// TraceChain returns the structured logs created during the execution of EVM
+// between two blocks (excluding start) and returns them as a JSON object.
+func (api *PrivateDebugAPI) TraceChain(
+    ctx context.Context,
+    start, end rpc.BlockNumber,
+    config *TraceConfig,
+) (*rpc.Subscription, error) {
+    var from, to *types.Block
 
-	if start == rpc.PendingBlockNumber {
-		if api.backend.Miner() != nil {
-			from = api.backend.Miner().PendingBlock()
-		}
-	} else if start == rpc.LatestBlockNumber {
-		from = api.backend.CurrentBlock()
-	} else {
-		from, _ = api.backend.BlockByNumber(ctx, start)
-	}
+    // -------- resolve "from" block --------
+    switch start {
+    case rpc.PendingBlockNumber:
+        if m := api.backend.Miner(); m != nil {
+            from = m.PendingBlock()
+        }
+    case rpc.LatestBlockNumber:
+        from = api.backend.CurrentBlock()
+    default:
+        var err error
+        from, err = api.backend.BlockByNumber(ctx, start)
+        if err != nil {
+            return nil, err
+        }
+    }
 
-	if end == rpc.PendingBlockNumber {
-		if api.backend.Miner() != nil {
-			to = api.backend.Miner().PendingBlock()
-		}
-	} else if end == rpc.LatestBlockNumber {
-		to = api.backend.CurrentBlock()
-	} else {
-		to, _ = api.backend.BlockByNumber(ctx, end)
-	}
+    // -------- resolve "to" block --------
+    switch end {
+    case rpc.PendingBlockNumber:
+        if m := api.backend.Miner(); m != nil {
+            to = m.PendingBlock()
+        }
+    case rpc.LatestBlockNumber:
+        to = api.backend.CurrentBlock()
+    default:
+        var err error
+        to, err = api.backend.BlockByNumber(ctx, end)
+        if err != nil {
+            return nil, err
+        }
+    }
 
-	if from == nil {
-		return nil, fmt.Errorf("starting block #%d not found", start)
-	}
-	if to == nil {
-		return nil, fmt.Errorf("end block #%d not found", end)
-	}
-	if from.Number().Cmp(to.Number()) >= 0 {
-		return nil, fmt.Errorf("end block (#%d) must be after start block (#%d)", end, start)
-	}
+    // -------- basic validation --------
+    if from == nil {
+        return nil, fmt.Errorf("starting block #%d not found", start)
+    }
+    if to == nil {
+        return nil, fmt.Errorf("end block #%d not found", end)
+    }
+    if from.Number().Cmp(to.Number()) >= 0 {
+        return nil, fmt.Errorf(
+            "end block (#%d) must be after start block (#%d)",
+            end, start,
+        )
+    }
 
-	return api.traceChain(ctx, from, to, config)
+    return api.traceChain(ctx, from, to, config)
 }
 
-//
-// INTERNAL: chain tracing
-//
-func (api *PrivateDebugAPI) traceChain(ctx context.Context, start, end *types.Block, config *TraceConfig) (*rpc.Subscription, error) {
-	notifier, ok := rpc.NotifierFromContext(ctx)
-	if !ok {
-		return &rpc.Subscription{}, rpc.ErrNotificationsUnsupported
-	}
-	sub := notifier.CreateSubscription()
+// traceChain is the internal worker that actually traces the chain of blocks
+// from `start` (exclusive) up to and including `end`.
+func (api *PrivateDebugAPI) traceChain(
+    ctx context.Context,
+    start, end *types.Block,
+    config *TraceConfig,
+) (*rpc.Subscription, error) {
 
-	db := state.NewDatabaseWithConfig(api.backend.ChainDb(), &trie.Config{Cache: 16, Preimages: true})
+    // Tracing a chain is a **long** operation, only allowed via subscriptions
+    notifier, supported := rpc.NotifierFromContext(ctx)
+    if !supported {
+        return &rpc.Subscription{}, rpc.ErrNotificationsUnsupported
+    }
+    sub := notifier.CreateSubscription()
 
-	// beginning state = parent of start block
-	if start.NumberU64() > 0 {
-		parent := api.backend.BlockChain().GetBlock(start.ParentHash(), start.NumberU64()-1)
-		if parent == nil {
-			return nil, fmt.Errorf("parent of start block not found")
-		}
-		start = parent
-	}
+    // Ensure we have a valid starting state before doing any work
+    origin := start.NumberU64()
+    database := state.NewDatabaseWithConfig(
+        api.backend.ChainDb(),
+        &trie.Config{Cache: 16, Preimages: true},
+    )
 
-	statedb, err := state.New(start.Root(), db, nil)
-	if err != nil {
-		reexec := defaultTraceReexec
-		if config != nil && config.Reexec != nil {
-			reexec = *config.Reexec
-		}
-		for i := uint64(0); i < reexec; i++ {
-			start = api.backend.BlockChain().GetBlock(start.ParentHash(), start.NumberU64()-1)
-			if start == nil {
-				break
-			}
-			if statedb, err = state.New(start.Root(), db, nil); err == nil {
-				break
-			}
-		}
-		if err != nil {
-			return nil, errors.New("required historical state unavailable")
-		}
-	}
+    // Move `start` back to its parent (we trace from after `start`)
+    if number := start.NumberU64(); number > 0 {
+        parent := api.backend.BlockChain().GetBlock(
+            start.ParentHash(),
+            start.NumberU64()-1,
+        )
+        if parent == nil {
+            return nil, fmt.Errorf("parent block #%d not found", number-1)
+        }
+        start = parent
+    }
 
-	blockCount := int(end.NumberU64() - start.NumberU64())
-	threads := runtime.NumCPU()
-	if threads > blockCount {
-		threads = blockCount
-	}
+    statedb, err := state.New(start.Root(), database, nil)
+    if err != nil {
+        // If the starting state is missing, allow some number of blocks to be re-executed
+        reexec := defaultTraceReexec
+        if config != nil && config.Reexec != nil {
+            reexec = *config.Reexec
+        }
+        // Find the most recent block that has the state available
+        for i := uint64(0); i < reexec; i++ {
+            start = api.backend.BlockChain().GetBlock(
+                start.ParentHash(),
+                start.NumberU64()-1,
+            )
+            if start == nil {
+                break
+            }
+            if statedb, err = state.New(start.Root(), database, nil); err == nil {
+                break
+            }
+        }
+        if err != nil {
+            switch err.(type) {
+            case *trie.MissingNodeError:
+                return nil, errors.New("required historical state unavailable")
+            default:
+                return nil, err
+            }
+        }
+    }
 
-	pend := new(sync.WaitGroup)
-	tasks := make(chan *blockTraceTask, threads)
-	results := make(chan *blockTraceTask, threads)
+    // Execute all the transactions contained within the chain concurrently
+    blocks := int(end.NumberU64() - origin)
+    threads := runtime.NumCPU()
+    if threads > blocks {
+        threads = blocks
+    }
 
-	for i := 0; i < threads; i++ {
-		pend.Add(1)
-		go func() {
-			defer pend.Done()
-			for task := range tasks {
-				signer := types.MakeSigner(api.backend.BlockChain().Config(), task.block.Number())
-				evmBlockCtx := core.NewEVMBlockContext(task.block.Header(), api.backend.BlockChain(), nil)
+    var (
+        pend    = new(sync.WaitGroup)
+        tasks   = make(chan *blockTraceTask, threads)
+        results = make(chan *blockTraceTask, threads)
+    )
 
-				for i, tx := range task.block.Transactions() {
-					msg, _ := tx.AsMessage(signer)
-					res, err := api.traceTx(ctx, msg, evmBlockCtx, task.statedb, config)
-					if err != nil {
-						task.results[i] = &txTraceResult{Error: err.Error()}
-						break
-					}
-					task.statedb.Finalise(api.backend.BlockChain().Config().IsEIP158(task.block.Number()))
-					task.results[i] = &txTraceResult{Result: res}
-				}
+    // Worker goroutines
+    for th := 0; th < threads; th++ {
+        pend.Add(1)
+        go func() {
+            defer pend.Done()
+            for task := range tasks {
+                signer := types.MakeSigner(
+                    api.backend.ChainConfig(),
+                    task.block.Number(),
+                )
+                blockCtx := core.NewEVMBlockContext(
+                    task.block.Header(),
+                    api.backend.BlockChain(),
+                    nil,
+                )
 
-				select {
-				case results <- task:
-				case <-notifier.Closed():
-					return
-				}
-			}
-		}()
-	}
+                // Trace all the transactions in the block
+                for i, tx := range task.block.Transactions() {
+                    msg, _ := tx.AsMessage(signer)
+                    res, err := api.traceTx(ctx, msg, blockCtx, task.statedb, config)
+                    if err != nil {
+                        task.results[i] = &txTraceResult{Error: err.Error()}
+                        log.Warn(
+                            "Tracing failed",
+                            "hash", tx.Hash(),
+                            "block", task.block.NumberU64(),
+                            "err", err,
+                        )
+                        break
+                    }
+                    // Only delete empty objects if EIP158/161 is in effect
+                    task.statedb.Finalise(
+                        api.backend.ChainConfig().IsEIP158(task.block.Number()),
+                    )
+                    task.results[i] = &txTraceResult{Result: res}
+                }
 
-	begin := time.Now()
-	go func() {
-		defer func() {
-			close(tasks)
-			pend.Wait()
-			close(results)
-		}()
+                // Stream results or abort on teardown
+                select {
+                case results <- task:
+                case <-notifier.Closed():
+                    return
+                }
+            }
+        }()
+    }
 
-		var (
-			number = start.NumberU64()
-			traced uint64
-			failed error
-			proot  common.Hash
-			logged time.Time
-		)
+    begin := time.Now()
 
-		for number < end.NumberU64() {
-			number++
-			block := api.backend.BlockChain().GetBlockByNumber(number)
-			if block == nil {
-				failed = fmt.Errorf("block #%d not found", number)
-				return
-			}
+    // Producer goroutine to feed blocks into tracers
+    go func() {
+        var (
+            logged time.Time
+            number uint64
+            traced uint64
+            failed error
+            proot  common.Hash
+        )
 
-			if number > start.NumberU64() {
-				txs := block.Transactions()
-				select {
-				case tasks <- &blockTraceTask{statedb: statedb.Copy(), block: block, rootref: proot, results: make([]*txTraceResult, len(txs))}:
-				case <-notifier.Closed():
-					return
-				}
-				traced += uint64(len(txs))
-			}
+        defer func() {
+            close(tasks)
+            pend.Wait()
 
-			_, _, _, err := api.backend.BlockChain().Processor().Process(block, statedb, vm.Config{})
-			if err != nil {
-				failed = err
-				return
-			}
-			root, err := statedb.Commit(api.backend.BlockChain().Config().IsEIP158(block.Number()))
-			if err != nil {
-				failed = err
-				return
-			}
-			if err := statedb.Reset(root); err != nil {
-				failed = err
-				return
-			}
-			db.TrieDB().Reference(root, common.Hash{})
-			if proot != (common.Hash{}) {
-				db.TrieDB().Dereference(proot)
-			}
-			proot = root
+            switch {
+            case failed != nil:
+                log.Warn(
+                    "Chain tracing failed",
+                    "start", start.NumberU64(),
+                    "end", end.NumberU64(),
+                    "transactions", traced,
+                    "elapsed", time.Since(begin),
+                    "err", failed,
+                )
+            case number < end.NumberU64():
+                log.Warn(
+                    "Chain tracing aborted",
+                    "start", start.NumberU64(),
+                    "end", end.NumberU64(),
+                    "abort", number,
+                    "transactions", traced,
+                    "elapsed", time.Since(begin),
+                )
+            default:
+                log.Info(
+                    "Chain tracing finished",
+                    "start", start.NumberU64(),
+                    "end", end.NumberU64(),
+                    "transactions", traced,
+                    "elapsed", time.Since(begin),
+                )
+            }
+            close(results)
+        }()
 
-			if time.Since(logged) > 5*time.Second {
-				log.Info("TraceChain progress", "current", number, "elapsed", time.Since(begin))
-				logged = time.Now()
-			}
-		}
+        for number = start.NumberU64() + 1; number <= end.NumberU64(); number++ {
+            // Stop tracing if interruption was requested
+            select {
+            case <-notifier.Closed():
+                return
+            default:
+            }
 
-		if failed != nil {
-			log.Warn("TraceChain failed", "err", failed)
-		} else {
-			log.Info("TraceChain completed", "start", start.NumberU64(), "end", end.NumberU64(), "txs", traced, "elapsed", time.Since(begin))
-		}
-	}()
+            // Progress logging
+            if time.Since(logged) > 8*time.Second {
+                if number > origin {
+                    nodes, imgs := database.TrieDB().Size()
+                    log.Info(
+                        "Tracing chain segment",
+                        "start", origin,
+                        "end", end.NumberU64(),
+                        "current", number,
+                        "transactions", traced,
+                        "elapsed", time.Since(begin),
+                        "memory", nodes+imgs,
+                    )
+                } else {
+                    log.Info(
+                        "Preparing state for chain trace",
+                        "block", number,
+                        "start", origin,
+                        "elapsed", time.Since(begin),
+                    )
+                }
+                logged = time.Now()
+            }
 
-	go func() {
-		done := make(map[uint64]*blockTraceResult)
-		next := start.NumberU64() + 1
+            // Retrieve block
+            block := api.backend.BlockChain().GetBlockByNumber(number)
+            if block == nil {
+                failed = fmt.Errorf("block #%d not found", number)
+                break
+            }
 
-		for res := range results {
-			br := &blockTraceResult{
-				Block:  hexutil.Uint64(res.block.NumberU64()),
-				Hash:   res.block.Hash(),
-				Traces: res.results,
-			}
-			done[uint64(br.Block)] = br
+            // Send block to workers (after origin)
+            if number > origin {
+                txs := block.Transactions()
+                select {
+                case tasks <- &blockTraceTask{
+                    statedb: statedb.Copy(),
+                    block:   block,
+                    rootref: proot,
+                    results: make([]*txTraceResult, len(txs)),
+                }:
+                case <-notifier.Closed():
+                    return
+                }
+                traced += uint64(len(txs))
+            }
 
-			for {
-				r, ok := done[next]
-				if !ok {
-					break
-				}
-				notifier.Notify(sub.ID, r)
-				delete(done, next)
-				next++
-			}
-		}
-	}()
-	return sub, nil
+            // Fast-forward state without tracing
+            _, _, _, err := api.backend.BlockChain().
+                Processor().Process(block, statedb, vm.Config{})
+            if err != nil {
+                failed = err
+                break
+            }
+
+            root, err := statedb.Commit(
+                api.backend.ChainConfig().IsEIP158(block.Number()),
+            )
+            if err != nil {
+                failed = err
+                break
+            }
+            if err := statedb.Reset(root); err != nil {
+                failed = err
+                break
+            }
+
+            // Reference tries
+            database.TrieDB().Reference(root, common.Hash{})
+            if number >= origin {
+                database.TrieDB().Reference(root, common.Hash{})
+            }
+            if proot != (common.Hash{}) {
+                database.TrieDB().Dereference(proot)
+            }
+            proot = root
+        }
+    }()
+
+    // Consumer goroutine to stream results to the client
+    go func() {
+        done := make(map[uint64]*blockTraceResult)
+        next := origin + 1
+
+        for res := range results {
+            result := &blockTraceResult{
+                Block:  hexutil.Uint64(res.block.NumberU64()),
+                Hash:   res.block.Hash(),
+                Traces: res.results,
+            }
+            done[uint64(result.Block)] = result
+
+            // Dereference parent trie root for this task
+            database.TrieDB().Dereference(res.rootref)
+
+            for {
+                r, ok := done[next]
+                if !ok {
+                    break
+                }
+                if len(r.Traces) > 0 || next == end.NumberU64() {
+                    notifier.Notify(sub.ID, r)
+                }
+                delete(done, next)
+                next++
+            }
+        }
+    }()
+
+    return sub, nil
 }
+
 
 //
 // TraceBlockByNumber / TraceBlockByHash / TraceBlock / TraceBadBlock
