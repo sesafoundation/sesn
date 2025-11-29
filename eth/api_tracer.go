@@ -33,16 +33,8 @@ import (
 
 const (
 	defaultTraceTimeout = 5 * time.Second
-	defaultTraceReexec  = 128
+	defaultTraceReexec uint64 = 128
 )
-
-type PrivateDebugAPI struct {
-	backend ethapi.Backend
-}
-
-func NewPrivateDebugAPI(backend ethapi.Backend) *PrivateDebugAPI {
-	return &PrivateDebugAPI{backend: backend}
-}
 
 type TraceConfig struct {
 	*vm.LogConfig
@@ -172,35 +164,34 @@ func (api *PrivateDebugAPI) traceChain(
         start = parent
     }
 
-    statedb, err := state.New(start.Root(), database, nil)
-    if err != nil {
-        // If the starting state is missing, allow some number of blocks to be re-executed
-        reexec := defaultTraceReexec
-        if config != nil && config.Reexec != nil {
-            reexec = *config.Reexec
+
+	statedb, err := state.New(start.Root(), database, nil)
+	if err != nil {
+    // If the starting state is missing, allow some number of blocks to be reexecuted
+    var reexec uint64 = defaultTraceReexec
+    if config != nil && config.Reexec != nil {
+        reexec = *config.Reexec
+    }
+    // Find the most recent block that has the state available
+    for i := uint64(0); i < reexec; i++ {
+        start = api.backend.BlockChain().GetBlock(start.ParentHash(), start.NumberU64()-1)
+        if start == nil {
+            break
         }
-        // Find the most recent block that has the state available
-        for i := uint64(0); i < reexec; i++ {
-            start = api.backend.BlockChain().GetBlock(
-                start.ParentHash(),
-                start.NumberU64()-1,
-            )
-            if start == nil {
-                break
-            }
-            if statedb, err = state.New(start.Root(), database, nil); err == nil {
-                break
-            }
-        }
-        if err != nil {
-            switch err.(type) {
-            case *trie.MissingNodeError:
-                return nil, errors.New("required historical state unavailable")
-            default:
-                return nil, err
-            }
+        if statedb, err = state.New(start.Root(), database, nil); err == nil {
+            break
         }
     }
+    if err != nil {
+        switch err.(type) {
+        case *trie.MissingNodeError:
+            return nil, errors.New("required historical state unavailable")
+        default:
+            return nil, err
+        }
+    }
+}
+
 
     // Execute all the transactions contained within the chain concurrently
     blocks := int(end.NumberU64() - origin)
@@ -581,10 +572,10 @@ func (api *PrivateDebugAPI) StandardTraceBlockToFile(ctx context.Context, hash c
 
 	reexec := defaultTraceReexec
 	if config != nil && config.Reexec != nil {
-		reexec = *config.Reexec
-	}
-
+    reexec = *config.Reexec
+	}	
 	statedb, err := api.computeStateDB(parent, reexec)
+	////
 	if err != nil {
 		return nil, err
 	}
@@ -630,27 +621,33 @@ func (api *PrivateDebugAPI) StandardTraceBlockToFile(ctx context.Context, hash c
 // computeStateDB
 //
 func (api *PrivateDebugAPI) computeStateDB(block *types.Block, reexec uint64) (*state.StateDB, error) {
-	statedb, err := api.backend.BlockChain().StateAt(block.Root())
-	if err == nil {
-		return statedb, nil
-	}
+    // If we have the state fully available, use that
+    statedb, err := api.backend.BlockChain().StateAt(block.Root())
+    if err == nil {
+        return statedb, nil
+    }
 
-	db := state.NewDatabaseWithConfig(api.backend.ChainDb(), &trie.Config{Cache: 16, Preimages: true})
-	origin := block.NumberU64()
+    origin := block.NumberU64()
+    database := state.NewDatabaseWithConfig(api.backend.ChainDb(), &trie.Config{Cache: 16, Preimages: true})
 
-	for i := uint64(0); i < reexec; i++ {
-		block = api.backend.BlockChain().GetBlock(block.ParentHash(), block.NumberU64()-1)
-		if block == nil {
-			break
-		}
-		if statedb, err = state.New(block.Root(), db, nil); err == nil {
-			break
-		}
-	}
-
-	if err != nil {
-		return nil, fmt.Errorf("required historical state unavailable")
-	}
+    // Rewind to find any state we *do* have
+    for i := uint64(0); i < reexec; i++ {
+        block = api.backend.BlockChain().GetBlock(block.ParentHash(), block.NumberU64()-1)
+        if block == nil {
+            break
+        }
+        if statedb, err = state.New(block.Root(), database, nil); err == nil {
+            break
+        }
+    }
+    if err != nil {
+        switch err.(type) {
+        case *trie.MissingNodeError:
+            return nil, fmt.Errorf("required historical state unavailable (reexec=%d)", reexec)
+        default:
+            return nil, err
+        }
+    }
 
 	start := time.Now()
 	var logged time.Time

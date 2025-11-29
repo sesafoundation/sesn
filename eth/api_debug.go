@@ -12,25 +12,24 @@ import (
 )
 
 // PublicDebugAPI is the collection of debug APIs exposed on the public endpoint.
-type PublicDebugAPI struct {
-	backend ethapi.Backend
-}
+// eth/api_debug.go
 
-// PrivateDebugAPI is the collection of debug APIs exposed on the private endpoint.
 type PrivateDebugAPI struct {
-	backend ethapi.Backend
+    backend ethapi.Backend
 }
 
-
-// NewPublicDebugAPI creates a new instance of PublicDebugAPI using the shared ethapi.Backend.
-func NewPublicDebugAPI(backend ethapi.Backend) *PublicDebugAPI {
-	return &PublicDebugAPI{backend: backend}
+type PublicDebugAPI struct {
+    backend ethapi.Backend
 }
 
-// NewPrivateDebugAPI creates a new instance of PrivateDebugAPI using the shared ethapi.Backend.
 func NewPrivateDebugAPI(backend ethapi.Backend) *PrivateDebugAPI {
-	return &PrivateDebugAPI{backend: backend}
+    return &PrivateDebugAPI{backend: backend}
 }
+
+func NewPublicDebugAPI(backend ethapi.Backend) *PublicDebugAPI {
+    return &PublicDebugAPI{backend: backend}
+}
+
 
 // GetBlockRlp returns the RLP-encoded form of the given block number.
 func (api *PublicDebugAPI) GetBlockRlp(ctx context.Context, number uint64) (string, error) {
