@@ -105,9 +105,7 @@ func (b *EthAPIBackend) GetLogs(ctx context.Context, hash common.Hash) ([][]*typ
 func (b *EthAPIBackend) GetTd(ctx context.Context, hash common.Hash) *big.Int {
 	return b.backend.GetTd(ctx, hash)
 }
-//func (b *EthAPIBackend) GetEVM(ctx context.Context, msg core.Message, st *state.StateDB, hdr *types.Header) (*vm.EVM, func() error, error) {
-//	return b.backend.GetEVM(ctx, msg, st, hdr)
-//}
+
 
 //
 // ---------------- Subscriptions ----------------
