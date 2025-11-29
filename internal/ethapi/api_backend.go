@@ -241,3 +241,8 @@ func (b *EthAPIBackend) StateAndHeaderByNumberOrHash(ctx context.Context, bh rpc
 }
 
 
+func (b *EthAPIBackend) TxPool() *core.TxPool {
+    return b.backend.TxPool()
+}
+
+

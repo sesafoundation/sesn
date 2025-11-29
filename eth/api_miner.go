@@ -2,13 +2,17 @@ package eth
 
 import (
 	"math/big"
-
 	"github.com/sesafoundation/sesn/common"
+	"github.com/sesafoundation/sesn/internal/ethapi"
 )
 
 // PrivateMinerAPI exposes mining control over RPC.
 type PrivateMinerAPI struct {
 	eth *Ethereum
+}
+
+type PublicMinerAPI struct {
+    backend ethapi.Backend
 }
 
 func NewPrivateMinerAPI(eth *Ethereum) *PrivateMinerAPI {
@@ -37,4 +41,13 @@ func (api *PrivateMinerAPI) SetGasPrice(price uint64) {
 	api.eth.lock.Unlock()
 
 	api.eth.txPool.SetGasPrice(api.eth.gasPrice)
+}
+
+///new 
+func NewPublicMinerAPI(backend ethapi.Backend) *PublicMinerAPI {
+    return &PublicMinerAPI{backend: backend}
+}
+
+func (api *PublicMinerAPI) Mining() bool {
+    return api.backend.Miner().Mining()
 }

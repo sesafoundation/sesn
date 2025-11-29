@@ -25,6 +25,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"context"
+	"time"
 	
 
 	"github.com/sesafoundation/sesn/accounts"
@@ -659,5 +660,9 @@ func (s *Ethereum) NodeInfo() interface{} {
         return s.p2pServer.NodeInfo()
     }
     return nil
+}
+
+func (s *Ethereum) CurrentBlock() *types.Block {
+    return s.blockchain.CurrentBlock()
 }
 
