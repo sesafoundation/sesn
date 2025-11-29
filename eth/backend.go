@@ -56,7 +56,7 @@ import (
 	"github.com/sesafoundation/sesn/rpc"
 	"github.com/sesafoundation/sesn/core/state"
 )
-
+var _ ethapi.Backend = (*Ethereum)(nil)
 // Ethereum implements the Ethereum full node service.
 type Ethereum struct {
 	config *Config
@@ -155,6 +155,7 @@ func New(stack *node.Node, config *Config) (*Ethereum, error) {
 
 	// ---- (1) Create internal Backend wrapper used by RPC + consensus ----
 	eth.APIBackend = ethapi.NewEthAPIBackend(stack.Config().ExtRPCEnabled(), eth)
+	
 
 	// ---- (2) Public chain API for consensus engines (must use APIBackend) ----
 	ethAPI := ethapi.NewPublicBlockChainAPI(eth.APIBackend)
@@ -338,6 +339,21 @@ func (s *Ethereum) APIs() []rpc.API {
     		Service:   NewPrivateDebugAPI(s.APIBackend),
     		Public:    false,
 		},
+		 {
+            Namespace: "eth",
+            Version:   "1.0",
+            Service:   NewPublicEthereumAPI(s),
+            Public:    true,
+        },
+        {
+            Namespace: "eth",
+            Version:   "1.0",
+            Service:   NewPublicMinerAPI(s),
+            Public:    true,
+        },
+      
+    }
+
 
 	}
 
@@ -617,3 +633,70 @@ func (s *Ethereum) BloomStatus() (uint64, uint64) {
     sections, _, _ := s.bloomIndexer.Sections()
     return params.BloomBitsBlocks, sections
 }
+
+func (s *Ethereum) ServiceFilter(ctx context.Context, session *bloombits.MatcherSession) {
+    for i := 0; i < 16; i++ { // 16 = bloomFilterThreads in internal/ethapi
+        go session.Multiplex(16, 100*time.Millisecond, s.bloomRequests)
+    }
+}
+
+func (s *Ethereum) BlockChain() *core.BlockChain {
+    return s.blockchain
+}
+
+func (s *Ethereum) TxPool() *core.TxPool {
+    return s.txPool
+}
+
+func (s *Ethereum) Miner() *miner.Miner {
+    return s.miner
+}
+
+func (s *Ethereum) Downloader() *downloader.Downloader {
+    return s.protocolManager.downloader
+}
+
+func (s *Ethereum) ChainDb() ethdb.Database {
+    return s.chainDb
+}
+
+func (s *Ethereum) AccountManager() *accounts.Manager {
+    return s.accountManager
+}
+
+func (s *Ethereum) EventMux() *event.TypeMux {
+    return s.eventMux
+}
+
+func (s *Ethereum) Engine() consensus.Engine {
+    return s.engine
+}
+
+func (s *Ethereum) ProtocolVersion() int {
+    return int(ProtocolVersions[0])
+}
+
+func (s *Ethereum) NetVersion() uint64 {
+    return s.networkID
+}
+
+func (s *Ethereum) RPCGasCap() uint64 {
+    return s.config.RPCGasCap
+}
+
+func (s *Ethereum) RPCTxFeeCap() float64 {
+    return s.config.RPCTxFeeCap
+}
+
+func (s *Ethereum) ChainConfig() *params.ChainConfig {
+    // BlockChain has Config() in go-ethereum
+    return s.blockchain.Config()
+}
+
+func (s *Ethereum) NodeInfo() interface{} {
+    if s.p2pServer != nil {
+        return s.p2pServer.NodeInfo()
+    }
+    return nil
+}
+

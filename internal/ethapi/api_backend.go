@@ -203,6 +203,14 @@ func (b *EthAPIBackend) NetVersion() uint64 {
     return b.backend.NetVersion()
 }
 
+func (b *EthAPIBackend) NodeInfo() interface{} {
+    return b.backend.NodeInfo()
+}
+
+func (b *EthAPIBackend) BlockChain() *core.BlockChain {
+    return b.backend.BlockChain()
+}
+
 func (b *EthAPIBackend) StateAndHeaderByNumberOrHash(ctx context.Context, bh rpc.BlockNumberOrHash) (*state.StateDB, *types.Header, error) {
 
     // If BlockNumber is set
@@ -229,6 +237,7 @@ func (b *EthAPIBackend) StateAndHeaderByNumberOrHash(ctx context.Context, bh rpc
 
     // Neither number nor hash
     return nil, nil, errors.New("invalid BlockNumberOrHash: neither blockNumber nor blockHash specified")
+
 }
 
 
