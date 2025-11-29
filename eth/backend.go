@@ -672,3 +672,6 @@ func (s *Ethereum) CurrentBlock() *types.Block {
     return s.blockchain.CurrentBlock()
 }
 
+func (s *Ethereum) ExtRPCEnabled() bool {
+    return s.config.ExtRPCEnabled
+}

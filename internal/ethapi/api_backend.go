@@ -245,4 +245,8 @@ func (b *EthAPIBackend) TxPool() *core.TxPool {
     return b.backend.TxPool()
 }
 
+func (b *EthAPIBackend) ExtRPCEnabled() bool {
+    return b.backend.ExtRPCEnabled()
+}
+
 
