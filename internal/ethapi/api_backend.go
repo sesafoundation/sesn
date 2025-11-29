@@ -53,7 +53,7 @@ func (b *EthAPIBackend) ProtocolVersion() int               { return b.backend.P
 func (b *EthAPIBackend) ChainDb() ethdb.Database            { return b.backend.ChainDb() }
 func (b *EthAPIBackend) AccountManager() *accounts.Manager  { return b.backend.AccountManager() }
 func (b *EthAPIBackend) EventMux() *event.TypeMux           { return b.backend.EventMux() }
-func (b *EthAPIBackend) ExtRPCEnabled() bool                { return b.extRPCEnabled }
+//func (b *EthAPIBackend) ExtRPCEnabled() bool                { return b.extRPCEnabled }
 func (b *EthAPIBackend) RPCGasCap() uint64                  { return b.backend.RPCGasCap() }
 func (b *EthAPIBackend) RPCTxFeeCap() float64               { return b.backend.RPCTxFeeCap() }
 func (b *EthAPIBackend) ChainConfig() *params.ChainConfig   { return b.backend.ChainConfig() }
