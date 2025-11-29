@@ -354,9 +354,6 @@ func (s *Ethereum) APIs() []rpc.API {
       
     }
 
-
-	}
-
 	return append(apis, local...)
 }
 
