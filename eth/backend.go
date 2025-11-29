@@ -637,44 +637,8 @@ func (s *Ethereum) ServiceFilter(ctx context.Context, session *bloombits.Matcher
     }
 }
 
-func (s *Ethereum) BlockChain() *core.BlockChain {
-    return s.blockchain
-}
-
-func (s *Ethereum) TxPool() *core.TxPool {
-    return s.txPool
-}
-
-func (s *Ethereum) Miner() *miner.Miner {
-    return s.miner
-}
-
-func (s *Ethereum) Downloader() *downloader.Downloader {
-    return s.protocolManager.downloader
-}
-
-func (s *Ethereum) ChainDb() ethdb.Database {
-    return s.chainDb
-}
-
-func (s *Ethereum) AccountManager() *accounts.Manager {
-    return s.accountManager
-}
-
-func (s *Ethereum) EventMux() *event.TypeMux {
-    return s.eventMux
-}
-
-func (s *Ethereum) Engine() consensus.Engine {
-    return s.engine
-}
-
 func (s *Ethereum) ProtocolVersion() int {
     return int(ProtocolVersions[0])
-}
-
-func (s *Ethereum) NetVersion() uint64 {
-    return s.networkID
 }
 
 func (s *Ethereum) RPCGasCap() uint64 {
