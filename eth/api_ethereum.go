@@ -3,6 +3,7 @@ package eth
 import (
     "context"
     "github.com/sesafoundation/sesn/internal/ethapi"
+    "github.com/sesafoundation/sesn/common/hexutil"
 )
 
 type PublicEthereumAPI struct {

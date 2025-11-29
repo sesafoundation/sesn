@@ -94,6 +94,8 @@ type Ethereum struct {
 	lock sync.RWMutex // Protects the variadic fields (e.g. gas price and etherbase)
 }
 
+
+
 // New creates a new Ethereum object (including the initialisation of the common Ethereum object)
 func New(stack *node.Node, config *Config) (*Ethereum, error) {
 	// ---- Safety / config checks ----
@@ -510,6 +512,10 @@ func (s *Ethereum) StopMining() {
 	}
 	// Stop the block creating itself
 	s.miner.Stop()
+}
+
+func (s *Ethereum) CurrentHeader() *types.Header {
+    return s.blockchain.CurrentHeader()
 }
 
 func (s *Ethereum) IsMining() bool      { return s.miner.Mining() }

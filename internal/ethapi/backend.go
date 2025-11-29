@@ -179,7 +179,9 @@ type Backend interface {
 //    return b.backend.BlockChain()
 //}
 
-
+func (b *EthAPIBackend) CurrentHeader() *types.Header {
+    return b.backend.CurrentHeader()
+}
 
 
 func GetAPIs(apiBackend Backend) []rpc.API {
