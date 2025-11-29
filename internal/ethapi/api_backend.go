@@ -105,9 +105,9 @@ func (b *EthAPIBackend) GetLogs(ctx context.Context, hash common.Hash) ([][]*typ
 func (b *EthAPIBackend) GetTd(ctx context.Context, hash common.Hash) *big.Int {
 	return b.backend.GetTd(ctx, hash)
 }
-func (b *EthAPIBackend) GetEVM(ctx context.Context, msg core.Message, st *state.StateDB, hdr *types.Header) (*vm.EVM, func() error, error) {
-	return b.backend.GetEVM(ctx, msg, st, hdr)
-}
+//func (b *EthAPIBackend) GetEVM(ctx context.Context, msg core.Message, st *state.StateDB, hdr *types.Header) (*vm.EVM, func() error, error) {
+//	return b.backend.GetEVM(ctx, msg, st, hdr)
+//}
 
 //
 // ---------------- Subscriptions ----------------
@@ -249,9 +249,14 @@ func (b *EthAPIBackend) ExtRPCEnabled() bool {
     return b.backend.ExtRPCEnabled()
 }
 
-func (b *EthAPIBackend) GetEVM(msg core.Message, header *types.Header, statedb *state.StateDB, cfg vm.Config) (*vm.EVM, error) {
+func (b *EthAPIBackend) GetEVM(
+    msg core.Message,
+    header *types.Header,
+    statedb *state.StateDB,
+    cfg vm.Config,
+) (*vm.EVM, error) {
+
+    // delegate to backend (Ethereum)
     return b.backend.GetEVM(msg, header, statedb, cfg)
 }
-
-
 
