@@ -175,9 +175,9 @@ type Backend interface {
 }
 
 
-func (b *EthAPIBackend) BlockChain() *core.BlockChain {
-    return b.backend.BlockChain()
-}
+//func (b *EthAPIBackend) BlockChain() *core.BlockChain {
+//    return b.backend.BlockChain()
+//}
 
 
 
