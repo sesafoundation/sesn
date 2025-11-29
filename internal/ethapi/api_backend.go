@@ -249,4 +249,9 @@ func (b *EthAPIBackend) ExtRPCEnabled() bool {
     return b.backend.ExtRPCEnabled()
 }
 
+func (b *EthAPIBackend) GetEVM(msg core.Message, header *types.Header, statedb *state.StateDB, cfg vm.Config) (*vm.EVM, error) {
+    return b.backend.GetEVM(msg, header, statedb, cfg)
+}
+
+
 
