@@ -70,7 +70,7 @@ func (b *EthAPIBackend) SuggestPrice(ctx context.Context) (*big.Int, error) {
 // ---------------- Blockchain ----------------
 //
 func (b *EthAPIBackend) SetHead(n uint64)                                 { b.backend.SetHead(n) }
-func (b *EthAPIBackend) CurrentHeader() *types.Header                     { return b.backend.CurrentHeader() }
+//func (b *EthAPIBackend) CurrentHeader() *types.Header                     { return b.backend.CurrentHeader() }
 func (b *EthAPIBackend) CurrentBlock() *types.Block                       { return b.backend.CurrentBlock() }
 func (b *EthAPIBackend) HeaderByNumber(ctx context.Context, n rpc.BlockNumber) (*types.Header, error) {
 	return b.backend.HeaderByNumber(ctx, n)
