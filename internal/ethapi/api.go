@@ -879,9 +879,10 @@ func DoCall(
 	msg := args.ToMessage(globalGasCap)
 
 	// 🔥 Get new EVM instance (NEW SIGNATURE)
+	//evm, err := b.GetEVM(msg, header, state, vmCfg)
 	evm, err := b.GetEVM(msg, header, state, vmCfg)
 	if err != nil {
-		return nil, err
+    return nil, err
 	}
 
 	// Stop EVM on timeout/cancel

@@ -247,8 +247,21 @@ func (b *EthAPIBackend) ExtRPCEnabled() bool {
     return b.backend.ExtRPCEnabled()
 }
 
-func (b *EthAPIBackend) GetEVM(msg core.Message, header *types.Header, state *state.StateDB, cfg vm.Config) (*vm.EVM, error){
-    // delegate to backend (Ethereum)
-    return b.backend.GetEVM(msg, header, statedb, cfg)
+func (b *EthAPIBackend) GetEVM(
+    msg core.Message,
+    header *types.Header,
+    statedb *state.StateDB,
+    cfg vm.Config,
+) (*vm.EVM, error) {
+
+    // Build EVM context
+    blockCtx := core.NewEVMBlockContext(header, b.backend.BlockChain(), nil)
+    txCtx := core.NewEVMTxContext(msg)
+
+    // Create the VM
+    evm := vm.NewEVM(blockCtx, txCtx, statedb, b.backend.ChainConfig(), cfg)
+
+    return evm, nil
 }
+
 
