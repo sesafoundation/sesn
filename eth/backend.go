@@ -714,4 +714,10 @@ func (eth *Ethereum) GetLogs(ctx context.Context, hash common.Hash) ([][]*types.
 	return logs, nil
 }
 
+func (eth *Ethereum) GetPoolNonce(ctx context.Context, addr common.Address) (uint64, error) {
+	if eth.txPool == nil {
+		return 0, errors.New("txpool not initialized")
+	}
+	return eth.txPool.GetNonce(addr), nil
+}
 
