@@ -894,8 +894,7 @@ if err != nil {
 }
 
 // Apply vm.Config if supported
-evm.Config = vmCfg
-
+evm.SetConfig(vmCfg)
 	// Cancel EVM when context is done
 	go func() {
 		<-ctx.Done()
