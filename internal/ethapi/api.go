@@ -634,19 +634,22 @@ func (s *PublicBlockChainAPI) GetProof(ctx context.Context, address common.Addre
 // * When blockNr is -2 the pending chain head is returned.
 func (s *PublicBlockChainAPI) GetHeaderByNumber(ctx context.Context, number rpc.BlockNumber) (map[string]interface{}, error) {
 	header, err := s.b.HeaderByNumber(ctx, number)
-	if header != nil && err == nil {
-		response := s.rpcMarshalHeader(ctx, header)
-		//if number == rpc.PendingBlockNumber {
-		if number == uint64(rpc.PendingBlockNumber) {
-			// Pending header need to nil out a few fields
-			for _, field := range []string{"hash", "nonce", "miner"} {
-				response[field] = nil
-			}
-		}
-		return response, err
+	if err != nil || header == nil {
+		return nil, err
 	}
-	return nil, err
+
+	response := s.rpcMarshalHeader(ctx, header)
+
+	// Handle pending header special case safely
+	if number == rpc.PendingBlockNumber {
+		// these fields are meaningless for pending
+		for _, field := range []string{"hash", "nonce", "miner"} {
+			response[field] = nil
+		}
+	}
+	return response, nil
 }
+
 
 // GetHeaderByHash returns the requested header by hash.
 func (s *PublicBlockChainAPI) GetHeaderByHash(ctx context.Context, hash common.Hash) map[string]interface{} {
