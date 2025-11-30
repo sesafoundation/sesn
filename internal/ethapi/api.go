@@ -821,6 +821,7 @@ type account struct {
 	StateDiff *map[common.Hash]common.Hash `json:"stateDiff"`
 }
 
+
 func DoCall(
     ctx context.Context,
     b Backend,
@@ -836,6 +837,7 @@ func DoCall(
         log.Debug("Executing EVM call finished", "runtime", time.Since(start))
     }(time.Now())
 
+    // Resolve block + state
     state, header, err := b.StateAndHeaderByNumberOrHash(ctx, blockNrOrHash)
     if err != nil || state == nil {
         return nil, err
@@ -865,7 +867,7 @@ func DoCall(
         }
     }
 
-    // Context cancellation / timeout
+    // timeout context
     var cancel context.CancelFunc
     if timeout > 0 {
         ctx, cancel = context.WithTimeout(ctx, timeout)
@@ -874,35 +876,32 @@ func DoCall(
     }
     defer cancel()
 
-    // Convert args to message
+    // Prepare call message
     msg := args.ToMessage(globalGasCap)
 
-    // Get base EVM from backend (old style: returns evm, vmError, err)
-    baseEVM, vmError, err := b.GetEVM(ctx, msg, state, header)
+    // Get EVM instance from backend
+    // (your implementation: returns EVM + vmError func + error)
+    evm, vmError, err := b.GetEVM(ctx, msg, state, header)
     if err != nil {
         return nil, err
     }
 
-    // Build a new EVM with our custom VM config
-    vmctx := baseEVM.Context()
-    txctx := core.NewEVMTxContext(msg)
-    evm := vm.NewEVM(vmctx, txctx, state, baseEVM.ChainConfig(), vmCfg)
-
-    // Ensure EVM is cancelled if context expires
+    // Start timeout cancellation goroutine
     go func() {
         <-ctx.Done()
         evm.Cancel()
     }()
 
-    // Execute the call
+    // Execute message using original EVM
     gp := new(core.GasPool).AddGas(math.MaxUint64)
     result, err := core.ApplyMessage(evm, msg, gp)
 
-    // VM error wrapper check
+    // VM internal error
     if err2 := vmError(); err2 != nil {
         return nil, err2
     }
 
+    // Timeout aborted
     if evm.Cancelled() {
         return nil, fmt.Errorf("execution aborted (timeout = %v)", timeout)
     }
@@ -913,6 +912,7 @@ func DoCall(
 
     return result, nil
 }
+
 
 
 
