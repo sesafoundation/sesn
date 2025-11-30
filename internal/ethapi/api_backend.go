@@ -1,4 +1,3 @@
-// internal/ethapi/api_backend.go
 package ethapi
 
 import (
@@ -26,9 +25,9 @@ import (
 )
 
 type EthAPIBackend struct {
-	backend Backend            // must remain interface
-	extRPCEnabled bool
-	gpo *gasprice.Oracle
+	backend        Backend
+	extRPCEnabled  bool
+	gpo            *gasprice.Oracle
 
 	preconfMu       sync.RWMutex
 	preconfReceipts map[common.Hash]*preconf.PreconfReceipt
@@ -37,8 +36,8 @@ type EthAPIBackend struct {
 
 func NewEthAPIBackend(extRPC bool, b Backend) *EthAPIBackend {
 	return &EthAPIBackend{
-		backend:        b,
-		extRPCEnabled:  extRPC,
+		backend:         b,
+		extRPCEnabled:   extRPC,
 		preconfReceipts: make(map[common.Hash]*preconf.PreconfReceipt),
 	}
 }
@@ -53,7 +52,6 @@ func (b *EthAPIBackend) ProtocolVersion() int               { return b.backend.P
 func (b *EthAPIBackend) ChainDb() ethdb.Database            { return b.backend.ChainDb() }
 func (b *EthAPIBackend) AccountManager() *accounts.Manager  { return b.backend.AccountManager() }
 func (b *EthAPIBackend) EventMux() *event.TypeMux           { return b.backend.EventMux() }
-//func (b *EthAPIBackend) ExtRPCEnabled() bool                { return b.extRPCEnabled }
 func (b *EthAPIBackend) RPCGasCap() uint64                  { return b.backend.RPCGasCap() }
 func (b *EthAPIBackend) RPCTxFeeCap() float64               { return b.backend.RPCTxFeeCap() }
 func (b *EthAPIBackend) ChainConfig() *params.ChainConfig   { return b.backend.ChainConfig() }
@@ -61,7 +59,7 @@ func (b *EthAPIBackend) Engine() consensus.Engine           { return b.backend.E
 
 func (b *EthAPIBackend) SuggestPrice(ctx context.Context) (*big.Int, error) {
 	if b.gpo == nil {
-		return nil, errors.New("gas price oracle not initialised")
+		return nil, errors.New("gas oracle not initialized")
 	}
 	return b.gpo.SuggestPrice(ctx)
 }
@@ -69,9 +67,10 @@ func (b *EthAPIBackend) SuggestPrice(ctx context.Context) (*big.Int, error) {
 //
 // ---------------- Blockchain ----------------
 //
-func (b *EthAPIBackend) SetHead(n uint64)                                 { b.backend.SetHead(n) }
-//func (b *EthAPIBackend) CurrentHeader() *types.Header                     { return b.backend.CurrentHeader() }
-func (b *EthAPIBackend) CurrentBlock() *types.Block                       { return b.backend.CurrentBlock() }
+func (b *EthAPIBackend) SetHead(n uint64) { b.backend.SetHead(n) }
+func (b *EthAPIBackend) CurrentBlock() *types.Block {
+	return b.backend.CurrentBlock()
+}
 func (b *EthAPIBackend) HeaderByNumber(ctx context.Context, n rpc.BlockNumber) (*types.Header, error) {
 	return b.backend.HeaderByNumber(ctx, n)
 }
@@ -93,9 +92,12 @@ func (b *EthAPIBackend) BlockByNumberOrHash(ctx context.Context, bh rpc.BlockNum
 func (b *EthAPIBackend) StateAndHeaderByNumber(ctx context.Context, n rpc.BlockNumber) (*state.StateDB, *types.Header, error) {
 	return b.backend.StateAndHeaderByNumber(ctx, n)
 }
-//func (b *EthAPIBackend) StateAndHeaderByNumberOrHash(ctx context.Context, bh rpc.BlockNumberOrHash) (*state.StateDB, *types.Header, error) {
-//	return b.backend.StateAndHeaderByNumberOrHash(ctx, bh)
-//}
+
+// generic form
+func (b *EthAPIBackend) StateAndHeaderByNumberOrHash(ctx context.Context, bh rpc.BlockNumberOrHash) (*state.StateDB, *types.Header, error) {
+	return b.backend.StateAndHeaderByNumberOrHash(ctx, bh)
+}
+
 func (b *EthAPIBackend) GetReceipts(ctx context.Context, hash common.Hash) (types.Receipts, error) {
 	return b.backend.GetReceipts(ctx, hash)
 }
@@ -105,7 +107,6 @@ func (b *EthAPIBackend) GetLogs(ctx context.Context, hash common.Hash) ([][]*typ
 func (b *EthAPIBackend) GetTd(ctx context.Context, hash common.Hash) *big.Int {
 	return b.backend.GetTd(ctx, hash)
 }
-
 
 //
 // ---------------- Subscriptions ----------------
@@ -130,7 +131,7 @@ func (b *EthAPIBackend) SubscribeRemovedLogsEvent(ch chan<- core.RemovedLogsEven
 }
 
 //
-// ---------------- Tx pool ----------------
+// ---------------- Tx Pool ----------------
 //
 func (b *EthAPIBackend) SendTx(ctx context.Context, tx *types.Transaction) error {
 	return b.backend.SendTx(ctx, tx)
@@ -160,9 +161,7 @@ func (b *EthAPIBackend) SubscribeNewTxsEvent(ch chan<- core.NewTxsEvent) event.S
 //
 // ---------------- Filters ----------------
 //
-func (b *EthAPIBackend) BloomStatus() (uint64, uint64) {
-	return b.backend.BloomStatus()
-}
+func (b *EthAPIBackend) BloomStatus() (uint64, uint64) { return b.backend.BloomStatus() }
 func (b *EthAPIBackend) ServiceFilter(ctx context.Context, session *bloombits.MatcherSession) {
 	b.backend.ServiceFilter(ctx, session)
 }
@@ -192,76 +191,31 @@ func (b *EthAPIBackend) PreconfSubscribe(ch chan *preconf.PreconfReceipt) event.
 	return b.preconfFeed.Subscribe(ch)
 }
 
-// EthVersion returns the ETH protocol version for RPC
-func (b *EthAPIBackend) EthVersion() int {
-    return b.backend.EthVersion()
-}
-
-func (b *EthAPIBackend) NetVersion() uint64 {
-    return b.backend.NetVersion()
-}
-
-func (b *EthAPIBackend) NodeInfo() interface{} {
-    return b.backend.NodeInfo()
-}
-
-func (b *EthAPIBackend) BlockChain() *core.BlockChain {
-    return b.backend.BlockChain()
-}
-
-func (b *EthAPIBackend) StateAndHeaderByNumberOrHash(ctx context.Context, bh rpc.BlockNumberOrHash) (*state.StateDB, *types.Header, error) {
-
-    // If BlockNumber is set
-    if bh.BlockNumber != nil {
-        return b.StateAndHeaderByNumber(ctx, *bh.BlockNumber)
-    }
-
-    // If BlockHash is set
-    if h, ok := bh.Hash(); ok {
-        block, err := b.BlockByHash(ctx, h)
-        if err != nil {
-            return nil, nil, err
-        }
-        if block == nil {
-            return nil, nil, errors.New("block not found")
-        }
-
-        st, err := b.backend.BlockChain().StateAt(block.Root())
-        if err != nil {
-            return nil, nil, err
-        }
-        return st, block.Header(), nil
-    }
-
-    // Neither number nor hash
-    return nil, nil, errors.New("invalid BlockNumberOrHash: neither blockNumber nor blockHash specified")
-
-}
-
-
-func (b *EthAPIBackend) TxPool() *core.TxPool {
-    return b.backend.TxPool()
-}
+//
+// ---------------- Node info ----------------
+//
+func (b *EthAPIBackend) EthVersion() int     { return b.backend.EthVersion() }
+func (b *EthAPIBackend) NetVersion() uint64  { return b.backend.NetVersion() }
+func (b *EthAPIBackend) NodeInfo() interface{} { return b.backend.NodeInfo() }
+func (b *EthAPIBackend) BlockChain() *core.BlockChain { return b.backend.BlockChain() }
+func (b *EthAPIBackend) TxPool() *core.TxPool { return b.backend.TxPool() }
 
 func (b *EthAPIBackend) ExtRPCEnabled() bool {
-    return b.backend.ExtRPCEnabled()
+	return b.extRPCEnabled
 }
 
+//
+// ---------------- EVM for Debug / Trace APIs ----------------
+//
 func (b *EthAPIBackend) GetEVM(
-    msg core.Message,
-    header *types.Header,
-    statedb *state.StateDB,
-    cfg vm.Config,
+	msg core.Message,
+	header *types.Header,
+	state *state.StateDB,
+	cfg vm.Config,
 ) (*vm.EVM, error) {
 
-    // Build EVM context
-    blockCtx := core.NewEVMBlockContext(header, b.backend.BlockChain(), nil)
-    txCtx := core.NewEVMTxContext(msg)
-
-    // Create the VM
-    evm := vm.NewEVM(blockCtx, txCtx, statedb, b.backend.ChainConfig(), cfg)
-
-    return evm, nil
+	blockCtx := core.NewEVMBlockContext(header, b.backend.BlockChain(), nil)
+	txCtx := core.NewEVMTxContext(msg)
+	return vm.NewEVM(blockCtx, txCtx, state, b.backend.ChainConfig(), cfg), nil
 }
-
 
