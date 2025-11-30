@@ -718,8 +718,13 @@ func (eth *Ethereum) GetPoolNonce(ctx context.Context, addr common.Address) (uin
     if eth.txPool == nil {
         return 0, errors.New("txpool not initialized")
     }
+    _, err := eth.txPool.Pending()
+    if err != nil {
+        return 0, err
+    }
     return eth.txPool.Nonce(addr), nil
 }
+
 
 func (eth *Ethereum) GetPoolTransaction(hash common.Hash) *types.Transaction {
     if eth.txPool == nil {
@@ -732,10 +737,29 @@ func (eth *Ethereum) GetPoolTransactions() (types.Transactions, error) {
     if eth.txPool == nil {
         return nil, errors.New("txpool not initialized")
     }
-    pend := eth.txPool.Pending()
+    pend, err := eth.txPool.Pending()
+    if err != nil {
+        return nil, err
+    }
     var txs types.Transactions
-    for _, addrTxs := range pend {
+    for _, addrTxs := range pend { // flatten map into slice
         txs = append(txs, addrTxs...)
     }
     return txs, nil
 }
+
+
+// GetReceipts implements ethapi.Backend.
+// Returns receipts for a block by hash.
+func (eth *Ethereum) GetReceipts(ctx context.Context, hash common.Hash) (types.Receipts, error) {
+    block := eth.blockchain.GetBlockByHash(hash)
+    if block == nil {
+        return nil, fmt.Errorf("block %#x not found", hash)
+    }
+    receipts := rawdb.ReadReceipts(eth.chainDb, block.Hash(), block.NumberU64(), block.Time())
+    if receipts == nil {
+        return nil, fmt.Errorf("receipts not found for block %#x", hash)
+    }
+    return receipts, nil
+}
+
