@@ -678,6 +678,13 @@ func (s *Ethereum) ExtRPCEnabled() bool {
 
 // GetEVM implements ethapi.Backend. It returns an EVM instance with the
 // given block and state, used by the debug/tracer APIs.
+func (s *Ethereum) GetEVM(msg core.Message, header *types.Header, statedb *state.StateDB, cfg vm.Config) (*vm.EVM, error) {
+    // Prepare block and tx context
+    blockCtx := core.NewEVMBlockContext(header, s.blockchain, nil)
+    txCtx := core.NewEVMTxContext(msg)
+
+    return vm.NewEVM(blockCtx, txCtx, statedb, s.blockchain.Config(), cfg), nil
+}
 
 
 func (eth *Ethereum) GetEVM(
@@ -701,3 +708,4 @@ func (eth *Ethereum) GetEVM(
 
     return evm, vmErr, nil
 }
+
