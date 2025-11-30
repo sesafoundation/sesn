@@ -718,24 +718,24 @@ func (eth *Ethereum) GetPoolNonce(ctx context.Context, addr common.Address) (uin
     if eth.txPool == nil {
         return 0, errors.New("txpool not initialized")
     }
-    return eth.txPool.Nonce(addr), nil   // instead of PendingNonce()
+    return eth.txPool.Nonce(addr), nil
 }
 
-
-// GetPoolTransaction implements ethapi.Backend.
-// Returns a pending transaction by hash if it exists in the txpool.
 func (eth *Ethereum) GetPoolTransaction(hash common.Hash) *types.Transaction {
-	if eth.txPool == nil {
-		return nil
-	}
-	return eth.txPool.Get(hash)
+    if eth.txPool == nil {
+        return nil
+    }
+    return eth.txPool.Get(hash)
 }
 
-// GetPoolTransactions implements ethapi.Backend.
-// Returns all transactions currently pending in the transaction pool.
 func (eth *Ethereum) GetPoolTransactions() (types.Transactions, error) {
     if eth.txPool == nil {
         return nil, errors.New("txpool not initialized")
     }
-    return eth.txPool.Pending(), nil
+    pend := eth.txPool.Pending()
+    var txs types.Transactions
+    for _, addrTxs := range pend {
+        txs = append(txs, addrTxs...)
+    }
+    return txs, nil
 }
