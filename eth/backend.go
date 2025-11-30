@@ -770,5 +770,16 @@ func (eth *Ethereum) GetTd(ctx context.Context, hash common.Hash) *big.Int {
     return eth.blockchain.GetTd(hash, block.NumberU64())
 }
 
+// GetTransaction implements ethapi.Backend.
+// Returns (tx, blockHash, blockNumber, txIndex, error)
+func (eth *Ethereum) GetTransaction(ctx context.Context, hash common.Hash) (*types.Transaction, common.Hash, uint64, uint64, error) {
+    tx, blockHash, blockNumber, txIndex := rawdb.ReadTransaction(eth.ChainDb(), hash)
+    if tx == nil {
+        return nil, common.Hash{}, 0, 0, errors.New("transaction not found")
+    }
+    return tx, blockHash, blockNumber, txIndex, nil
+}
+
+
 
 
