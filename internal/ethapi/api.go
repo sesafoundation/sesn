@@ -887,11 +887,14 @@ func DoCall(
 	// Build call message
 	msg := args.ToMessage(globalGasCap)
 
-	// 🔑 Use Backend.GetEVM(ctx, msg, state, header, vmCfg) → 3 return values
-	evm, vmError, err := b.GetEVM(ctx, msg, state, header, vmCfg)
-	if err != nil {
-		return nil, err
-	}
+// Get new EVM instance
+evm, vmError, err := b.GetEVM(ctx, msg, state, header)
+if err != nil {
+    return nil, err
+}
+
+// Apply vm.Config if supported
+evm.Config = vmCfg
 
 	// Cancel EVM when context is done
 	go func() {
