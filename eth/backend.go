@@ -749,17 +749,28 @@ func (eth *Ethereum) GetPoolTransactions() (types.Transactions, error) {
 }
 
 
-// GetReceipts implements ethapi.Backend.
-// Returns receipts for a block by hash.
 func (eth *Ethereum) GetReceipts(ctx context.Context, hash common.Hash) (types.Receipts, error) {
     block := eth.blockchain.GetBlockByHash(hash)
     if block == nil {
         return nil, fmt.Errorf("block %#x not found", hash)
     }
-    receipts := rawdb.ReadReceipts(eth.chainDb, block.Hash(), block.NumberU64(), block.Time())
+
+    receipts := rawdb.ReadReceipts(eth.chainDb, block.Hash(), block.NumberU64(), eth.blockchain.Config())
     if receipts == nil {
         return nil, fmt.Errorf("receipts not found for block %#x", hash)
     }
     return receipts, nil
 }
+
+
+// GetTd implements ethapi.Backend.
+// Returns the total difficulty for a block by hash.
+func (eth *Ethereum) GetTd(ctx context.Context, hash common.Hash) (*big.Int, error) {
+    td := eth.blockchain.GetTd(hash, eth.blockchain.GetBlockByHash(hash).NumberU64())
+    if td == nil {
+        return nil, fmt.Errorf("total difficulty not found for block %#x", hash)
+    }
+    return td, nil
+}
+
 
