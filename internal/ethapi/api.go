@@ -641,7 +641,8 @@ func (s *PublicBlockChainAPI) GetHeaderByNumber(ctx context.Context, number rpc.
 	response := s.rpcMarshalHeader(ctx, header)
 
 	// Handle pending header special case safely
-	if number == rpc.PendingBlockNumber {
+	//if number == rpc.PendingBlockNumber {
+	if rpc.BlockNumber(number) == rpc.PendingBlockNumber {
 		// these fields are meaningless for pending
 		for _, field := range []string{"hash", "nonce", "miner"} {
 			response[field] = nil
