@@ -678,7 +678,13 @@ func (s *Ethereum) ExtRPCEnabled() bool {
 
 // GetEVM implements ethapi.Backend. It returns an EVM instance with the
 // given block and state, used by the debug/tracer APIs.
-func (s *Ethereum) GetEVM(msg core.Message, header *types.Header, statedb *state.StateDB, cfg vm.Config) (*vm.EVM, error) {
+func (s *Ethereum) GetEVM(
+    msg core.Message,
+    header *types.Header,
+    statedb *state.StateDB,
+    cfg vm.Config,
+) (*vm.EVM, error) {
+
     // Prepare block and tx context
     blockCtx := core.NewEVMBlockContext(header, s.blockchain, nil)
     txCtx := core.NewEVMTxContext(msg)
@@ -686,26 +692,4 @@ func (s *Ethereum) GetEVM(msg core.Message, header *types.Header, statedb *state
     return vm.NewEVM(blockCtx, txCtx, statedb, s.blockchain.Config(), cfg), nil
 }
 
-
-func (eth *Ethereum) GetEVM(
-    ctx context.Context,
-    msg core.Message,
-    state *state.StateDB,
-    header *types.Header,
-) (*vm.EVM, func() error, error) {
-
-    // Use default VM config (or message based cfg if you have one)
-    cfg := vm.Config{}
-
-    // Call your original GetEVM (existing implementation)
-    evm, err := eth.GetEVM(msg, header, state, cfg)
-    if err != nil {
-        return nil, nil, err
-    }
-
-    // VM error callback — older engines do not use internal VM error funcs
-    vmErr := func() error { return nil }
-
-    return evm, vmErr, nil
-}
 
