@@ -24,9 +24,7 @@ import (
 	"runtime"
 	"sync"
 	"sync/atomic"
-	"context"
 	"time"
-	
 
 	"github.com/sesafoundation/sesn/accounts"
 	"github.com/sesafoundation/sesn/common"
@@ -55,10 +53,12 @@ import (
 	"github.com/sesafoundation/sesn/params"
 	"github.com/sesafoundation/sesn/rlp"
 	"github.com/sesafoundation/sesn/rpc"
-	"github.com/sesafoundation/sesn/core/state"
-	"github.com/sesafoundation/sesn/preconf"
 )
-var _ ethapi.Backend = (*Ethereum)(nil)
+
+// NOTE: do NOT assert *Ethereum implements ethapi.Backend here.
+// The RPC backend interface is implemented by internal/ethapi.EthAPIBackend,
+// and we pass s.APIBackend wherever ethapi.Backend is required.
+
 // Ethereum implements the Ethereum full node service.
 type Ethereum struct {
 	config *Config
@@ -94,8 +94,6 @@ type Ethereum struct {
 
 	lock sync.RWMutex // Protects the variadic fields (e.g. gas price and etherbase)
 }
-
-
 
 // New creates a new Ethereum object (including the initialisation of the common Ethereum object)
 func New(stack *node.Node, config *Config) (*Ethereum, error) {
@@ -157,9 +155,9 @@ func New(stack *node.Node, config *Config) (*Ethereum, error) {
 		p2pServer:         stack.Server(),
 	}
 
-	// ---- (1) Create internal Backend wrapper used by RPC + consensus ----
+	// ---- (1) Create internal Backend wrapper used by RPC + gas oracle + preconf ----
+	// eth.APIBackend implements ethapi.Backend and wraps the core *Ethereum service.
 	eth.APIBackend = ethapi.NewEthAPIBackend(stack.Config().ExtRPCEnabled(), eth)
-	
 
 	// ---- (2) Public chain API for consensus engines (must use APIBackend) ----
 	ethAPI := ethapi.NewPublicBlockChainAPI(eth.APIBackend)
@@ -169,10 +167,19 @@ func New(stack *node.Node, config *Config) (*Ethereum, error) {
 
 	// ---- Continue blockchain init ----
 	bcVersion := rawdb.ReadDatabaseVersion(chainDb)
-	if bcVersion != nil && *bcVersion > core.BlockChainVersion {
-		return nil, fmt.Errorf("database version is v%d, Geth %s only supports v%d", *bcVersion, params.VersionWithMeta, core.BlockChainVersion)
-	} else if bcVersion == nil || *bcVersion < core.BlockChainVersion {
-		rawdb.WriteDatabaseVersion(chainDb, core.BlockChainVersion)
+	dbVer := "<nil>"
+	if bcVersion != nil {
+		dbVer = fmt.Sprintf("%d", *bcVersion)
+	}
+	log.Info("Initialising Ethereum protocol", "versions", ProtocolVersions, "network", config.NetworkId, "dbversion", dbVer)
+
+	if !config.SkipBcVersionCheck {
+		if bcVersion != nil && *bcVersion > core.BlockChainVersion {
+			return nil, fmt.Errorf("database version is v%d, Geth %s only supports v%d", *bcVersion, params.VersionWithMeta, core.BlockChainVersion)
+		} else if bcVersion == nil || *bcVersion < core.BlockChainVersion {
+			log.Warn("Upgrade blockchain database version", "from", dbVer, "to", core.BlockChainVersion)
+			rawdb.WriteDatabaseVersion(chainDb, core.BlockChainVersion)
+		}
 	}
 
 	vmConfig := vm.Config{
@@ -195,7 +202,9 @@ func New(stack *node.Node, config *Config) (*Ethereum, error) {
 	if err != nil {
 		return nil, err
 	}
+	// Rewind the chain in case of an incompatible config upgrade.
 	if compat, ok := genesisErr.(*params.ConfigCompatError); ok {
+		log.Warn("Rewinding chain to upgrade configuration", "err", compat)
 		eth.blockchain.SetHead(compat.RewindTo)
 		rawdb.WriteChainConfig(chainDb, genesisHash, chainConfig)
 	}
@@ -206,6 +215,7 @@ func New(stack *node.Node, config *Config) (*Ethereum, error) {
 	}
 	eth.txPool = core.NewTxPool(config.TxPool, chainConfig, eth.blockchain)
 
+	// Permit the downloader to use the trie cache allowance during fast sync
 	cacheLimit := cacheConfig.TrieCleanLimit + cacheConfig.TrieDirtyLimit + cacheConfig.SnapshotLimit
 	checkpoint := config.Checkpoint
 	if checkpoint == nil {
@@ -226,12 +236,16 @@ func New(stack *node.Node, config *Config) (*Ethereum, error) {
 	oracle := gasprice.NewOracle(eth.APIBackend, gpoParams)
 	eth.APIBackend.SetOracle(oracle)
 
+	// P2P / discovery
 	eth.dialCandidates, err = eth.setupDiscovery()
 	if err != nil {
 		return nil, err
 	}
 
+	// Public net API (used via RPC)
 	eth.netRPCService = ethapi.NewPublicNetAPI(eth.p2pServer, eth.NetVersion())
+
+	// Register services on stack
 	stack.RegisterAPIs(eth.APIs())
 	stack.RegisterProtocols(eth.Protocols())
 	stack.RegisterLifecycle(eth)
@@ -261,6 +275,7 @@ func CreateConsensusEngine(stack *node.Node, chainConfig *params.ChainConfig, co
 	if chainConfig.Clique != nil {
 		return clique.New(chainConfig.Clique, db)
 	}
+	// ---- Sonium DPoS consensus for Sesa ----
 	if chainConfig.Sonium != nil {
 		return sonium.New(chainConfig, db, ethAPI)
 	}
@@ -292,92 +307,82 @@ func CreateConsensusEngine(stack *node.Node, chainConfig *params.ChainConfig, co
 }
 
 // APIs return the collection of RPC services the ethereum package offers.
+// NOTE, some of these services probably need to be moved to somewhere else.
 func (s *Ethereum) APIs() []rpc.API {
-	// Core JSON-RPC APIs from internal/ethapi (eth, txpool, personal, debug, preconf, etc.)
+	// Core internal eth APIs (eth_getBalance, eth_call, txpool, preconf etc.)
 	apis := ethapi.GetAPIs(s.APIBackend)
 
-	// Append any APIs exposed explicitly by the consensus engine
+	// Consensus engine APIs
 	apis = append(apis, s.engine.APIs(s.BlockChain())...)
 
-	// Local node APIs
+	// Local node / service APIs
 	local := []rpc.API{
+		// High-level eth namespace (blockchain info etc.)
+		{
+			Namespace: "eth",
+			Version:   "1.0",
+			Service:   NewPublicEthereumAPI(s.APIBackend),
+			Public:    true,
+		},
+		// Mining control (public)
+		{
+			Namespace: "eth",
+			Version:   "1.0",
+			Service:   NewPublicMinerAPI(s.APIBackend),
+			Public:    true,
+		},
+		// Downloader status
 		{
 			Namespace: "eth",
 			Version:   "1.0",
 			Service:   downloader.NewPublicDownloaderAPI(s.protocolManager.downloader, s.eventMux),
 			Public:    true,
 		},
+		// Miner control (private)
+		{
+			Namespace: "miner",
+			Version:   "1.0",
+			Service:   NewPrivateMinerAPI(s.APIBackend),
+			Public:    false,
+		},
+		// Log filters
 		{
 			Namespace: "eth",
 			Version:   "1.0",
 			Service:   filters.NewPublicFilterAPI(s.APIBackend, false),
 			Public:    true,
 		},
-		{
-			Namespace: "miner",
-			Version:   "1.0",
-			Service:   NewPrivateMinerAPI(s),
-			Public:    false,
-		},
+		// Admin (p2p peers, etc.)
 		{
 			Namespace: "admin",
 			Version:   "1.0",
 			Service:   NewPrivateAdminAPI(s),
 			Public:    false,
 		},
+		// Debug / tracing (public)
+		{
+			Namespace: "debug",
+			Version:   "1.0",
+			Service:   NewPublicDebugAPI(s.APIBackend),
+			Public:    true,
+		},
+		// Debug / tracing (private)
+		{
+			Namespace: "debug",
+			Version:   "1.0",
+			Service:   NewPrivateDebugAPI(s.APIBackend),
+			Public:    false,
+		},
+		// Net namespace (p2p networking info)
 		{
 			Namespace: "net",
 			Version:   "1.0",
 			Service:   s.netRPCService,
 			Public:    true,
 		},
-		{
-   		 	Namespace: "debug",
-    		Version:   "1.0",
-    		Service:   NewPublicDebugAPI(s.APIBackend),
-    		Public:    true,
-		},
-		{
-    		Namespace: "debug",
-    		Version:   "1.0",
-    		Service:   NewPrivateDebugAPI(s.APIBackend),
-    		Public:    false,
-		},
-		 {
-            Namespace: "eth",
-            Version:   "1.0",
-            Service:   NewPublicEthereumAPI(s),
-            Public:    true,
-        },
-        {
-            Namespace: "eth",
-            Version:   "1.0",
-            Service:   NewPublicMinerAPI(s),
-            Public:    true,
-        },
-      
-    }
-
+	}
 	return append(apis, local...)
 }
-
-// BlockByNumberOrHash implements flexible block lookup for ethapi.Backend
-func (s *Ethereum) BlockByNumberOrHash(ctx context.Context, bh rpc.BlockNumberOrHash) (*types.Block, error) {
-    if num, ok := bh.Number(); ok {
-        return s.BlockByNumber(ctx, num)
-    }
-    if hash, ok := bh.Hash(); ok {
-        hdr := s.blockchain.GetHeaderByHash(hash)
-        if hdr == nil {
-            return nil, nil
-        }
-        return s.blockchain.GetBlock(hash, hdr.Number.Uint64()), nil
-    }
-    return nil, errors.New("invalid BlockNumberOrHash")
-}
-
-
-
 
 func (s *Ethereum) ResetWithGenesisBlock(gb *types.Block) {
 	s.blockchain.ResetWithGenesisBlock(gb)
@@ -391,9 +396,9 @@ func (s *Ethereum) Etherbase() (common.Address, error) {
 	if etherbase != (common.Address{}) {
 		return etherbase, nil
 	}
-	if wallets := s.AccountManager().Wallets(); len(wallets) > 0 {
+	if wallets := s.accountManager.Wallets(); len(wallets) > 0 {
 		if accounts := wallets[0].Accounts(); len(accounts) > 0 {
-			etherbase = accounts[0].Address
+			etherbase := accounts[0].Address
 
 			s.lock.Lock()
 			s.etherbase = etherbase
@@ -406,7 +411,8 @@ func (s *Ethereum) Etherbase() (common.Address, error) {
 	return common.Address{}, fmt.Errorf("etherbase must be explicitly specified")
 }
 
-// isLocalBlock checks whether the specified block is mined by local miner accounts.
+// isLocalBlock checks whether the specified block is mined
+// by local miner accounts (etherbase or txpool.locals).
 func (s *Ethereum) isLocalBlock(block *types.Block) bool {
 	author, err := s.engine.Author(block.Header())
 	if err != nil {
@@ -420,7 +426,7 @@ func (s *Ethereum) isLocalBlock(block *types.Block) bool {
 	if author == etherbase {
 		return true
 	}
-	// Check whether the given address is specified by `txpool.locals` CLI flag.
+	// Check whether the given address is specified by `txpool.local`
 	for _, account := range s.config.TxPool.Locals {
 		if account == author {
 			return true
@@ -429,8 +435,9 @@ func (s *Ethereum) isLocalBlock(block *types.Block) bool {
 	return false
 }
 
-// shouldPreserve checks whether we should preserve the given block during the chain reorg
-// depending on whether the author of block is a local account.
+// shouldPreserve checks whether we should preserve the given block
+// during the chain reorg depending on whether the author of block
+// is a local account (disabled for clique / sonium to avoid deadlocks).
 func (s *Ethereum) shouldPreserve(block *types.Block) bool {
 	if _, ok := s.engine.(*clique.Clique); ok {
 		return false
@@ -477,24 +484,23 @@ func (s *Ethereum) StartMining(threads int) error {
 			log.Error("Cannot start mining without etherbase", "err", err)
 			return fmt.Errorf("etherbase missing: %v", err)
 		}
-		if clique, ok := s.engine.(*clique.Clique); ok {
+		if cliqueEng, ok := s.engine.(*clique.Clique); ok {
 			wallet, err := s.accountManager.Find(accounts.Account{Address: eb})
 			if wallet == nil || err != nil {
 				log.Error("Etherbase account unavailable locally", "err", err)
 				return fmt.Errorf("signer missing: %v", err)
 			}
-			clique.Authorize(eb, wallet.SignData)
+			cliqueEng.Authorize(eb, wallet.SignData)
 		}
-		if son, ok := s.engine.(*sonium.Sonium); ok {
+		if soniumEng, ok := s.engine.(*sonium.Sonium); ok {
 			wallet, err := s.accountManager.Find(accounts.Account{Address: eb})
 			if wallet == nil || err != nil {
 				log.Error("Etherbase account unavailable locally", "err", err)
 				return fmt.Errorf("signer missing: %v", err)
 			}
-			son.Authorize(eb, wallet.SignData, wallet.SignTx)
+			soniumEng.Authorize(eb, wallet.SignData, wallet.SignTx)
 		}
-		// If mining is started, we can disable the transaction rejection mechanism
-		// introduced to speed sync times.
+		// Accept txs
 		atomic.StoreUint32(&s.protocolManager.acceptTxs, 1)
 
 		go s.miner.Start(eb)
@@ -502,7 +508,8 @@ func (s *Ethereum) StartMining(threads int) error {
 	return nil
 }
 
-// StopMining terminates the miner.
+// StopMining terminates the miner, both at the consensus engine level as well as
+// at the block creation level.
 func (s *Ethereum) StopMining() {
 	// Update the thread count within the consensus engine
 	type threaded interface {
@@ -515,28 +522,22 @@ func (s *Ethereum) StopMining() {
 	s.miner.Stop()
 }
 
-func (s *Ethereum) CurrentHeader() *types.Header {
-    return s.blockchain.CurrentHeader()
-}
-
 func (s *Ethereum) IsMining() bool      { return s.miner.Mining() }
 func (s *Ethereum) Miner() *miner.Miner { return s.miner }
 
-func (s *Ethereum) AccountManager() *accounts.Manager { return s.accountManager }
-//func (s *Ethereum) BlockChain() *core.BlockChain      { return s.blockchain }
-func (s *Ethereum) TxPool() *core.TxPool              { return s.txPool }
-func (s *Ethereum) EventMux() *event.TypeMux          { return s.eventMux }
-func (s *Ethereum) Engine() consensus.Engine          { return s.engine }
-func (s *Ethereum) ChainDb() ethdb.Database           { return s.chainDb }
-func (s *Ethereum) IsListening() bool                 { return true } // Always listening
-func (s *Ethereum) EthVersion() int                   { return int(ProtocolVersions[0]) }
-func (s *Ethereum) NetVersion() uint64                { return s.networkID }
-func (s *Ethereum) Downloader() *downloader.Downloader {
-	return s.protocolManager.downloader
-}
-func (s *Ethereum) Synced() bool                     { return atomic.LoadUint32(&s.protocolManager.acceptTxs) == 1 }
-func (s *Ethereum) ArchiveMode() bool                { return s.config.NoPruning }
-func (s *Ethereum) BloomIndexer() *core.ChainIndexer { return s.bloomIndexer }
+func (s *Ethereum) AccountManager() *accounts.Manager  { return s.accountManager }
+func (s *Ethereum) BlockChain() *core.BlockChain       { return s.blockchain }
+func (s *Ethereum) TxPool() *core.TxPool               { return s.txPool }
+func (s *Ethereum) EventMux() *event.TypeMux           { return s.eventMux }
+func (s *Ethereum) Engine() consensus.Engine           { return s.engine }
+func (s *Ethereum) ChainDb() ethdb.Database            { return s.chainDb }
+func (s *Ethereum) IsListening() bool                  { return true } // Always listening
+func (s *Ethereum) EthVersion() int                    { return int(ProtocolVersions[0]) }
+func (s *Ethereum) NetVersion() uint64                 { return s.networkID }
+func (s *Ethereum) Downloader() *downloader.Downloader { return s.protocolManager.downloader }
+func (s *Ethereum) Synced() bool                       { return atomic.LoadUint32(&s.protocolManager.acceptTxs) == 1 }
+func (s *Ethereum) ArchiveMode() bool                  { return s.config.NoPruning }
+func (s *Ethereum) BloomIndexer() *core.ChainIndexer   { return s.bloomIndexer }
 
 // Protocols returns all the currently configured network protocols to start.
 func (s *Ethereum) Protocols() []p2p.Protocol {
@@ -549,7 +550,8 @@ func (s *Ethereum) Protocols() []p2p.Protocol {
 	return protos
 }
 
-// Start implements node.Lifecycle, starting all internal goroutines needed by the Ethereum protocol implementation.
+// Start implements node.Lifecycle, starting all internal goroutines needed by the
+// Ethereum protocol implementation.
 func (s *Ethereum) Start() error {
 	s.startEthEntryUpdate(s.p2pServer.LocalNode())
 
@@ -569,7 +571,8 @@ func (s *Ethereum) Start() error {
 	return nil
 }
 
-// Stop implements node.Lifecycle, terminating all internal goroutines used by the Ethereum protocol.
+// Stop implements node.Lifecycle, terminating all internal goroutines used by the
+// Ethereum protocol.
 func (s *Ethereum) Stop() error {
 	// Stop all the peer-related stuff first.
 	s.protocolManager.Stop()
@@ -586,247 +589,75 @@ func (s *Ethereum) Stop() error {
 	return nil
 }
 
-///new
-// ---- Implementation required by ethapi.Backend ----
-
-func (s *Ethereum) StateAndHeaderByNumber(ctx context.Context, number rpc.BlockNumber) (*state.StateDB, *types.Header, error) {
-	return s.APIBackend.StateAndHeaderByNumber(ctx, number)
-}
-
-func (s *Ethereum) StateAndHeaderByNumberOrHash(ctx context.Context, bh rpc.BlockNumberOrHash) (*state.StateDB, *types.Header, error) {
-	return s.APIBackend.StateAndHeaderByNumberOrHash(ctx, bh)
-}
-
-//new
-// === ethapi.Backend interface compatibility ===
-
-func (s *Ethereum) BlockChain() *core.BlockChain {
-    return s.blockchain
-}
-
-func (s *Ethereum) BlockByNumber(ctx context.Context, number rpc.BlockNumber) (*types.Block, error) {
-    switch number {
-    case rpc.PendingBlockNumber:
-        return s.miner.PendingBlock(), nil
-    case rpc.LatestBlockNumber:
-        return s.blockchain.CurrentBlock(), nil
-    default:
-        return s.blockchain.GetBlockByNumber(uint64(number)), nil
-    }
-}
-
-func (s *Ethereum) BlockByHash(ctx context.Context, hash common.Hash) (*types.Block, error) {
-    return s.blockchain.GetBlockByHash(hash), nil
-}
-
-func (s *Ethereum) HeaderByNumber(ctx context.Context, number rpc.BlockNumber) (*types.Header, error) {
-    switch number {
-    case rpc.PendingBlockNumber:
-        return s.miner.PendingBlock().Header(), nil
-    case rpc.LatestBlockNumber:
-        return s.blockchain.CurrentBlock().Header(), nil
-    default:
-        return s.blockchain.GetHeaderByNumber(uint64(number)), nil
-    }
-}
-
-func (s *Ethereum) HeaderByHash(ctx context.Context, hash common.Hash) (*types.Header, error) {
-    return s.blockchain.GetHeaderByHash(hash), nil
-}
-
-func (s *Ethereum) BloomStatus() (uint64, uint64) {
-    sections, _, _ := s.bloomIndexer.Sections()
-    return params.BloomBitsBlocks, sections
-}
-
-func (s *Ethereum) ServiceFilter(ctx context.Context, session *bloombits.MatcherSession) {
-    for i := 0; i < 16; i++ { // 16 = bloomFilterThreads in internal/ethapi
-        go session.Multiplex(16, 100*time.Millisecond, s.bloomRequests)
-    }
-}
-
-func (s *Ethereum) ProtocolVersion() int {
-    return int(ProtocolVersions[0])
-}
-
-func (s *Ethereum) RPCGasCap() uint64 {
-    return s.config.RPCGasCap
-}
-
-func (s *Ethereum) RPCTxFeeCap() float64 {
-    return s.config.RPCTxFeeCap
-}
-
-func (s *Ethereum) ChainConfig() *params.ChainConfig {
-    // BlockChain has Config() in go-ethereum
-    return s.blockchain.Config()
-}
-
-func (s *Ethereum) NodeInfo() interface{} {
-    if s.p2pServer != nil {
-        return s.p2pServer.NodeInfo()
-    }
-    return nil
-}
-
-func (s *Ethereum) CurrentBlock() *types.Block {
-    return s.blockchain.CurrentBlock()
-}
-
-func (s *Ethereum) ExtRPCEnabled() bool {
-    return s.config.ExtRPCEnabled
-}
-
-// GetEVM implements ethapi.Backend. It returns an EVM instance with the
-// given block and state, used by the debug/tracer APIs.
-func (s *Ethereum) GetEVM(
-    msg core.Message,
-    header *types.Header,
-    statedb *state.StateDB,
-    cfg vm.Config,
-) (*vm.EVM, error) {
-
-    // Prepare block and tx context
-    blockCtx := core.NewEVMBlockContext(header, s.blockchain, nil)
-    txCtx := core.NewEVMTxContext(msg)
-
-    return vm.NewEVM(blockCtx, txCtx, statedb, s.blockchain.Config(), cfg), nil
-}
-
-// GetLogs implements ethapi.Backend.
-// It returns all logs matching the given block hash and filter.
-// GetLogs implements ethapi.Backend.
-// It returns logs for the given block hash grouped per transaction.
-func (eth *Ethereum) GetLogs(ctx context.Context, hash common.Hash) ([][]*types.Log, error) {
-	block := eth.blockchain.GetBlockByHash(hash)
-	if block == nil {
-		return nil, fmt.Errorf("block %s not found", hash.Hex())
+// currentEthEntry returns the enr entry with the current eth protos.
+func (s *Ethereum) currentEthEntry() enr.Entry {
+	return &ethEntry{
+		ForkID:   s.protocolManager.forkID(),
+		Network:  s.networkID,
+		Genesis:  s.blockchain.Genesis().Hash(),
+		Head:     s.blockchain.CurrentHeader().Hash(),
+		HeadNum:  s.blockchain.CurrentHeader().Number.Uint64(),
+		TailHash: s.blockchain.CurrentHeader().Hash(), // can be refined if needed
 	}
+}
 
-	receipts := eth.blockchain.GetReceiptsByHash(hash)
-	if receipts == nil {
-		return nil, fmt.Errorf("receipts for block %s not found", hash.Hex())
+// startEthEntryUpdate keeps eth ENR entry up-to-date.
+func (s *Ethereum) startEthEntryUpdate(localNode *enode.LocalNode) {
+	go func() {
+		ticker := time.NewTicker(10 * time.Second)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ticker.C:
+				localNode.Set(s.currentEthEntry())
+			case <-s.closeBloomHandler:
+				return
+			}
+		}
+	}()
+}
+
+// startBloomHandlers launches goroutines to service bloom bit lookups.
+func (s *Ethereum) startBloomHandlers(sectionSize uint64) {
+	for i := 0; i < bloomServiceThreads; i++ {
+		go s.bloomHandler(sectionSize)
 	}
+}
 
-	logs := make([][]*types.Log, len(receipts))
-	for i, receipt := range receipts {
-		logs[i] = receipt.Logs
+// bloomHandler is a goroutine used by startBloomHandlers.
+func (s *Ethereum) bloomHandler(sectionSize uint64) {
+	for {
+		var (
+			reqCh chan *bloombits.Retrieval
+			req   *bloombits.Retrieval
+		)
+		select {
+		case reqCh = <-s.bloomRequests:
+		case <-s.closeBloomHandler:
+			return
+		}
+		// Read request
+		select {
+		case req = <-reqCh:
+		case <-s.closeBloomHandler:
+			return
+		}
+		bloombits.GenerateBloomBits(req.Bit, req.Section, sectionSize, s.chainDb, req.Hashes)
+		// Send response
+		select {
+		case reqCh <- req:
+		case <-s.closeBloomHandler:
+			return
+		}
 	}
-	return logs, nil
 }
 
-func (eth *Ethereum) GetPoolNonce(ctx context.Context, addr common.Address) (uint64, error) {
-    if eth.txPool == nil {
-        return 0, errors.New("txpool not initialized")
-    }
-    _, err := eth.txPool.Pending()
-    if err != nil {
-        return 0, err
-    }
-    return eth.txPool.Nonce(addr), nil
-}
-
-
-func (eth *Ethereum) GetPoolTransaction(hash common.Hash) *types.Transaction {
-    if eth.txPool == nil {
-        return nil
-    }
-    return eth.txPool.Get(hash)
-}
-
-func (eth *Ethereum) GetPoolTransactions() (types.Transactions, error) {
-    if eth.txPool == nil {
-        return nil, errors.New("txpool not initialized")
-    }
-    pend, err := eth.txPool.Pending()
-    if err != nil {
-        return nil, err
-    }
-    var txs types.Transactions
-    for _, addrTxs := range pend { // flatten map into slice
-        txs = append(txs, addrTxs...)
-    }
-    return txs, nil
-}
-
-
-func (eth *Ethereum) GetReceipts(ctx context.Context, hash common.Hash) (types.Receipts, error) {
-    block := eth.blockchain.GetBlockByHash(hash)
-    if block == nil {
-        return nil, fmt.Errorf("block %#x not found", hash)
-    }
-
-    receipts := rawdb.ReadReceipts(eth.chainDb, block.Hash(), block.NumberU64(), eth.blockchain.Config())
-    if receipts == nil {
-        return nil, fmt.Errorf("receipts not found for block %#x", hash)
-    }
-    return receipts, nil
-}
-
-func (eth *Ethereum) GetTd(ctx context.Context, hash common.Hash) *big.Int {
-    block := eth.blockchain.GetBlockByHash(hash)
-    if block == nil {
-        return nil
-    }
-    return eth.blockchain.GetTd(hash, block.NumberU64())
-}
-
-// GetTransaction implements ethapi.Backend.
-// Returns (tx, blockHash, blockNumber, txIndex, error)
-func (eth *Ethereum) GetTransaction(ctx context.Context, hash common.Hash) (*types.Transaction, common.Hash, uint64, uint64, error) {
-    tx, blockHash, blockNumber, txIndex := rawdb.ReadTransaction(eth.ChainDb(), hash)
-    if tx == nil {
-        return nil, common.Hash{}, 0, 0, errors.New("transaction not found")
-    }
-    return tx, blockHash, blockNumber, txIndex, nil
-}
-
-// HeaderByNumberOrHash implements ethapi.Backend.
-func (eth *Ethereum) HeaderByNumberOrHash(ctx context.Context, input rpc.BlockNumberOrHash) (*types.Header, error) {
-    // Case 1: block number is provided
-    if input.BlockNumber != nil {
-        number := uint64(*input.BlockNumber)
-
-        // Pending block can be requested explicitly
-        if input.RequireCanonical && number == rpc.PendingBlockNumber.Int64() {
-            if eth.miner != nil && eth.miner.PendingBlock() != nil {
-                return eth.miner.PendingBlock().Header(), nil
-            }
-            return nil, errors.New("pending block not available")
-        }
-
-        header := eth.blockchain.GetHeaderByNumber(number)
-        if header == nil {
-            return nil, errors.New("header not found")
-        }
-        return header, nil
-    }
-
-    // Case 2: block hash is provided
-    hash, ok := input.Hash()
-    if !ok {
-        return nil, errors.New("invalid BlockNumberOrHash")
-    }
-
-    header := eth.blockchain.GetHeaderByHash(hash)
-    if header == nil {
-        return nil, errors.New("header not found")
-    }
-    return header, nil
-}
-
-
-func (eth *Ethereum) LoadPreconfReceipt(hash common.Hash) *preconf.PreconfReceipt {
-    // If your chain does not support preconf receipts yet, return nil
-    return nil
-}
-
-
-func (eth *Ethereum) PreconfSubscribe(ch chan<- *preconf.PreconfReceipt) event.Subscription {
-    // return a closed/dummy subscription to satisfy interface
-    return event.NewSubscription(func(quit <-chan struct{}) {
-        // no-op
-        <-quit
-    })
+// GetEVM is a helper used by debug/tracer code (NOT the RPC Backend.GetEVM;
+// that lives on internal/ethapi.EthAPIBackend).
+func (s *Ethereum) GetEVM(msg core.Message, header *types.Header, statedb *state.StateDB, cfg vm.Config) (*vm.EVM, error) {
+	blockCtx := core.NewEVMBlockContext(header, s.blockchain, nil)
+	txCtx := core.NewEVMTxContext(msg)
+	return vm.NewEVM(blockCtx, txCtx, statedb, s.blockchain.Config(), cfg), nil
 }
 
