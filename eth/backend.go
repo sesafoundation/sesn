@@ -692,4 +692,28 @@ func (s *Ethereum) GetEVM(
     return vm.NewEVM(blockCtx, txCtx, statedb, s.blockchain.Config(), cfg), nil
 }
 
+// GetLogs implements ethapi.Backend.
+// It returns all logs matching the given block hash and filter.
+func (eth *Ethereum) GetLogs(ctx context.Context, hash common.Hash, filter *filters.Filter) ([]*types.Log, error) {
+	block := eth.blockchain.GetBlockByHash(hash)
+	if block == nil {
+		return nil, fmt.Errorf("block %s not found", hash.Hex())
+	}
+
+	receipts := eth.blockchain.GetReceiptsByHash(hash)
+	if receipts == nil {
+		return nil, fmt.Errorf("receipts for block %s not found", hash.Hex())
+	}
+
+	var logs []*types.Log
+	for _, receipt := range receipts {
+		for _, lg := range receipt.Logs {
+			if filter != nil && !filter.MatchLog(lg) {
+				continue
+			}
+			logs = append(logs, lg)
+		}
+	}
+	return logs, nil
+}
 
