@@ -822,5 +822,11 @@ func (eth *Ethereum) LoadPreconfReceipt(hash common.Hash) *preconf.PreconfReceip
 }
 
 
-
+func (eth *Ethereum) PreconfSubscribe(ch chan<- *preconf.PreconfReceipt) event.Subscription {
+    // return a closed/dummy subscription to satisfy interface
+    return event.NewSubscription(func(quit <-chan struct{}) {
+        // no-op
+        <-quit
+    })
+}
 
