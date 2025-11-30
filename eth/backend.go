@@ -780,6 +780,41 @@ func (eth *Ethereum) GetTransaction(ctx context.Context, hash common.Hash) (*typ
     return tx, blockHash, blockNumber, txIndex, nil
 }
 
+// HeaderByNumberOrHash implements ethapi.Backend.
+func (eth *Ethereum) HeaderByNumberOrHash(ctx context.Context, input rpc.BlockNumberOrHash) (*types.Header, error) {
+    // Case 1: block number is provided
+    if input.BlockNumber != nil {
+        number := uint64(*input.BlockNumber)
+
+        // Pending block can be requested explicitly
+        if input.RequireCanonical && number == rpc.PendingBlockNumber.Int64() {
+            if eth.miner != nil && eth.miner.PendingBlock() != nil {
+                return eth.miner.PendingBlock().Header(), nil
+            }
+            return nil, errors.New("pending block not available")
+        }
+
+        header := eth.blockchain.GetHeaderByNumber(number)
+        if header == nil {
+            return nil, errors.New("header not found")
+        }
+        return header, nil
+    }
+
+    // Case 2: block hash is provided
+    hash, ok := input.Hash()
+    if !ok {
+        return nil, errors.New("invalid BlockNumberOrHash")
+    }
+
+    header := eth.blockchain.GetHeaderByHash(hash)
+    if header == nil {
+        return nil, errors.New("header not found")
+    }
+    return header, nil
+}
+
+
 
 
 
