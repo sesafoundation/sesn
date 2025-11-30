@@ -878,8 +878,6 @@ func DoCall(
 	// Convert call args to EVM Message
 	msg := args.ToMessage(globalGasCap)
 
-	// 🔥 Get new EVM instance (NEW SIGNATURE)
-	//evm, err := b.GetEVM(msg, header, state, vmCfg)
 	evm, err := b.GetEVM(msg, header, state, vmCfg)
 	if err != nil {
     return nil, err
@@ -887,25 +885,30 @@ func DoCall(
 
 	// Stop EVM on timeout/cancel
 	go func() {
-		<-ctx.Done()
-		evm.Cancel()
+    <-ctx.Done()
+    evm.Cancel()
 	}()
 
 	// Call execution
+	//gaspool := new(core.GasPool).AddGas(math.MaxUint64)
+	//result, err := core.ApplyMessage(evm, msg, gaspool)
+
 	gaspool := new(core.GasPool).AddGas(math.MaxUint64)
-	result, err := core.ApplyMessage(evm, msg, gaspool)
+	result, err := core.ApplyMessage(evm, msg, gp)	
 
 	// Timeout?
 	if evm.Cancelled() {
-		return nil, fmt.Errorf("execution aborted (timeout = %v)", timeout)
+    return nil, fmt.Errorf("execution aborted (timeout = %v)", timeout)
 	}
 
-	// EVM revert?
 	if err != nil {
-		return result, fmt.Errorf("err: %w (supplied gas %d)", err, msg.Gas())
+    return result, fmt.Errorf("err: %w (supplied gas %d)", err, msg.Gas())
 	}
 
 	return result, nil
+
+
+	//end
 }
 
 
