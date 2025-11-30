@@ -56,6 +56,7 @@ import (
 	"github.com/sesafoundation/sesn/rlp"
 	"github.com/sesafoundation/sesn/rpc"
 	"github.com/sesafoundation/sesn/core/state"
+	"github.com/sesafoundation/sesn/preconf"
 )
 var _ ethapi.Backend = (*Ethereum)(nil)
 // Ethereum implements the Ethereum full node service.
@@ -814,15 +815,11 @@ func (eth *Ethereum) HeaderByNumberOrHash(ctx context.Context, input rpc.BlockNu
     return header, nil
 }
 
-// LoadPreconfReceipt implements ethapi.Backend.
-// Chains without Flashblocks / Pre-consensus can safely return nil.
-func (eth *Ethereum) LoadPreconfReceipt(hash common.Hash) (*types.Receipt, error) {
-    // If you later add flashblocks receipts, load them here.
-    // For now return nil meaning: no pre-confirmation receipt.
-    return nil, nil
+
+func (eth *Ethereum) LoadPreconfReceipt(hash common.Hash) *preconf.PreconfReceipt {
+    // If your chain does not support preconf receipts yet, return nil
+    return nil
 }
-
-
 
 
 
