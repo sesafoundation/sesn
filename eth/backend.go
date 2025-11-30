@@ -714,13 +714,11 @@ func (eth *Ethereum) GetLogs(ctx context.Context, hash common.Hash) ([][]*types.
 	return logs, nil
 }
 
-// GetPoolNonce implements ethapi.Backend.
-// It returns the next usable nonce in the txpool.
 func (eth *Ethereum) GetPoolNonce(ctx context.Context, addr common.Address) (uint64, error) {
-	if eth.txPool == nil {
-		return 0, errors.New("txpool not initialized")
-	}
-	return eth.txPool.PendingNonce(addr), nil
+    if eth.txPool == nil {
+        return 0, errors.New("txpool not initialized")
+    }
+    return eth.txPool.Nonce(addr), nil   // instead of PendingNonce()
 }
 
 
@@ -731,4 +729,13 @@ func (eth *Ethereum) GetPoolTransaction(hash common.Hash) *types.Transaction {
 		return nil
 	}
 	return eth.txPool.Get(hash)
+}
+
+// GetPoolTransactions implements ethapi.Backend.
+// Returns all transactions currently pending in the transaction pool.
+func (eth *Ethereum) GetPoolTransactions() (types.Transactions, error) {
+    if eth.txPool == nil {
+        return nil, errors.New("txpool not initialized")
+    }
+    return eth.txPool.Pending(), nil
 }
