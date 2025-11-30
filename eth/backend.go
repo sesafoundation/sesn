@@ -762,15 +762,13 @@ func (eth *Ethereum) GetReceipts(ctx context.Context, hash common.Hash) (types.R
     return receipts, nil
 }
 
-
-// GetTd implements ethapi.Backend.
-// Returns the total difficulty for a block by hash.
-func (eth *Ethereum) GetTd(ctx context.Context, hash common.Hash) (*big.Int, error) {
-    td := eth.blockchain.GetTd(hash, eth.blockchain.GetBlockByHash(hash).NumberU64())
-    if td == nil {
-        return nil, fmt.Errorf("total difficulty not found for block %#x", hash)
+func (eth *Ethereum) GetTd(ctx context.Context, hash common.Hash) *big.Int {
+    block := eth.blockchain.GetBlockByHash(hash)
+    if block == nil {
+        return nil
     }
-    return td, nil
+    return eth.blockchain.GetTd(hash, block.NumberU64())
 }
+
 
 
