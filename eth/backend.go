@@ -814,6 +814,15 @@ func (eth *Ethereum) HeaderByNumberOrHash(ctx context.Context, input rpc.BlockNu
     return header, nil
 }
 
+// LoadPreconfReceipt implements ethapi.Backend.
+// Chains without Flashblocks / Pre-consensus can safely return nil.
+func (eth *Ethereum) LoadPreconfReceipt(hash common.Hash) (*types.Receipt, error) {
+    // If you later add flashblocks receipts, load them here.
+    // For now return nil meaning: no pre-confirmation receipt.
+    return nil, nil
+}
+
+
 
 
 
