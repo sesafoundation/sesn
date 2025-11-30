@@ -823,95 +823,84 @@ type account struct {
 
 
 func DoCall(
-    ctx context.Context,
-    b Backend,
-    args CallArgs,
-    blockNrOrHash rpc.BlockNumberOrHash,
-    overrides map[common.Address]account,
-    vmCfg vm.Config,
-    timeout time.Duration,
-    globalGasCap uint64,
+	ctx context.Context,
+	b Backend,
+	args CallArgs,
+	blockNrOrHash rpc.BlockNumberOrHash,
+	overrides map[common.Address]account,
+	vmCfg vm.Config,
+	timeout time.Duration,
+	globalGasCap uint64,
 ) (*core.ExecutionResult, error) {
 
-    defer func(start time.Time) {
-        log.Debug("Executing EVM call finished", "runtime", time.Since(start))
-    }(time.Now())
+	defer func(start time.Time) {
+		log.Debug("Executing EVM call finished", "runtime", time.Since(start))
+	}(time.Now())
 
-    // Resolve block + state
-    state, header, err := b.StateAndHeaderByNumberOrHash(ctx, blockNrOrHash)
-    if err != nil || state == nil {
-        return nil, err
-    }
+	// Get state + block header
+	state, header, err := b.StateAndHeaderByNumberOrHash(ctx, blockNrOrHash)
+	if err != nil || state == nil {
+		return nil, err
+	}
 
-    // Apply state overrides
-    for addr, acc := range overrides {
-        if acc.Nonce != nil {
-            state.SetNonce(addr, uint64(*acc.Nonce))
-        }
-        if acc.Code != nil {
-            state.SetCode(addr, *acc.Code)
-        }
-        if acc.Balance != nil {
-            state.SetBalance(addr, (*big.Int)(*acc.Balance))
-        }
-        if acc.State != nil && acc.StateDiff != nil {
-            return nil, fmt.Errorf("account %s has both 'state' and 'stateDiff'", addr.Hex())
-        }
-        if acc.State != nil {
-            state.SetStorage(addr, *acc.State)
-        }
-        if acc.StateDiff != nil {
-            for k, v := range *acc.StateDiff {
-                state.SetState(addr, k, v)
-            }
-        }
-    }
+	// Apply overrides
+	for addr, account := range overrides {
+		if account.Nonce != nil {
+			state.SetNonce(addr, uint64(*account.Nonce))
+		}
+		if account.Code != nil {
+			state.SetCode(addr, *account.Code)
+		}
+		if account.Balance != nil {
+			state.SetBalance(addr, (*big.Int)(*account.Balance))
+		}
+		if account.State != nil && account.StateDiff != nil {
+			return nil, fmt.Errorf("account %s has both 'state' and 'stateDiff'", addr.Hex())
+		}
+		if account.State != nil {
+			state.SetStorage(addr, *account.State)
+		}
+		if account.StateDiff != nil {
+			for key, value := range *account.StateDiff {
+				state.SetState(addr, key, value)
+			}
+		}
+	}
 
-    // timeout context
-    var cancel context.CancelFunc
-    if timeout > 0 {
-        ctx, cancel = context.WithTimeout(ctx, timeout)
-    } else {
-        ctx, cancel = context.WithCancel(ctx)
-    }
-    defer cancel()
+	// Timeout context
+	var cancel context.CancelFunc
+	if timeout > 0 {
+		ctx, cancel = context.WithTimeout(ctx, timeout)
+	} else {
+		ctx, cancel = context.WithCancel(ctx)
+	}
+	defer cancel()
 
-    // Prepare call message
-    msg := args.ToMessage(globalGasCap)
+	// Convert CallArgs → Message
+	msg := args.ToMessage(globalGasCap)
 
-    // Get EVM instance from backend
-    // (your implementation: returns EVM + vmError func + error)
-    evm, vmError, err := b.GetEVM(ctx, msg, state, header)
-    if err != nil {
-        return nil, err
-    }
+	// NEW correct GetEVM call (2 returns)
+	evm, err := b.GetEVM(msg, header, state, vmCfg)
+	if err != nil {
+		return nil, err
+	}
 
-    // Start timeout cancellation goroutine
-    go func() {
-        <-ctx.Done()
-        evm.Cancel()
-    }()
+	// Execute tx message
+	gp := new(core.GasPool).AddGas(math.MaxUint64)
+	result, execErr := core.ApplyMessage(evm, msg, gp)
 
-    // Execute message using original EVM
-    gp := new(core.GasPool).AddGas(math.MaxUint64)
-    result, err := core.ApplyMessage(evm, msg, gp)
+	// Enforcement of cancellation (timeout)
+	if ctx.Err() != nil {
+		return nil, fmt.Errorf("execution aborted (timeout = %v)", timeout)
+	}
 
-    // VM internal error
-    if err2 := vmError(); err2 != nil {
-        return nil, err2
-    }
+	if execErr != nil {
+		return result, fmt.Errorf("err: %w (supplied gas %d)", execErr, msg.Gas())
+	}
 
-    // Timeout aborted
-    if evm.Cancelled() {
-        return nil, fmt.Errorf("execution aborted (timeout = %v)", timeout)
-    }
-
-    if err != nil {
-        return result, fmt.Errorf("err: %w (supplied gas %d)", err, msg.Gas())
-    }
-
-    return result, nil
+	return result, nil
 }
+
 
 
 
