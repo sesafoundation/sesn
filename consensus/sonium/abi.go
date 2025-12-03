@@ -18,19 +18,25 @@ const validatorABI = `[
       "anonymous": false,
       "inputs": [
         {
+          "indexed": true,
+          "internalType": "uint8",
+          "name": "kind",
+          "type": "uint8"
+        },
+        {
           "indexed": false,
           "internalType": "uint256",
-          "name": "totalGoldAmount",
+          "name": "totalAmount",
           "type": "uint256"
         },
         {
           "indexed": false,
           "internalType": "uint256",
-          "name": "goldCount",
+          "name": "receiverCount",
           "type": "uint256"
         }
       ],
-      "name": "GoldStakerDistributed",
+      "name": "Distribution",
       "type": "event"
     },
     {
@@ -44,31 +50,6 @@ const validatorABI = `[
         }
       ],
       "name": "RemoveFromValidatorCandidate",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": false,
-          "internalType": "address[]",
-          "name": "validators",
-          "type": "address[]"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint256[]",
-          "name": "rewards",
-          "type": "uint256[]"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "rewardCount",
-          "type": "uint256"
-        }
-      ],
-      "name": "RewardDistributed",
       "type": "event"
     },
     {
@@ -94,50 +75,6 @@ const validatorABI = `[
         }
       ],
       "name": "Staking",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": false,
-          "internalType": "address[]",
-          "name": "validators",
-          "type": "address[]"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint256[]",
-          "name": "rewards",
-          "type": "uint256[]"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "starCount",
-          "type": "uint256"
-        }
-      ],
-      "name": "StarDistributed",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "totalStarAmount",
-          "type": "uint256"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "starCount",
-          "type": "uint256"
-        }
-      ],
-      "name": "StarStakerDistributed",
       "type": "event"
     },
     {
@@ -573,52 +510,19 @@ const validatorABI = `[
       "type": "function"
     },
     {
-      "inputs": [],
-      "name": "blocksPerYear",
-      "outputs": [
+      "inputs": [
         {
-          "internalType": "uint256",
+          "internalType": "uint16",
           "name": "",
-          "type": "uint256"
+          "type": "uint16"
         }
       ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "estbr",
+      "name": "allowedLocationIds",
       "outputs": [
         {
-          "internalType": "uint256",
+          "internalType": "bool",
           "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "estgr",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "estsr",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
+          "type": "bool"
         }
       ],
       "stateMutability": "view",
@@ -632,6 +536,19 @@ const validatorABI = `[
           "internalType": "bool",
           "name": "",
           "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "maxLocationId",
+      "outputs": [
+        {
+          "internalType": "uint16",
+          "name": "",
+          "type": "uint16"
         }
       ],
       "stateMutability": "view",
@@ -727,6 +644,11 @@ const validatorABI = `[
           "internalType": "string",
           "name": "details",
           "type": "string"
+        },
+        {
+          "internalType": "uint16",
+          "name": "locationId",
+          "type": "uint16"
         }
       ],
       "name": "create",
@@ -766,6 +688,11 @@ const validatorABI = `[
           "internalType": "string",
           "name": "details",
           "type": "string"
+        },
+        {
+          "internalType": "uint16",
+          "name": "locationId",
+          "type": "uint16"
         }
       ],
       "name": "edit",
@@ -900,23 +827,28 @@ const validatorABI = `[
       "outputs": [
         {
           "internalType": "string",
-          "name": "",
+          "name": "moniker",
           "type": "string"
         },
         {
           "internalType": "string",
-          "name": "",
+          "name": "website",
           "type": "string"
         },
         {
           "internalType": "string",
-          "name": "",
+          "name": "email",
           "type": "string"
         },
         {
           "internalType": "string",
-          "name": "",
+          "name": "details",
           "type": "string"
+        },
+        {
+          "internalType": "uint16",
+          "name": "locationId",
+          "type": "uint16"
         }
       ],
       "stateMutability": "view",
@@ -1229,6 +1161,11 @@ const validatorABI = `[
           "internalType": "string",
           "name": "details",
           "type": "string"
+        },
+        {
+          "internalType": "uint16",
+          "name": "locationId",
+          "type": "uint16"
         }
       ],
       "name": "validateDescription",
@@ -1239,7 +1176,7 @@ const validatorABI = `[
           "type": "bool"
         }
       ],
-      "stateMutability": "pure",
+      "stateMutability": "view",
       "type": "function"
     },
     {
@@ -1341,6 +1278,45 @@ const validatorABI = `[
     {
       "inputs": [],
       "name": "getDelegatorGoldAPR",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "getTotalRewardStaking",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "getTotalStarStaking",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "getTotalGoldStaking",
       "outputs": [
         {
           "internalType": "uint256",
