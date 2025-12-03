@@ -762,8 +762,8 @@ var (
 		Value: "",
 	}
 
-	ValidatorLocationFlag = cli.UintFlag{
-    Name:  "validator.location",
+	ValidatorLocationIdFlag = cli.UintFlag{
+    Name:  "validator.locationId",
     Usage: "numeric locationId (see https://github.com/sesafoundation/earth/locations.json)",
     Value: 0,
 	}

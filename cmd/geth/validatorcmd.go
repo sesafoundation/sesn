@@ -68,7 +68,7 @@ var (
 			utils.ValidatorWebsiteFlag,
 			utils.ValidatorEmailFlag,
 			utils.ValidatorDetailFlag,
-			utils.ValidatorLocationFlag,
+			utils.ValidatorLocationIdFlag,
 			utils.ValidatorStakingFlag,
 			utils.NodeEndpointFlag,
 			utils.GasLimitFlag,
@@ -95,7 +95,7 @@ The validator.create command creates a new validator.
 			utils.ValidatorWebsiteFlag,
 			utils.ValidatorEmailFlag,
 			utils.ValidatorDetailFlag,
-			utils.ValidatorLocationFlag,
+			utils.ValidatorLocationIdFlag,
 			utils.NodeEndpointFlag,
 			utils.GasLimitFlag,
 			utils.GasPriceFlag,
@@ -424,7 +424,7 @@ type validator struct {
 	website    string
 	email      string
 	details    string
-	location   uint16
+	locationId   uint16
 }
 
 const (
@@ -502,8 +502,8 @@ func makeValidatorInfo(ctx *cli.Context) *validator {
 	}
 
 	// 🔥 locationId (uint16)
-	if ctx.GlobalIsSet(utils.ValidatorLocationFlag.Name) {
-		locStr := strings.TrimSpace(ctx.GlobalString(utils.ValidatorLocationFlag.Name))
+	if ctx.GlobalIsSet(utils.ValidatorLocationIdFlag.Name) {
+		locStr := strings.TrimSpace(ctx.GlobalString(utils.ValidatorLocationIdFlag.Name))
 		locInt, err := strconv.Atoi(locStr)
 		if err != nil || locInt < 1 || locInt > 65535 {
 			utils.Fatalf("invalid locationId %s — must be uint16", locStr)
@@ -511,7 +511,7 @@ func makeValidatorInfo(ctx *cli.Context) *validator {
 		val.locationId = uint16(locInt)
 	}
 
-	loc := ctx.GlobalUint(utils.ValidatorLocationFlag.Name)
+	loc := ctx.GlobalUint(utils.ValidatorLocationIdFlag.Name)
 	if loc > 0 && loc <= 65535 {
     val.locationId = uint16(loc)	
 	} else {
@@ -657,7 +657,7 @@ func updateValidatorInfo(ctx *cli.Context, method string) error {
 		validatorInfo.website,
 		validatorInfo.email,
 		validatorInfo.details,
-		validatorInfo.location,
+		validatorInfo.locationId,
 	)
 	if err != nil {
 		utils.Fatalf("validator contract create pack error: %v\n", err)
@@ -845,14 +845,14 @@ func queryValidatorDescription(ctx *cli.Context) error {
 		website = new(string)
 		email   = new(string)
 		details = new(string)
-		location = new(uint16)
+		locationId = new(uint16)
 	)
 	out := &[]interface{}{
 		moniker,
 		website,
 		email,
 		details,
-		location,
+		locationId,
 	}
 	err = valABI.UnpackIntoInterface(out, GetValidatorDespMethod, result)
 	if err != nil {
@@ -863,7 +863,7 @@ func queryValidatorDescription(ctx *cli.Context) error {
 	fmt.Printf("\twebsite: %s\n", *website)
 	fmt.Printf("\temail: %s\n", *email)
 	fmt.Printf("\tdetails: %s\n", *details)
-	fmt.Printf("\tlocation: %s\n", *location)
+	fmt.Printf("\tlocationId: %s\n", *locationId)
 
 	return nil
 }

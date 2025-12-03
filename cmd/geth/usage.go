@@ -242,7 +242,7 @@ var AppHelpFlagGroups = []flags.FlagGroup{
 			utils.ValidatorWebsiteFlag,
 			utils.ValidatorEmailFlag,
 			utils.ValidatorDetailFlag,
-			utils.ValidatorLocationFlag,
+			utils.ValidatorLocationIdFlag,
 			utils.ValidatorStakingFlag,
 			utils.StakerAddressFlag,
 			utils.NodeEndpointFlag,
