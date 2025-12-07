@@ -956,6 +956,15 @@ func queryValidatorInfo(ctx *cli.Context) error {
 	return nil
 }
 
+func invertLocationMap() map[uint16]string {
+    m := make(map[uint16]string)
+    for name, id := range locationNameToId {
+        m[id] = name
+    }
+    return m
+}
+
+
 func queryActivatedValidators(ctx *cli.Context) error {
 
     // Load locations.json so we can map ID → name
