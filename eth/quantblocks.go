@@ -80,9 +80,11 @@ func (eth *Ethereum) confirmQuantTxs() {
 //   - "pending"          → in txpool but not quant-confirmed yet (rare race)
 //   - "not-found"        → nowhere
 func (eth *Ethereum) quantStatus(hash common.Hash) (string, error) {
-    // 1) Check if the transaction is included in a block
-    if tx, _, _, _, _ := eth.GetTransaction(context.Background(), hash); tx != nil {
-        return "executed", nil
+    // 1) Check DB → whether the tx is in a canonical block
+    if tx, _, blockHash, _, _ := rawdb.ReadTransaction(eth.chainDb, hash); tx != nil {
+        if blockHash != (common.Hash{}) {
+            return "executed", nil
+        }
     }
 
     // 2) Check QuantBlocks pool
@@ -93,7 +95,7 @@ func (eth *Ethereum) quantStatus(hash common.Hash) (string, error) {
         return "quant-confirmed", nil
     }
 
-    // 3) Check txpool → still pending
+    // 3) Check txpool → pending
     if eth.txPool != nil {
         if tx := eth.txPool.Get(hash); tx != nil {
             return "pending", nil
