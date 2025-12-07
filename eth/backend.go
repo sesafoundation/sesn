@@ -241,7 +241,7 @@ func New(stack *node.Node, config *Config) (*Ethereum, error) {
 	stack.RegisterLifecycle(eth)
 
 	// Start QuantBlocks 100ms soft-confirmation loop
-   	ethereum.startQuantBlocks()
+   	eth.startQuantBlocks()
 
 	return eth, nil
 }
