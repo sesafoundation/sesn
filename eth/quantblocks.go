@@ -30,20 +30,17 @@ var quantTxPool = struct {
 // startQuantBlocks kicks off the 100ms QuantBlocks loop.
 // It lives on the Ethereum backend so it has access to txpool.
 func (eth *Ethereum) startQuantBlocks() {
-	go func() {
-		ticker := time.NewTicker(QuantConfirmInterval)
-		defer ticker.Stop()
+    go func() {
+        ticker := time.NewTicker(QuantConfirmInterval)
+        defer ticker.Stop()
 
-		for {
-			select {
-			case <-ticker.C:
-				eth.confirmQuantTxs()
-			case <-eth.shutdownChan:
-				return
-			}
-		}
-	}()
+        for {
+            <-ticker.C
+            eth.confirmQuantTxs()
+        }
+    }()
 }
+
 
 // confirmQuantTxs snapshots the txpool and marks all pending txs as Quant-Confirmed.
 // Latency is roughly QuantConfirmInterval (~100 ms) from pool admission.
@@ -82,28 +79,26 @@ func (eth *Ethereum) confirmQuantTxs() {
 //   - "pending"          → in txpool but not quant-confirmed yet (rare race)
 //   - "not-found"        → nowhere
 func (eth *Ethereum) quantStatus(hash common.Hash) (string, error) {
-	// 1) Check if transaction is already in the canonical chain
-	if eth.blockchain != nil {
-		if tx, _, _, _ := eth.blockchain.GetTransaction(hash); tx != nil {
-			return "executed", nil
-		}
-	}
+    // 1) Check if the transaction is included in a block
+    if tx, _, _, _, _ := eth.GetTransaction(context.Background(), hash); tx != nil {
+        return "executed", nil
+    }
 
-	// 2) Check QuantBlocks pool
-	quantTxPool.RLock()
-	_, ok := quantTxPool.confirmed[hash]
-	quantTxPool.RUnlock()
-	if ok {
-		return "quant-confirmed", nil
-	}
+    // 2) Check QuantBlocks pool
+    quantTxPool.RLock()
+    _, ok := quantTxPool.confirmed[hash]
+    quantTxPool.RUnlock()
+    if ok {
+        return "quant-confirmed", nil
+    }
 
-	// 3) Check txpool directly → "pending"
-	if eth.txPool != nil {
-		if tx := eth.txPool.Get(hash); tx != nil {
-			return "pending", nil
-		}
-	}
+    // 3) Check txpool → still pending
+    if eth.txPool != nil {
+        if tx := eth.txPool.Get(hash); tx != nil {
+            return "pending", nil
+        }
+    }
 
-	// 4) Nowhere
-	return "not-found", nil
+    // 4) Unknown
+    return "not-found", nil
 }
