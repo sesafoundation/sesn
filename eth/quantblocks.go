@@ -4,7 +4,6 @@ package eth
 import (
 	"sync"
 	"time"
-	"context"
 
 	"github.com/sesafoundation/sesn/common"
 	"github.com/sesafoundation/sesn/core/types"
@@ -81,14 +80,15 @@ func (eth *Ethereum) confirmQuantTxs() {
 //   - "pending"          → in txpool but not quant-confirmed yet (rare race)
 //   - "not-found"        → nowhere
 func (eth *Ethereum) quantStatus(hash common.Hash) (string, error) {
-    // 1) Check DB → whether the tx is in a canonical block
-    if tx, _, blockHash, _, _ := rawdb.ReadTransaction(eth.chainDb, hash); tx != nil {
+    // 1) Check LevelDB → check if tx is included in any block
+    if tx, blockHash, _, _ := rawdb.ReadTransaction(eth.chainDb, hash); tx != nil {
+        // blockHash != zero means it is part of a canonical block
         if blockHash != (common.Hash{}) {
             return "executed", nil
         }
     }
 
-    // 2) Check QuantBlocks pool
+    // 2) Check QuantBlocks soft-confirmation list
     quantTxPool.RLock()
     _, ok := quantTxPool.confirmed[hash]
     quantTxPool.RUnlock()
@@ -96,16 +96,17 @@ func (eth *Ethereum) quantStatus(hash common.Hash) (string, error) {
         return "quant-confirmed", nil
     }
 
-    // 3) Check txpool → pending
+    // 3) Check txpool -> pending
     if eth.txPool != nil {
         if tx := eth.txPool.Get(hash); tx != nil {
             return "pending", nil
         }
     }
 
-    // 4) Unknown
+    // 4) Not found anywhere
     return "not-found", nil
 }
+
 
 
 
