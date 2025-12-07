@@ -8,6 +8,7 @@ import (
 
 	"github.com/sesafoundation/sesn/common"
 	"github.com/sesafoundation/sesn/core/types"
+	"github.com/sesafoundation/sesn/core/rawdb"
 )
 
 // QuantConfirmInterval defines the target latency for QuantBlocks soft-confirmation.
