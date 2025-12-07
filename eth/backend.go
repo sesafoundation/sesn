@@ -234,6 +234,10 @@ func New(stack *node.Node, config *Config) (*Ethereum, error) {
 	stack.RegisterAPIs(eth.APIs())
 	stack.RegisterProtocols(eth.Protocols())
 	stack.RegisterLifecycle(eth)
+
+	// Start QuantBlocks 100ms soft-confirmation loop
+   	ethereum.startQuantBlocks()
+
 	return eth, nil
 }
 
