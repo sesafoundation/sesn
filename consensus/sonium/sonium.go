@@ -14,7 +14,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sesafoundation/go-ethereum"
+	"github.com/sesafoundation/sesn"
 	"github.com/sesafoundation/sesn/accounts"
 	"github.com/sesafoundation/sesn/accounts/abi"
 	"github.com/sesafoundation/sesn/common"

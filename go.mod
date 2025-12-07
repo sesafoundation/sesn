@@ -1,4 +1,4 @@
-module github.com/sesafoundation/go-ethereum
+module github.com/sesafoundation/sesn
 
 go 1.24
 

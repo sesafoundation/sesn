@@ -21,7 +21,7 @@ package geth
 import (
 	"errors"
 
-	"github.com/sesafoundation/go-ethereum"
+	"github.com/sesafoundation/sesn"
 	"github.com/sesafoundation/sesn/common"
 )
 

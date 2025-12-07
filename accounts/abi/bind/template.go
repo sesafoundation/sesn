@@ -91,7 +91,7 @@ import (
 	"math/big"
 	"strings"
 
-	ethereum "github.com/sesafoundation/go-ethereum"
+	ethereum "github.com/sesafoundation/sesn"
 	"github.com/sesafoundation/sesn/accounts/abi"
 	"github.com/sesafoundation/sesn/accounts/abi/bind"
 	"github.com/sesafoundation/sesn/common"

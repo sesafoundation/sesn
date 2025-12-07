@@ -21,7 +21,7 @@ import (
 	"math/big"
 	"sync"
 
-	"github.com/sesafoundation/go-ethereum"
+	"github.com/sesafoundation/sesn"
 	"github.com/sesafoundation/sesn/accounts"
 	"github.com/sesafoundation/sesn/common"
 	"github.com/sesafoundation/sesn/common/hexutil"

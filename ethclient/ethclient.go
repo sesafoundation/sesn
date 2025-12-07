@@ -24,7 +24,7 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/sesafoundation/go-ethereum"
+	"github.com/sesafoundation/sesn"
 	"github.com/sesafoundation/sesn/common"
 	"github.com/sesafoundation/sesn/common/hexutil"
 	"github.com/sesafoundation/sesn/core/types"
