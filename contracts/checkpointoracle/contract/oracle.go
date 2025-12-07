@@ -7,7 +7,7 @@ import (
 	"math/big"
 	"strings"
 
-	ethereum "github.com/ethereum/go-ethereum"
+	ethereum "github.com/sesafoundation/go-ethereum"
 	"github.com/sesafoundation/sesn/accounts/abi"
 	"github.com/sesafoundation/sesn/accounts/abi/bind"
 	"github.com/sesafoundation/sesn/common"

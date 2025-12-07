@@ -24,7 +24,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ethereum/go-ethereum"
+	"github.com/sesafoundation/go-ethereum"
 	"github.com/sesafoundation/sesn/common"
 	"github.com/sesafoundation/sesn/core"
 	"github.com/sesafoundation/sesn/core/rawdb"

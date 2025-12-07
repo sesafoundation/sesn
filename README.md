@@ -59,7 +59,7 @@ This command will:
    causing it to download more data in exchange for avoiding processing the entire history
    of the Ethereum network, which is very CPU intensive.
  * Start up `setd`'s built-in interactive [JavaScript console](https://github.com/sesafoundation/sesn/wiki/JavaScript-Console),
-   (via the trailing `console` subcommand) through which you can invoke all official [`web3` methods](https://github.com/ethereum/wiki/wiki/JavaScript-API)
+   (via the trailing `console` subcommand) through which you can invoke all official [`web3` methods](https://github.com/sesafoundation/wiki/wiki/JavaScript-API)
    as well as `setd`'s own [management APIs](https://github.com/sesafoundation/sesn/wiki/Management-APIs).
    This tool is optional and if you leave it out you can always attach to an already running
    `setd` instance with `setd attach`.
@@ -78,7 +78,7 @@ $ setd --config /path/to/your_config.toml
 
 As a developer, sooner rather than later you'll want to start interacting with `setd` and the
 `SESN` network via your own programs and not manually through the console. To aid
-this, `setd` has built-in support for a JSON-RPC based APIs ([standard APIs](https://github.com/ethereum/wiki/wiki/JSON-RPC)
+this, `setd` has built-in support for a JSON-RPC based APIs ([standard APIs](https://github.com/sesafoundation/wiki/wiki/JSON-RPC)
 and [specific APIs](https://github.com/sesafoundation/sesn/wiki/Management-APIs)).
 These can be exposed via HTTP, WebSockets and IPC (UNIX sockets on UNIX based
 platforms, and named pipes on Windows).

@@ -34,7 +34,7 @@ var TestnetBootnodes = []string{
 }
 
 // KnownDNSNetwork returns the address of a public DNS-based node list for the given
-// genesis hash and protocol. See https://github.com/ethereum/discv4-dns-lists for more
+// genesis hash and protocol. See https://github.com/sesafoundation/discv4-dns-lists for more
 // information.
 func KnownDNSNetwork(genesis common.Hash, protocol string) string {
 	return ""

@@ -1511,7 +1511,7 @@ func SetShhConfig(ctx *cli.Context, stack *node.Node) {
 		ctx.GlobalIsSet(WhisperMaxMessageSizeFlag.Name) ||
 		ctx.GlobalIsSet(WhisperMinPOWFlag.Name) ||
 		ctx.GlobalIsSet(WhisperRestrictConnectionBetweenLightClientsFlag.Name) {
-		log.Warn("Whisper support has been deprecated and the code has been moved to github.com/ethereum/whisper")
+		log.Warn("Whisper support has been deprecated and the code has been moved to github.com/sesafoundation/whisper")
 	}
 }
 

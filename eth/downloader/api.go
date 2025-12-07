@@ -20,7 +20,7 @@ import (
 	"context"
 	"sync"
 
-	"github.com/ethereum/go-ethereum"
+	"github.com/sesafoundation/go-ethereum"
 	"github.com/sesafoundation/sesn/event"
 	"github.com/sesafoundation/sesn/rpc"
 )

@@ -99,7 +99,7 @@ Then, run the following command, replacing `<enode ID>` with the enode of the ge
  devp2p rlpx eth-test <enode ID> cmd/devp2p/internal/ethtest/testdata/fullchain.rlp cmd/devp2p/internal/ethtest/testdata/genesis.json
 ```
  
-[eth]: https://github.com/ethereum/devp2p/blob/master/caps/eth.md
+[eth]: https://github.com/sesafoundation/devp2p/blob/master/caps/eth.md
 [dns-tutorial]: https://geth.ethereum.org/docs/developers/dns-discovery-setup
-[discv4]: https://github.com/ethereum/devp2p/tree/master/discv4.md
-[discv5]: https://github.com/ethereum/devp2p/tree/master/discv5/discv5.md
+[discv4]: https://github.com/sesafoundation/devp2p/tree/master/discv4.md
+[discv5]: https://github.com/sesafoundation/devp2p/tree/master/discv5/discv5.md
