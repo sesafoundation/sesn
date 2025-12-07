@@ -13,6 +13,6 @@ import (
 //   - "quant-confirmed"
 //   - "executed"
 //   - "not-found"
-func (api *PublicQuantAPI) GetQuantStatus(ctx context.Context, hash common.Hash) (string, error) {
-	return api.eth.quantStatus(hash)
-}
+//func (api *PublicQuantAPI) GetQuantStatus(ctx context.Context, hash common.Hash) (string, error) {
+//	return api.eth.quantStatus(hash)
+//}
