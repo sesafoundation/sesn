@@ -24,6 +24,7 @@ import (
 	"runtime"
 	"sync"
 	"sync/atomic"
+	"context"
 
 	"github.com/sesafoundation/sesn/accounts"
 	"github.com/sesafoundation/sesn/common"
@@ -87,6 +88,10 @@ type Ethereum struct {
 	p2pServer *p2p.Server
 
 	lock sync.RWMutex // Protects the variadic fields (e.g. gas price and etherbase)
+}
+
+type PublicQuantAPI struct {
+	eth *Ethereum
 }
 
 // New creates a new Ethereum object (including the
@@ -347,6 +352,11 @@ func (s *Ethereum) APIs() []rpc.API {
 			Version:   "1.0",
 			Service:   s.netRPCService,
 			Public:    true,
+		},{
+			Namespace: "quant",
+			Version:   "1.0",
+			Service:   NewPublicQuantAPI(s),
+			Public:    true,
 		},
 	}...)
 }
@@ -578,4 +588,12 @@ func (s *Ethereum) Stop() error {
 	s.chainDb.Close()
 	s.eventMux.Stop()
 	return nil
+}
+
+func NewPublicQuantAPI(eth *Ethereum) *PublicQuantAPI {
+	return &PublicQuantAPI{eth: eth}
+}
+
+func (api *PublicQuantAPI) GetQuantStatus(ctx context.Context, hash common.Hash) (string, error) {
+	return api.eth.quantStatus(hash)
 }
