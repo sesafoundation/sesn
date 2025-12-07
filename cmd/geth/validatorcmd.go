@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"encoding/json"
-    "io/ioutil"
+    //"io/ioutil"
     "net/http"
     "strconv"
 
@@ -509,12 +509,12 @@ func makeValidatorInfo(ctx *cli.Context) *validator {
 // ---------------------------------------------
 	// LOCATION — Option C: accept ID or Name
 	// ---------------------------------------------
-	if ctx.GlobalIsSet(utils.ValidatorLocationFlag.Name) {
+	if ctx.GlobalIsSet(utils.ValidatorLocationIdFlag.Name) {
 
 		// Load locations.json → fills locationNameToId map
 		loadLocations()
 
-		locStr := strings.TrimSpace(ctx.GlobalString(utils.ValidatorLocationFlag.Name))
+		locStr := strings.TrimSpace(ctx.GlobalString(utils.ValidatorLocationIdFlag.Name))
 
 		// Case A: numeric input
 		if n, err := strconv.Atoi(locStr); err == nil {
@@ -957,35 +957,101 @@ func queryValidatorInfo(ctx *cli.Context) error {
 }
 
 func queryActivatedValidators(ctx *cli.Context) error {
-	validatorABIstr := sonium.ValidatorContractABI()
-	valABI, err := abi.JSON(strings.NewReader(validatorABIstr))
-	if err != nil {
-		utils.Fatalf("validator abi load error: %v\n", err)
-	}
 
-	validatorContractAddr := sonium.ValidatorContratAddress()
-	data, err := valABI.Pack(GetActivatedValidatorsMethod)
-	if err != nil {
-		utils.Fatalf("query activated validator pack err: %v\n", err)
-	}
-	msg := ethereum.CallMsg{
-		To:   &validatorContractAddr,
-		Data: data,
-	}
-	result, err := queryHandler(ctx, &msg)
-	if err != nil {
-		utils.Fatalf("Get activated validators errr: %v\n", err)
-	}
-	var validators []common.Address
-	err = valABI.UnpackIntoInterface(&validators, GetActivatedValidatorsMethod, result)
-	if err != nil {
-		utils.Fatalf("Unpack activated validators err: %v\n", err)
-	}
-	fmt.Printf("current activated validators:\n")
-	fmt.Printf("\tvalidators: %v\n", validators)
-	fmt.Printf("✓ Using validator location %d (%s)\n", val.locationId, locStr) //newadded
-	return nil
+    // Load locations.json so we can map ID → name
+    loadLocations()
+    locIdToName := invertLocationMap() // we'll define this below
+
+    validatorABIstr := sonium.ValidatorContractABI()
+    valABI, err := abi.JSON(strings.NewReader(validatorABIstr))
+    if err != nil {
+        utils.Fatalf("validator abi load error: %v\n", err)
+    }
+
+    validatorContractAddr := sonium.ValidatorContratAddress()
+
+    // ------------------------------------------------------
+    // 1) Call GetActivatedValidators()
+    // ------------------------------------------------------
+    data, err := valABI.Pack(GetActivatedValidatorsMethod)
+    if err != nil {
+        utils.Fatalf("query activated validator pack err: %v\n", err)
+    }
+
+    msg := ethereum.CallMsg{
+        To:   &validatorContractAddr,
+        Data: data,
+    }
+
+    result, err := queryHandler(ctx, &msg)
+    if err != nil {
+        utils.Fatalf("Get activated validators err: %v\n", err)
+    }
+
+    var validators []common.Address
+    err = valABI.UnpackIntoInterface(&validators, GetActivatedValidatorsMethod, result)
+    if err != nil {
+        utils.Fatalf("Unpack activated validators err: %v\n", err)
+    }
+
+    fmt.Printf("Current Activated Validators:\n")
+
+    // ------------------------------------------------------
+    // 2) For each validator → call getValidatorDescription(address)
+    // ------------------------------------------------------
+    for _, v := range validators {
+
+        // ABI call for getValidatorDescription(address)
+        data2, err := valABI.Pack("getValidatorDescription", v)
+        if err != nil {
+            utils.Fatalf("pack getValidatorDescription err: %v\n", err)
+        }
+
+        msg2 := ethereum.CallMsg{
+            To:   &validatorContractAddr,
+            Data: data2,
+        }
+
+        res2, err := queryHandler(ctx, &msg2)
+        if err != nil {
+            utils.Fatalf("getValidatorDescription call err: %v\n", err)
+        }
+
+        // Unpack returns:
+        // (string moniker, string website, string email, string details, uint16 locationId)
+        var desc struct {
+            Moniker    string
+            Website    string
+            Email      string
+            Details    string
+            LocationId uint16
+        }
+
+        // Important: Unpack MUST match return signature ordering!
+        out, err := valABI.Unpack("getValidatorDescription", res2)
+        if err != nil {
+            utils.Fatalf("Unpack description err: %v\n", err)
+        }
+
+        desc.Moniker    = out[0].(string)
+        desc.Website    = out[1].(string)
+        desc.Email      = out[2].(string)
+        desc.Details    = out[3].(string)
+        desc.LocationId = out[4].(uint16)
+
+        // Resolve location name from JSON map
+        locName := locIdToName[desc.LocationId]
+
+        fmt.Printf("  Validator: %s\n", v.Hex())
+        fmt.Printf("    Moniker      : %s\n", desc.Moniker)
+        fmt.Printf("    LocationId   : %d\n", desc.LocationId)
+        fmt.Printf("    LocationName : %s\n", locName)
+        fmt.Println()
+    }
+
+    return nil
 }
+
 
 func queryValidatorCandidators(ctx *cli.Context) error {
 	validatorABIstr := sonium.ValidatorContractABI()
