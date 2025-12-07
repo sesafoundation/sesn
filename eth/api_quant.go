@@ -6,17 +6,6 @@ import (
 
 	"github.com/sesafoundation/sesn/common"
 )
-
-// PublicQuantAPI is the public RPC API for QuantBlocks.
-type PublicQuantAPI struct {
-	eth *Ethereum
-}
-
-// NewPublicQuantAPI creates a new RPC service for QuantBlocks.
-func NewPublicQuantAPI(eth *Ethereum) *PublicQuantAPI {
-	return &PublicQuantAPI{eth: eth}
-}
-
 // GetQuantStatus returns the soft-confirmation status of a transaction.
 //
 // Possible values:
