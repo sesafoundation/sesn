@@ -506,23 +506,35 @@ func makeValidatorInfo(ctx *cli.Context) *validator {
 		val.details = strings.TrimSpace(ctx.GlobalString(utils.ValidatorDetailFlag.Name))
 	}
 
-	// 🔥 locationId (uint16)
-	if ctx.GlobalIsSet(utils.ValidatorLocationIdFlag.Name) {
-		locStr := strings.TrimSpace(ctx.GlobalString(utils.ValidatorLocationIdFlag.Name))
-		locInt, err := strconv.Atoi(locStr)
-		if err != nil || locInt < 1 || locInt > 65535 {
-			utils.Fatalf("invalid locationId %s — must be uint16", locStr)
+// ---------------------------------------------
+	// LOCATION — Option C: accept ID or Name
+	// ---------------------------------------------
+	if ctx.GlobalIsSet(utils.ValidatorLocationFlag.Name) {
+
+		// Load locations.json → fills locationNameToId map
+		loadLocations()
+
+		locStr := strings.TrimSpace(ctx.GlobalString(utils.ValidatorLocationFlag.Name))
+
+		// Case A: numeric input
+		if n, err := strconv.Atoi(locStr); err == nil {
+			if n > 0 && n <= 65535 {
+				val.locationId = uint16(n)
+				fmt.Printf("✓ Using validator location %d (numeric)\n", val.locationId)
+				return &val
+			}
 		}
-		val.locationId = uint16(locInt)
-	}
 
-	loc := ctx.GlobalUint(utils.ValidatorLocationIdFlag.Name)
-	if loc > 0 && loc <= 65535 {
-    val.locationId = uint16(loc)	
-	} else {
-    utils.Fatalf("invalid locationId — must match locations.json")
-	}
+		// Case B: name input → lookup from map
+		if id, ok := locationNameToId[locStr]; ok {
+			val.locationId = id
+			fmt.Printf("✓ Using validator location %d (%s)\n", val.locationId, locStr)
+			return &val
+		}
 
+		// Error: invalid input
+		utils.Fatalf("invalid location '%s'. Use numeric ID or a valid name from locations.json.", locStr)
+	}
 
 	return &val
 }
