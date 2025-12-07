@@ -22,14 +22,14 @@ import (
 	"sync"
 
 	"github.com/ethereum/go-ethereum"
-	"github.com/ethereum/go-ethereum/accounts"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/event"
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/rpc"
-	"github.com/ethereum/go-ethereum/signer/core"
+	"github.com/sesafoundation/sesn/accounts"
+	"github.com/sesafoundation/sesn/common"
+	"github.com/sesafoundation/sesn/common/hexutil"
+	"github.com/sesafoundation/sesn/core/types"
+	"github.com/sesafoundation/sesn/event"
+	"github.com/sesafoundation/sesn/log"
+	"github.com/sesafoundation/sesn/rpc"
+	"github.com/sesafoundation/sesn/signer/core"
 )
 
 type ExternalBackend struct {

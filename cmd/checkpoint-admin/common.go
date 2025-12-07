@@ -19,15 +19,15 @@ package main
 import (
 	"strconv"
 
-	"github.com/ethereum/go-ethereum/accounts"
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/ethereum/go-ethereum/accounts/external"
-	"github.com/ethereum/go-ethereum/cmd/utils"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/contracts/checkpointoracle"
-	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/ethereum/go-ethereum/params"
-	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/sesafoundation/sesn/accounts"
+	"github.com/sesafoundation/sesn/accounts/abi/bind"
+	"github.com/sesafoundation/sesn/accounts/external"
+	"github.com/sesafoundation/sesn/cmd/utils"
+	"github.com/sesafoundation/sesn/common"
+	"github.com/sesafoundation/sesn/contracts/checkpointoracle"
+	"github.com/sesafoundation/sesn/ethclient"
+	"github.com/sesafoundation/sesn/params"
+	"github.com/sesafoundation/sesn/rpc"
 	"gopkg.in/urfave/cli.v1"
 )
 

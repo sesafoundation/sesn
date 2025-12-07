@@ -24,17 +24,17 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/ethereum/go-ethereum/core"
-	"github.com/ethereum/go-ethereum/eth"
-	"github.com/ethereum/go-ethereum/eth/downloader"
-	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/ethereum/go-ethereum/ethstats"
-	"github.com/ethereum/go-ethereum/internal/debug"
-	"github.com/ethereum/go-ethereum/les"
-	"github.com/ethereum/go-ethereum/node"
-	"github.com/ethereum/go-ethereum/p2p"
-	"github.com/ethereum/go-ethereum/p2p/nat"
-	"github.com/ethereum/go-ethereum/params"
+	"github.com/sesafoundation/sesn/core"
+	"github.com/sesafoundation/sesn/eth"
+	"github.com/sesafoundation/sesn/eth/downloader"
+	"github.com/sesafoundation/sesn/ethclient"
+	"github.com/sesafoundation/sesn/ethstats"
+	"github.com/sesafoundation/sesn/internal/debug"
+	"github.com/sesafoundation/sesn/les"
+	"github.com/sesafoundation/sesn/node"
+	"github.com/sesafoundation/sesn/p2p"
+	"github.com/sesafoundation/sesn/p2p/nat"
+	"github.com/sesafoundation/sesn/params"
 )
 
 // NodeConfig represents the collection of configuration values to fine tune the Geth

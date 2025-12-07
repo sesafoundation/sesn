@@ -21,7 +21,7 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/ethereum/go-ethereum/p2p"
+	"github.com/sesafoundation/sesn/p2p"
 	"github.com/stretchr/testify/assert"
 )
 

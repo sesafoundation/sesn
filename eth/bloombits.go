@@ -20,13 +20,13 @@ import (
 	"context"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/bitutil"
-	"github.com/ethereum/go-ethereum/core"
-	"github.com/ethereum/go-ethereum/core/bloombits"
-	"github.com/ethereum/go-ethereum/core/rawdb"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/ethdb"
+	"github.com/sesafoundation/sesn/common"
+	"github.com/sesafoundation/sesn/common/bitutil"
+	"github.com/sesafoundation/sesn/core"
+	"github.com/sesafoundation/sesn/core/bloombits"
+	"github.com/sesafoundation/sesn/core/rawdb"
+	"github.com/sesafoundation/sesn/core/types"
+	"github.com/sesafoundation/sesn/ethdb"
 )
 
 const (

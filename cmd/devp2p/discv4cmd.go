@@ -22,12 +22,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ethereum/go-ethereum/cmd/devp2p/internal/v4test"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/p2p/discover"
-	"github.com/ethereum/go-ethereum/p2p/enode"
-	"github.com/ethereum/go-ethereum/params"
+	"github.com/sesafoundation/sesn/cmd/devp2p/internal/v4test"
+	"github.com/sesafoundation/sesn/common"
+	"github.com/sesafoundation/sesn/crypto"
+	"github.com/sesafoundation/sesn/p2p/discover"
+	"github.com/sesafoundation/sesn/p2p/enode"
+	"github.com/sesafoundation/sesn/params"
 	"gopkg.in/urfave/cli.v1"
 )
 

@@ -21,10 +21,10 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/ethdb"
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/sesafoundation/sesn/common"
+	"github.com/sesafoundation/sesn/ethdb"
+	"github.com/sesafoundation/sesn/log"
+	"github.com/sesafoundation/sesn/rlp"
 )
 
 var ErrCommitDisabled = errors.New("no database for committing")

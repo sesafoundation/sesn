@@ -17,11 +17,11 @@
 package eth
 
 import (
-	"github.com/ethereum/go-ethereum/core"
-	"github.com/ethereum/go-ethereum/core/forkid"
-	"github.com/ethereum/go-ethereum/p2p/dnsdisc"
-	"github.com/ethereum/go-ethereum/p2p/enode"
-	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/sesafoundation/sesn/core"
+	"github.com/sesafoundation/sesn/core/forkid"
+	"github.com/sesafoundation/sesn/p2p/dnsdisc"
+	"github.com/sesafoundation/sesn/p2p/enode"
+	"github.com/sesafoundation/sesn/rlp"
 )
 
 // ethEntry is the "eth" ENR entry which advertises eth protocol
