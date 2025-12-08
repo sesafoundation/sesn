@@ -96,7 +96,8 @@ func (eth *Ethereum) confirmQuantTxs() {
 //   - "pending"          → in txpool but not quant-confirmed yet (rare race)
 //   - "not-found"        → nowhere
 func (eth *Ethereum) quantStatus(hash common.Hash) (string, error) {
-	log.Trace("QuantBlocks: tx status check", "hash", hash.Hex(), "status", status)
+	//log.Trace("QuantBlocks: tx status check", "hash", hash.Hex(), "status", status)
+    log.Trace("QuantBlocks: checking tx status", "hash", hash.Hex())
 
     // 1) Check LevelDB → check if tx is included in any block
     if tx, blockHash, _, _ := rawdb.ReadTransaction(eth.chainDb, hash); tx != nil {
