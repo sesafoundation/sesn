@@ -240,7 +240,7 @@ func New(stack *node.Node, config *Config) (*Ethereum, error) {
 	stack.RegisterProtocols(eth.Protocols())
 	stack.RegisterLifecycle(eth)
 
-	// Start QuantBlocks 100ms soft-confirmation loop
+	// Start QuantBlocks 100ms quant-confirmation loop
    	eth.startQuantBlocks()
 
 	return eth, nil
@@ -590,10 +590,10 @@ func (s *Ethereum) Stop() error {
 	return nil
 }
 
-func NewPublicQuantAPI(eth *Ethereum) *PublicQuantAPI {
-	return &PublicQuantAPI{eth: eth}
-}
+//func NewPublicQuantAPI(eth *Ethereum) *PublicQuantAPI {
+//	return &PublicQuantAPI{eth: eth}
+//}
 
-func (api *PublicQuantAPI) GetQuantStatus(ctx context.Context, hash common.Hash) (string, error) {
-	return api.eth.quantStatus(hash)
-}
+//func (api *PublicQuantAPI) GetQuantStatus(ctx context.Context, hash common.Hash) (string, error) {//
+//	return api.eth.quantStatus(hash)
+//}

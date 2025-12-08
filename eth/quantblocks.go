@@ -33,7 +33,7 @@ var quantTxPool = struct {
 // It lives on the Ethereum backend so it has access to txpool.
 func (eth *Ethereum) startQuantBlocks() {
     go func() {
-        log.Info("QuantBlocks: starting 100ms soft-confirmation engine")
+        log.Info("QuantBlocks: starting 100ms QuantBlocks-Confirmation Engine")
 
         ticker := time.NewTicker(QuantConfirmInterval)
         defer ticker.Stop()
@@ -82,7 +82,7 @@ func (eth *Ethereum) confirmQuantTxs() {
         	log.Debug("QuantBlocks: tx quant-confirmed", "hash", tx.Hash().Hex())
     		}
 		}
-        log.Info("QuantBlocks: soft-confirmed transactions",
+        log.Info("QuantBlocks: QuantBlocks-Confirmed Transactions",
             "count", added,
             "timestamp", now.UnixMilli(),
         )
@@ -107,7 +107,7 @@ func (eth *Ethereum) quantStatus(hash common.Hash) (string, error) {
         }
     }
 
-    // 2) Check QuantBlocks soft-confirmation list
+    // 2) Check QuantBlocks QuantBlocks-confirmation list
     quantTxPool.RLock()
     _, ok := quantTxPool.confirmed[hash]
     quantTxPool.RUnlock()

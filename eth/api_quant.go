@@ -1,18 +1,18 @@
-// eth/api_quant.go
 package eth
 
-//import (
-//	"context"
+import (
+    "context"
+    "github.com/sesafoundation/sesn/common"
+)
 
-//	"github.com/sesafoundation/sesn/common"
-//)
-// GetQuantStatus returns the soft-confirmation status of a transaction.
-//
-// Possible values:
-//   - "pending"
-//   - "quant-confirmed"
-//   - "executed"
-//   - "not-found"
-//func (api *PublicQuantAPI) GetQuantStatus(ctx context.Context, hash common.Hash) (string, error) {
-//	return api.eth.quantStatus(hash)
-//}
+type PublicQuantAPI struct {
+    eth *Ethereum
+}
+
+func NewPublicQuantAPI(eth *Ethereum) *PublicQuantAPI {
+    return &PublicQuantAPI{eth: eth}
+}
+
+func (api *PublicQuantAPI) GetQuantStatus(ctx context.Context, hash common.Hash) (string, error) {
+    return api.eth.quantStatus(hash)
+}
