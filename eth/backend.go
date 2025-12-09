@@ -24,7 +24,7 @@ import (
 	"runtime"
 	"sync"
 	"sync/atomic"
-	"context"
+	//"context"
 
 	"github.com/sesafoundation/sesn/accounts"
 	"github.com/sesafoundation/sesn/common"
@@ -90,9 +90,9 @@ type Ethereum struct {
 	lock sync.RWMutex // Protects the variadic fields (e.g. gas price and etherbase)
 }
 
-type PublicQuantAPI struct {
-	eth *Ethereum
-}
+//type PublicQuantAPI struct {
+//	eth *Ethereum
+//}
 
 // New creates a new Ethereum object (including the
 // initialisation of the common Ethereum object)
