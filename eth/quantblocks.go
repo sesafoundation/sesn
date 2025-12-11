@@ -11,7 +11,7 @@ import (
 	"github.com/sesafoundation/sesn/log"
 )
 
-// QuantConfirmInterval defines the target latency for QuantBlocks soft-confirmation.
+// QuantConfirmInterval defines the target latency for QuantBlocks quant-confirmation.
 const QuantConfirmInterval = 100 * time.Millisecond
 
 // QuantTx stores basic metadata for a Quant-Confirmed transaction.
@@ -21,7 +21,7 @@ type QuantTx struct {
 }
 
 // quantTxPool is a global in-memory map for Quant-Confirmed txs.
-// This is *not* consensus state; it's a UX/soft-confirmation layer.
+// This is *not* consensus state; it's a UX/quant-confirmation layer.
 var quantTxPool = struct {
 	sync.RWMutex
 	confirmed map[common.Hash]*QuantTx
@@ -60,6 +60,7 @@ func (eth *Ethereum) confirmQuantTxs() {
 
     now := time.Now()
     added := 0
+    newTxs := make([]*types.Transaction, 0, 1024)
 
     quantTxPool.Lock()
     for _, txs := range pending {
@@ -70,6 +71,7 @@ func (eth *Ethereum) confirmQuantTxs() {
                     Tx:   tx,
                     Time: now,
                 }
+                newTxs = append(newTxs, tx)
                 added++
             }
         }
@@ -77,17 +79,25 @@ func (eth *Ethereum) confirmQuantTxs() {
     quantTxPool.Unlock()
 
     if added > 0 {
-		for _, txs := range pending {
-    		for _, tx := range txs {
-        	log.Debug("QuantBlocks: tx quant-confirmed", "hash", tx.Hash().Hex())
-    		}
-		}
-        log.Info("QuantBlocks: QuantBlocks-Confirmed Transactions",
-            "count", added,
+        // 100ms interval → QuantTPS = tx_count * 10
+        quantTPS := float64(added) * 10.0
+
+        // Debug log for only newly confirmed transactions
+        for _, tx := range newTxs {
+            log.Debug("QuantBlocks: tx quant-confirmed ⚡",
+                "hash", tx.Hash().Hex(),
+                "time", now.UnixMilli())
+        }
+
+        // Main info log
+        log.Info("QuantBlocks: QuantConfirmed Batch ⚡",
+            "new_tx", added,
+            "quant_tps", fmt.Sprintf("%.2f", quantTPS),
             "timestamp", now.UnixMilli(),
         )
     }
 }
+
 
 
 // quantStatus computes the status for a given tx hash:
