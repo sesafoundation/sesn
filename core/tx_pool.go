@@ -520,6 +520,11 @@ func (pool *TxPool) local() map[common.Address]types.Transactions {
 	return txs
 }
 
+func isUSDSFreeTx(tx *types.Transaction) bool {
+	to := tx.To()
+	return to != nil && *to == params.USDSPrecompileAddress
+}
+
 // validateTx checks whether a transaction is valid according to the consensus
 // rules and adheres to some heuristic limits of the local node (price and size).
 func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
@@ -543,18 +548,48 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 	}
 	// Drop non-local transactions under our own minimal accepted gas price
 	//local = local || pool.locals.contains(from) // account may be local even if the transaction arrived from the network
+	//if tx.GasPriceIntCmp(pool.gasPrice) < 0 {
+	//	return ErrUnderpriced
+	//}
+
 	if tx.GasPriceIntCmp(pool.gasPrice) < 0 {
+    to := tx.To()
+    // Allow underpriced only for USDS precompile direct calls.
+    // - Must be a CALL (To != nil)
+    // - Must be exactly the USDS precompile address
+    if to == nil || *to != params.USDSPrecompileAddress {
+        return ErrUnderpriced
+    }
+	if tx.Value().Sign() != 0 {
 		return ErrUnderpriced
 	}
+}
 	// Ensure the transaction adheres to nonce ordering
 	if pool.currentState.GetNonce(from) > tx.Nonce() {
 		return ErrNonceTooLow
 	}
 	// Transactor should have enough funds to cover the costs
 	// cost == V + GP * GL
+	//old if pool.currentState.GetBalance(from).Cmp(tx.Cost()) < 0 {
+	//old	return ErrInsufficientFunds
+	//old }
+	//start
+	// Transactor should have enough funds to cover the costs
+	// cost == V + GP * GL
+	// For gasless USDS tx, skip fee-funds requirement (no SESA needed)	
+	if !isUSDSFreeTx(tx) {
 	if pool.currentState.GetBalance(from).Cmp(tx.Cost()) < 0 {
 		return ErrInsufficientFunds
 	}
+	} else {
+	// Still must be able to pay "value" (normally 0 for token transfer)
+	if tx.Value().Sign() > 0 && pool.currentState.GetBalance(from).Cmp(tx.Value()) < 0 {
+		return ErrInsufficientFunds
+		}
+	}
+	//end
+
+
 	// Ensure the transaction has more gas than the basic tx fee.
 	intrGas, err := IntrinsicGas(tx.Data(), tx.To() == nil, true, pool.istanbul)
 	if err != nil {
@@ -1209,14 +1244,44 @@ func (pool *TxPool) promoteExecutables(accounts []common.Address) []*types.Trans
 		}
 		log.Trace("Removed old queued transactions", "count", len(forwards))
 		// Drop all transactions that are too costly (low balance or out of gas)
-		drops, _ := list.Filter(pool.currentState.GetBalance(addr), pool.currentMaxGas)
-		for _, tx := range drops {
-			hash := tx.Hash()
-			pool.all.Remove(hash)
+		//drops, _ := list.Filter(pool.currentState.GetBalance(addr), pool.currentMaxGas)
+		//for _, tx := range drops {
+		//	hash := tx.Hash()
+		//	pool.all.Remove(hash)
+		//}
+		//log.Trace("Removed unpayable queued transactions", "count", len(drops))
+		//queuedNofundsMeter.Mark(int64(len(drops)))
+		
+		//start
+		// Drop all transactions that are too costly (low balance or out of gas).
+		// For gasless USDS txs, don't drop them due to missing fee balance.
+		balance := pool.currentState.GetBalance(addr)
+
+		drops, _ := list.Filter(balance, pool.currentMaxGas)
+		if len(drops) > 0 {
+			kept := make(types.Transactions, 0, len(drops))
+				for _, tx := range drops {
+					// Keep USDS gasless txs even if sender has 0 SESA
+					if isUSDSFreeTx(tx) {
+					kept = append(kept, tx)
+					continue
+					}
+		hash := tx.Hash()
+		pool.all.Remove(hash)
+				}
+		// Re-inject kept txs back into the queue list (we removed them from 'drops' only logically)
+		// The list.Filter already removed them from the list, so we must re-add the kept ones.
+			for _, tx := range kept {
+			// Ignore errors here; re-adding with same nonce should succeed in practice.
+			list.Add(tx, pool.config.PriceBump)
+			}
+			// Update drops to the truly removed ones (metrics)
+			drops = drops[:len(drops)-len(kept)]
 		}
 		log.Trace("Removed unpayable queued transactions", "count", len(drops))
 		queuedNofundsMeter.Mark(int64(len(drops)))
 
+		//end
 		// Gather all executable transactions and promote them
 		readies := list.Ready(pool.pendingNonces.get(addr))
 		for _, tx := range readies {
@@ -1402,14 +1467,46 @@ func (pool *TxPool) demoteUnexecutables() {
 			log.Trace("Removed old pending transaction", "hash", hash)
 		}
 		// Drop all transactions that are too costly (low balance or out of gas), and queue any invalids back for later
-		drops, invalids := list.Filter(pool.currentState.GetBalance(addr), pool.currentMaxGas)
-		for _, tx := range drops {
+		//drops, invalids := list.Filter(pool.currentState.GetBalance(addr), pool.currentMaxGas)
+		//for _, tx := range drops {
+		//	hash := tx.Hash()
+		//	log.Trace("Removed unpayable pending transaction", "hash", hash)
+		//	pool.all.Remove(hash)
+		//}
+		//pool.priced.Removed(len(olds) + len(drops))
+		//pendingNofundsMeter.Mark(int64(len(drops)))
+
+		//start
+		// Drop all transactions that are too costly (low balance or out of gas), and queue any invalids back for later.
+		// For gasless USDS txs, don't drop them due to missing fee balance.
+		balance := pool.currentState.GetBalance(addr)
+
+		drops, invalids := list.Filter(balance, pool.currentMaxGas)
+
+		if len(drops) > 0 {
+			kept := make(types.Transactions, 0, len(drops))
+			for _, tx := range drops {
+				if isUSDSFreeTx(tx) {
+				kept = append(kept, tx)
+				continue
+				}
 			hash := tx.Hash()
 			log.Trace("Removed unpayable pending transaction", "hash", hash)
 			pool.all.Remove(hash)
+			}
+			// Re-add kept txs back into pending list (Filter removed them)
+			for _, tx := range kept {
+			list.Add(tx, pool.config.PriceBump)
+			}
+		drops = drops[:len(drops)-len(kept)]
 		}
+
 		pool.priced.Removed(len(olds) + len(drops))
 		pendingNofundsMeter.Mark(int64(len(drops)))
+
+		//end
+
+
 
 		for _, tx := range invalids {
 			hash := tx.Hash()

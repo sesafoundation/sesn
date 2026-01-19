@@ -80,6 +80,7 @@ var (
 	slashContract         = "0x0000000000000000000000000000000000001001"
 	validatorContractAddr = common.HexToAddress(validatorContract)
 	slashContractAddr     = common.HexToAddress(slashContract)
+	usdsContractAddr 	  = params.USDSPrecompileAddress
 )
 
 // Various error messages to mark blocks invalid. These should be private to
@@ -882,6 +883,7 @@ func (s *Sonium) initializeSystemContracts(chain consensus.ChainHeaderReader, st
 	}{
 		{validatorContractAddr, validatorData},
 		{slashContractAddr, slashData},
+	
 	}
 	for _, c := range contracts {
 		msg := s.wrapSystemContractMessage(header.Coinbase, c.addr, c.data, big.NewInt(0))
@@ -1083,8 +1085,12 @@ func (s *Sonium) verifyTxsGasPrice(txs []*types.Transaction, header *types.Heade
 		}
 
 		if tx.GasPrice().Cmp(params.MinimalGasPrice) < 0 {
-			return errInvalidGasPrice
+    			to := tx.To()
+    				if to == nil || *to != usdsContractAddr {
+        			return errInvalidGasPrice
+    				}
 		}
+
 	}
 	return nil
 }
@@ -1267,6 +1273,10 @@ func SlashContractAddress() common.Address {
 	return slashContractAddr
 }
 
+func USDSContractAddress() common.Address {
+	return usdsContractAddr
+}
+
 // ValidatorContractABI returns the validator contract abi
 func ValidatorContractABI() string {
 	return validatorABI
@@ -1276,3 +1286,8 @@ func ValidatorContractABI() string {
 func SlashContractABI() string {
 	return slashABI
 }
+
+func USDSContractABI() string {
+	return usdsABI
+}
+
