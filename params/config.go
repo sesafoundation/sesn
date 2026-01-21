@@ -39,6 +39,22 @@ var TrustedCheckpoints = map[common.Hash]*TrustedCheckpoint{}
 // the chain it belongs to.
 var CheckpointOracles = map[common.Hash]*CheckpointOracleConfig{}
 
+// GaslessConfig controls gasless / discounted modes for special precompiles.
+type GaslessConfig struct {
+	// Enable gasless policy for USDS precompile.
+	//
+	// When enabled, txs to USDSPrecompileAddress may use:
+	//  - effectiveGasPrice = 0 for PREMIUM holders
+	//  - effectiveGasPrice = max(txGasPrice, MinimalGasPrice) for non-premium
+	//
+	// When disabled, USDS behaves like normal calls (MinimalGasPrice rule applies).
+	EnableUSDSGasless bool `json:"enableUSDSGasless,omitempty"`
+
+	// Address of the PREMIUM NFT precompile used for eligibility checks.
+	// If nil/zero, params.PremiumNFTPrecompileAddress is used.
+	PremiumNFTAddress common.Address `json:"premiumNFTAddress,omitempty"`
+}
+
 var (
 	// MainnetChainConfig is the chain parameters to run a node on the main network.
 	MainnetChainConfig = &ChainConfig{
@@ -59,9 +75,15 @@ var (
 			Period: 3,
 			Epoch:  200,
 		},
+
+		// Enable USDS gasless policy on mainnet by default.
+		Gasless: &GaslessConfig{
+			EnableUSDSGasless: true,
+			PremiumNFTAddress: PremiumNFTPrecompileAddress,
+		},
 	}
 
-	// TestnetChainConfig is the chain parameters to run a node on the main network.
+	// TestnetChainConfig is the chain parameters to run a node on the test network.
 	TestnetChainConfig = &ChainConfig{
 		ChainID:             big.NewInt(2249),
 		HomesteadBlock:      big.NewInt(0),
@@ -80,6 +102,12 @@ var (
 			Period: 3,
 			Epoch:  200,
 		},
+
+		// Enable USDS gasless policy on testnet by default too.
+		Gasless: &GaslessConfig{
+			EnableUSDSGasless: true,
+			PremiumNFTAddress: PremiumNFTPrecompileAddress,
+		},
 	}
 
 	// MainnetTrustedCheckpoint contains the light client trusted checkpoint for the main network.
@@ -93,20 +121,100 @@ var (
 	//
 	// This configuration is intentionally not using keyed fields to force anyone
 	// adding flags to the config to also have to set these fields.
-	AllEthashProtocolChanges = &ChainConfig{big.NewInt(1337), big.NewInt(0), nil, false, big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), nil, nil, nil, new(EthashConfig), nil, nil}
+	AllEthashProtocolChanges = &ChainConfig{
+		big.NewInt(1337),
+		big.NewInt(0),
+		nil,
+		false,
+		big.NewInt(0),
+		common.Hash{},
+		big.NewInt(0),
+		big.NewInt(0),
+		big.NewInt(0),
+		big.NewInt(0),
+		big.NewInt(0),
+		big.NewInt(0),
+		nil,
+		nil,
+		nil,
+		new(EthashConfig),
+		nil,
+		nil,
+		nil, // Gasless
+	}
 
 	// AllSoniumProtocolChanges copies from sonium protocol.
-	AllSoniumProtocolChanges = &ChainConfig{big.NewInt(2250), big.NewInt(0), nil, false, big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), nil, nil, nil, nil, nil, &SoniumConfig{Period: 3, Epoch: 200}}
+	AllSoniumProtocolChanges = &ChainConfig{
+		big.NewInt(2250),
+		big.NewInt(0),
+		nil,
+		false,
+		big.NewInt(0),
+		common.Hash{},
+		big.NewInt(0),
+		big.NewInt(0),
+		big.NewInt(0),
+		big.NewInt(0),
+		big.NewInt(0),
+		big.NewInt(0),
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		&SoniumConfig{Period: 3, Epoch: 200},
+		&GaslessConfig{EnableUSDSGasless: true, PremiumNFTAddress: PremiumNFTPrecompileAddress}, // Gasless
+	}
 
 	// AllCliqueProtocolChanges contains every protocol change (EIPs) introduced
 	// and accepted by the Ethereum core developers into the Clique consensus.
 	//
 	// This configuration is intentionally not using keyed fields to force anyone
 	// adding flags to the config to also have to set these fields.
-	AllCliqueProtocolChanges = &ChainConfig{big.NewInt(1337), big.NewInt(0), nil, false, big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), nil, nil, nil, nil, &CliqueConfig{Period: 0, Epoch: 30000}, nil}
+	AllCliqueProtocolChanges = &ChainConfig{
+		big.NewInt(1337),
+		big.NewInt(0),
+		nil,
+		false,
+		big.NewInt(0),
+		common.Hash{},
+		big.NewInt(0),
+		big.NewInt(0),
+		big.NewInt(0),
+		big.NewInt(0),
+		big.NewInt(0),
+		big.NewInt(0),
+		nil,
+		nil,
+		nil,
+		nil,
+		&CliqueConfig{Period: 0, Epoch: 30000},
+		nil,
+		nil, // Gasless
+	}
 
-	TestChainConfig = &ChainConfig{big.NewInt(2249), big.NewInt(0), nil, false, big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), nil, nil, nil, nil, nil, &SoniumConfig{Period: 3, Epoch: 200}}
-	TestRules       = TestChainConfig.Rules(new(big.Int))
+	TestChainConfig = &ChainConfig{
+		big.NewInt(2249),
+		big.NewInt(0),
+		nil,
+		false,
+		big.NewInt(0),
+		common.Hash{},
+		big.NewInt(0),
+		big.NewInt(0),
+		big.NewInt(0),
+		big.NewInt(0),
+		big.NewInt(0),
+		big.NewInt(0),
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		&SoniumConfig{Period: 3, Epoch: 200},
+		&GaslessConfig{EnableUSDSGasless: true, PremiumNFTAddress: PremiumNFTPrecompileAddress},
+	}
+	TestRules = TestChainConfig.Rules(new(big.Int))
 )
 
 // TrustedCheckpoint represents a set of post-processed trie roots (CHT and
@@ -183,7 +291,10 @@ type ChainConfig struct {
 	// Various consensus engines
 	Ethash  *EthashConfig  `json:"ethash,omitempty"`
 	Clique  *CliqueConfig  `json:"clique,omitempty"`
-	Sonium *SoniumConfig `json:"sonium,omitempty"`
+	Sonium  *SoniumConfig  `json:"sonium,omitempty"`
+
+	// Gasless / discounted fee policy
+	Gasless *GaslessConfig `json:"gasless,omitempty"`
 }
 
 // EthashConfig is the consensus engine configs for proof-of-work based sealing.
@@ -228,7 +339,7 @@ func (c *ChainConfig) String() string {
 	default:
 		engine = "unknown"
 	}
-	return fmt.Sprintf("{ChainID: %v Homestead: %v DAO: %v DAOSupport: %v EIP150: %v EIP155: %v EIP158: %v Byzantium: %v Constantinople: %v Petersburg: %v Istanbul: %v, Muir Glacier: %v, YOLO v2: %v, Engine: %v}",
+	return fmt.Sprintf("{ChainID: %v Homestead: %v DAO: %v DAOSupport: %v EIP150: %v EIP155: %v EIP158: %v Byzantium: %v Constantinople: %v Petersburg: %v Istanbul: %v, Muir Glacier: %v, YOLO v2: %v, Engine: %v, Gasless: %v}",
 		c.ChainID,
 		c.HomesteadBlock,
 		c.DAOForkBlock,
@@ -243,38 +354,27 @@ func (c *ChainConfig) String() string {
 		c.MuirGlacierBlock,
 		c.YoloV2Block,
 		engine,
+		c.Gasless,
 	)
 }
 
 // IsHomestead returns whether num is either equal to the homestead block or greater.
-func (c *ChainConfig) IsHomestead(num *big.Int) bool {
-	return isForked(c.HomesteadBlock, num)
-}
+func (c *ChainConfig) IsHomestead(num *big.Int) bool { return isForked(c.HomesteadBlock, num) }
 
 // IsDAOFork returns whether num is either equal to the DAO fork block or greater.
-func (c *ChainConfig) IsDAOFork(num *big.Int) bool {
-	return isForked(c.DAOForkBlock, num)
-}
+func (c *ChainConfig) IsDAOFork(num *big.Int) bool { return isForked(c.DAOForkBlock, num) }
 
 // IsEIP150 returns whether num is either equal to the EIP150 fork block or greater.
-func (c *ChainConfig) IsEIP150(num *big.Int) bool {
-	return isForked(c.EIP150Block, num)
-}
+func (c *ChainConfig) IsEIP150(num *big.Int) bool { return isForked(c.EIP150Block, num) }
 
 // IsEIP155 returns whether num is either equal to the EIP155 fork block or greater.
-func (c *ChainConfig) IsEIP155(num *big.Int) bool {
-	return isForked(c.EIP155Block, num)
-}
+func (c *ChainConfig) IsEIP155(num *big.Int) bool { return isForked(c.EIP155Block, num) }
 
 // IsEIP158 returns whether num is either equal to the EIP158 fork block or greater.
-func (c *ChainConfig) IsEIP158(num *big.Int) bool {
-	return isForked(c.EIP158Block, num)
-}
+func (c *ChainConfig) IsEIP158(num *big.Int) bool { return isForked(c.EIP158Block, num) }
 
 // IsByzantium returns whether num is either equal to the Byzantium fork block or greater.
-func (c *ChainConfig) IsByzantium(num *big.Int) bool {
-	return isForked(c.ByzantiumBlock, num)
-}
+func (c *ChainConfig) IsByzantium(num *big.Int) bool { return isForked(c.ByzantiumBlock, num) }
 
 // IsConstantinople returns whether num is either equal to the Constantinople fork block or greater.
 func (c *ChainConfig) IsConstantinople(num *big.Int) bool {
@@ -282,9 +382,7 @@ func (c *ChainConfig) IsConstantinople(num *big.Int) bool {
 }
 
 // IsMuirGlacier returns whether num is either equal to the Muir Glacier (EIP-2384) fork block or greater.
-func (c *ChainConfig) IsMuirGlacier(num *big.Int) bool {
-	return isForked(c.MuirGlacierBlock, num)
-}
+func (c *ChainConfig) IsMuirGlacier(num *big.Int) bool { return isForked(c.MuirGlacierBlock, num) }
 
 // IsPetersburg returns whether num is either
 // - equal to or greater than the PetersburgBlock fork block,
@@ -294,18 +392,25 @@ func (c *ChainConfig) IsPetersburg(num *big.Int) bool {
 }
 
 // IsIstanbul returns whether num is either equal to the Istanbul fork block or greater.
-func (c *ChainConfig) IsIstanbul(num *big.Int) bool {
-	return isForked(c.IstanbulBlock, num)
-}
+func (c *ChainConfig) IsIstanbul(num *big.Int) bool { return isForked(c.IstanbulBlock, num) }
 
 // IsYoloV2 returns whether num is either equal to the YoloV1 fork block or greater.
-func (c *ChainConfig) IsYoloV2(num *big.Int) bool {
-	return isForked(c.YoloV2Block, num)
-}
+func (c *ChainConfig) IsYoloV2(num *big.Int) bool { return isForked(c.YoloV2Block, num) }
 
 // IsEWASM returns whether num represents a block number after the EWASM fork
-func (c *ChainConfig) IsEWASM(num *big.Int) bool {
-	return isForked(c.EWASMBlock, num)
+func (c *ChainConfig) IsEWASM(num *big.Int) bool { return isForked(c.EWASMBlock, num) }
+
+// GaslessEnabledUSDS returns true if USDS gasless policy is enabled for this chain.
+func (c *ChainConfig) GaslessEnabledUSDS() bool {
+	return c != nil && c.Gasless != nil && c.Gasless.EnableUSDSGasless
+}
+
+// PremiumNFTAddr returns the configured PREMIUM NFT address (or the default precompile address).
+func (c *ChainConfig) PremiumNFTAddr() common.Address {
+	if c == nil || c.Gasless == nil || c.Gasless.PremiumNFTAddress == (common.Address{}) {
+		return PremiumNFTPrecompileAddress
+	}
+	return c.Gasless.PremiumNFTAddress
 }
 
 // CheckCompatible checks whether scheduled fork transitions have been imported

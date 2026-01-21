@@ -407,8 +407,8 @@ func (s *PrivateAccountAPI) SignTransaction(ctx context.Context, args SendTxArgs
 		return nil, fmt.Errorf("nonce not specified")
 	}
 	// Before actually sign the transaction, ensure the transaction fee is reasonable.
-	if err := checkTxFee(args.GasPrice.ToInt(), uint64(*args.Gas), s.b.RPCTxFeeCap()); err != nil {
-		return nil, err
+	if err := checkTxFee(args.GasPrice.ToInt(),uint64(*args.Gas), s.b.RPCTxFeeCap(),args.To,args.Value.ToInt(),); err != nil {
+	return nil, err
 	}
 	signed, err := s.signTransaction(ctx, &args, passwd)
 	if err != nil {
@@ -1557,12 +1557,20 @@ func (args *SendTxArgs) toTransaction() *types.Transaction {
 func SubmitTransaction(ctx context.Context, b Backend, tx *types.Transaction) (common.Hash, error) {
 	// If the transaction fee cap is already specified, ensure the
 	// fee of the given transaction is _reasonable_.
-	if err := checkTxFee(tx.GasPrice(), tx.Gas(), b.RPCTxFeeCap()); err != nil {
+	if err := checkTxFee(
+		tx.GasPrice(),
+		tx.Gas(),
+		b.RPCTxFeeCap(),
+		tx.To(),
+		tx.Value(),
+	); err != nil {
 		return common.Hash{}, err
 	}
+
 	if err := b.SendTx(ctx, tx); err != nil {
 		return common.Hash{}, err
 	}
+
 	if tx.To() == nil {
 		signer := types.MakeSigner(b.ChainConfig(), b.CurrentBlock().Number())
 		from, err := types.Sender(signer, tx)
@@ -1576,6 +1584,7 @@ func SubmitTransaction(ctx context.Context, b Backend, tx *types.Transaction) (c
 	}
 	return tx.Hash(), nil
 }
+
 
 // SendTransaction creates a transaction for the given argument, sign it and submit it to the
 // transaction pool.
@@ -1682,10 +1691,22 @@ func (s *PublicTransactionPoolAPI) SignTransaction(ctx context.Context, args Sen
 	if err := args.setDefaults(ctx, s.b); err != nil {
 		return nil, err
 	}
+
 	// Before actually sign the transaction, ensure the transaction fee is reasonable.
-	if err := checkTxFee(args.GasPrice.ToInt(), uint64(*args.Gas), s.b.RPCTxFeeCap()); err != nil {
+	// Allow low/zero gas price ONLY for direct USDS precompile calls with zero native value.
+	var (
+		to    *common.Address = args.To
+		value *big.Int
+	)
+	if args.Value != nil {
+		value = args.Value.ToInt()
+	} else {
+		value = big.NewInt(0)
+	}
+	if err := checkTxFee(args.GasPrice.ToInt(), uint64(*args.Gas), s.b.RPCTxFeeCap(), to, value); err != nil {
 		return nil, err
 	}
+
 	tx, err := s.sign(args.From, args.toTransaction())
 	if err != nil {
 		return nil, err
@@ -1696,6 +1717,7 @@ func (s *PublicTransactionPoolAPI) SignTransaction(ctx context.Context, args Sen
 	}
 	return &SignTransactionResult{data, tx}, nil
 }
+
 
 // PendingTransactions returns the transactions that are in the transaction pool
 // and have a from address that is one of the accounts this node manages.
@@ -1744,9 +1766,17 @@ func (s *PublicTransactionPoolAPI) Resend(ctx context.Context, sendArgs SendTxAr
 	if gasLimit != nil {
 		gas = uint64(*gasLimit)
 	}
-	if err := checkTxFee(price, gas, s.b.RPCTxFeeCap()); err != nil {
+
+	// Allow low/zero gas price ONLY for direct USDS precompile calls with zero native value.
+	to := matchTx.To()
+	value := matchTx.Value()
+	if value == nil {
+		value = big.NewInt(0)
+	}
+	if err := checkTxFee(price, gas, s.b.RPCTxFeeCap(), to, value); err != nil {
 		return common.Hash{}, err
 	}
+
 	// Iterate the pending list for replacement
 	pending, err := s.b.GetPoolTransactions()
 	if err != nil {
@@ -1780,6 +1810,7 @@ func (s *PublicTransactionPoolAPI) Resend(ctx context.Context, sendArgs SendTxAr
 
 	return common.Hash{}, fmt.Errorf("transaction %#x not found", matchTx.Hash())
 }
+
 
 // PublicDebugAPI is the collection of Ethereum APIs exposed over the public
 // debugging endpoint.
@@ -1931,22 +1962,37 @@ func (s *PublicNetAPI) Version() string {
 
 // checkTxFee is an internal function used to check whether the fee of
 // the given transaction is _reasonable_(under the cap).
-func checkTxFee(gasPrice *big.Int, gas uint64, cap float64) error {
-	// Short circuit if there is no cap for transaction fee at all.
-	if cap == 0 {
-		return nil
-	}
-	feeEth := new(big.Float).Quo(new(big.Float).SetInt(new(big.Int).Mul(gasPrice, new(big.Int).SetUint64(gas))), new(big.Float).SetInt(big.NewInt(params.Ether)))
-	feeFloat, _ := feeEth.Float64()
-	if feeFloat > cap {
-		return fmt.Errorf("tx fee (%.2f ether) exceeds the configured cap (%.2f ether)", feeFloat, cap)
+func checkTxFee(gasPrice *big.Int, gas uint64, cap float64, to *common.Address, value *big.Int) error {
+	// Treat nil gasPrice as zero (will be rejected unless it is an allowed USDS call).
+	if gasPrice == nil {
+		gasPrice = big.NewInt(0)
 	}
 
+	// Short circuit if there is no cap for transaction fee at all.
+	// Note: this cap uses tx.GasPrice(), not the premium-effective gas price.
+	if cap != 0 {
+		feeWei := new(big.Int).Mul(gasPrice, new(big.Int).SetUint64(gas))
+		feeEth := new(big.Float).Quo(
+			new(big.Float).SetInt(feeWei),
+			new(big.Float).SetInt(big.NewInt(params.Ether)),
+		)
+		feeFloat, _ := feeEth.Float64()
+		if feeFloat > cap {
+			return fmt.Errorf("tx fee (%.2f ether) exceeds the configured cap (%.2f ether)", feeFloat, cap)
+		}
+	}
+
+	// Enforce min gas price ONLY for normal txs.
 	if gasPrice.Cmp(params.MinimalGasPrice) < 0 {
-		return fmt.Errorf("tx gas price (%v) less than 500gwei", gasPrice.Int64())
+		// Allow low/zero gas price ONLY for direct USDS precompile calls with zero native value.
+		if to != nil && *to == params.USDSPrecompileAddress && (value == nil || value.Sign() == 0) {
+			return nil
+		}
+		return fmt.Errorf("tx gas price (%v) less than %v", gasPrice, params.MinimalGasPrice)
 	}
 	return nil
 }
+
 
 // toHexSlice creates a slice of hex-strings based on []byte.
 func toHexSlice(b [][]byte) []string {

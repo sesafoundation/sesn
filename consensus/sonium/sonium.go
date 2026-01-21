@@ -76,11 +76,15 @@ var (
 
 
 
-	validatorContract     = "0x0000000000000000000000000000000000001000"
-	slashContract         = "0x0000000000000000000000000000000000001001"
-	validatorContractAddr = common.HexToAddress(validatorContract)
-	slashContractAddr     = common.HexToAddress(slashContract)
-	usdsContractAddr 	  = params.USDSPrecompileAddress
+	validatorContract     	= "0x0000000000000000000000000000000000001000"
+	slashContract         	= "0x0000000000000000000000000000000000001001"
+	validatorContractAddr 	= common.HexToAddress(validatorContract)
+	slashContractAddr     	= common.HexToAddress(slashContract)
+	usdsContractAddr 	  	= params.USDSPrecompileAddress
+	premiumNFTContractAddr 	= params.PremiumNFTPrecompileAddress
+
+
+	
 )
 
 // Various error messages to mark blocks invalid. These should be private to
@@ -199,6 +203,7 @@ type Sonium struct {
 	ethAPI       *ethapi.PublicBlockChainAPI
 	validatorABI abi.ABI
 	slashABI     abi.ABI
+	premiumABI   abi.ABI
 
 	// The fields below are for testing only
 	fakeDiff bool // Skip difficulty verifications
@@ -581,8 +586,8 @@ func (s *Sonium) Finalize(chain consensus.ChainHeaderReader, header *types.Heade
 		}
 		log.Trace("initialize system contract success")
 	}
-
-	if err := s.verifyTxsGasPrice(*txs, header); err != nil {
+	
+	if err := s.verifyTxsGasPrice(*txs, header, state); err != nil {
 		log.Error("tx price under the minimal price of gas")
 		return err
 	}
@@ -643,8 +648,9 @@ func (s *Sonium) FinalizeAndAssemble(chain consensus.ChainHeaderReader, header *
 		}
 		log.Trace("initialize system contract success")
 	}
+	
+		if err := s.verifyTxsGasPrice(txs, header, state); err != nil {
 
-	if err := s.verifyTxsGasPrice(txs, header); err != nil {
 		log.Error("tx price under the minimal price of gas when assemble block")
 		return nil, nil, err
 		//panic(err)
@@ -1074,26 +1080,77 @@ func (s *Sonium) decreaseMissedBlocksCounter(chain consensus.ChainHeaderReader,
 	return s.applyTransaction(msg, state, header, chainContext, txs, allLogs, receipts, receivedTxs, usedGas, mining)
 }
 
-func (s *Sonium) verifyTxsGasPrice(txs []*types.Transaction, header *types.Header) error {
-	if len(txs) <= 0 {
+func hasPremiumNFT(state *state.StateDB, owner common.Address) bool {
+	// PREMIUM balance stored like mapping(address => uint256) at slot=2 (same as your StateTransition logic)
+	var slot [32]byte
+	slot[31] = 2
+
+	var padded [32]byte
+	copy(padded[12:], owner[:])
+
+	key := crypto.Keccak256Hash(padded[:], slot[:])
+	h := state.GetState(premiumNFTContractAddr, key)
+	return h.Big().Sign() > 0
+}
+
+func (s *Sonium) verifyTxsGasPrice(txs []*types.Transaction, header *types.Header, st *state.StateDB) error {
+	if len(txs) == 0 {
 		return nil
 	}
 
 	for _, tx := range txs {
+		// System txs can be gasPrice=0
 		if ok, _ := s.IsSystemTransaction(tx, header); ok {
 			continue
 		}
 
-		if tx.GasPrice().Cmp(params.MinimalGasPrice) < 0 {
-    			to := tx.To()
-    				if to == nil || *to != usdsContractAddr {
-        			return errInvalidGasPrice
-    				}
+		to := tx.To()
+
+		// Contract creation must follow normal gas rules
+		if to == nil {
+			if tx.GasPrice().Cmp(params.MinimalGasPrice) < 0 {
+				return errInvalidGasPrice
+			}
+			continue
 		}
 
+		// USDS special rules
+		if *to == usdsContractAddr {
+			// Must not carry native value for USDS precompile calls
+			if tx.Value() != nil && tx.Value().Sign() != 0 {
+				return errInvalidGasPrice
+			}
+
+			// If user tries gasPrice == 0, they MUST hold PREMIUM
+			if tx.GasPrice() == nil || tx.GasPrice().Sign() == 0 {
+				sender, err := types.Sender(s.signer, tx)
+				if err != nil {
+					return errUnauthorizedTransaction
+				}
+				if !hasPremiumNFT(st, sender) {
+					return errInvalidGasPrice
+				}
+				// premium holder ok (gasless)
+				continue
+			}
+
+			// Non-zero gas price: must be >= MinimalGasPrice
+			if tx.GasPrice().Cmp(params.MinimalGasPrice) < 0 {
+				return errInvalidGasPrice
+			}
+			continue
+		}
+
+		// All other txs: must be >= MinimalGasPrice
+		if tx.GasPrice().Cmp(params.MinimalGasPrice) < 0 {
+			return errInvalidGasPrice
+		}
 	}
+
 	return nil
 }
+
+
 
 func (s *Sonium) applyTransaction(
 	msg callmsg,
@@ -1290,4 +1347,9 @@ func SlashContractABI() string {
 func USDSContractABI() string {
 	return usdsABI
 }
+
+func PremiumNFTContractABI() string {
+	return premiumNFTABI
+}
+
 

@@ -11,6 +11,7 @@ import (
 	"github.com/sesafoundation/sesn/common"
 	"github.com/sesafoundation/sesn/consensus"
 	"github.com/sesafoundation/sesn/core/vm"
+	"github.com/sesafoundation/sesn/crypto"
 	"github.com/sesafoundation/sesn/params"
 )
 
@@ -31,7 +32,6 @@ type StateTransition struct {
 }
 
 // Message interface
-
 type Message interface {
 	From() common.Address
 	To() *common.Address
@@ -51,11 +51,8 @@ type ExecutionResult struct {
 	ReturnData []byte
 }
 
-func (result *ExecutionResult) Unwrap() error {
-	return result.Err
-}
-
-func (result *ExecutionResult) Failed() bool { return result.Err != nil }
+func (result *ExecutionResult) Unwrap() error { return result.Err }
+func (result *ExecutionResult) Failed() bool  { return result.Err != nil }
 
 func (result *ExecutionResult) Return() []byte {
 	if result.Err != nil {
@@ -72,7 +69,6 @@ func (result *ExecutionResult) Revert() []byte {
 }
 
 // Intrinsic gas calculation
-
 func IntrinsicGas(data []byte, contractCreation, isHomestead bool, isEIP2028 bool) (uint64, error) {
 	var gas uint64
 	if contractCreation && isHomestead {
@@ -109,7 +105,6 @@ func IntrinsicGas(data []byte, contractCreation, isHomestead bool, isEIP2028 boo
 }
 
 // Constructor
-
 func NewStateTransition(evm *vm.EVM, msg Message, gp *GasPool) *StateTransition {
 	return &StateTransition{
 		gp:       gp,
@@ -123,7 +118,6 @@ func NewStateTransition(evm *vm.EVM, msg Message, gp *GasPool) *StateTransition 
 }
 
 // Target address
-
 func (st *StateTransition) to() common.Address {
 	if st.msg == nil || st.msg.To() == nil {
 		return common.Address{}
@@ -132,10 +126,9 @@ func (st *StateTransition) to() common.Address {
 }
 
 // --------------------------------------
-// USDS GASLESS TRANSACTION CHECK
+// USDS TX CHECK
 // --------------------------------------
-
-func (st *StateTransition) isUSDSFreeTx() bool {
+func (st *StateTransition) isUSDSTx() bool {
 	if st.msg == nil || st.msg.To() == nil {
 		return false
 	}
@@ -143,28 +136,73 @@ func (st *StateTransition) isUSDSFreeTx() bool {
 }
 
 // --------------------------------------
-// BUY GAS (PATCHED)
+// PREMIUM NFT CHECK (balanceOf(sender) > 0)
+// storage: mapping(address => uint256) at slot=2
 // --------------------------------------
+func (st *StateTransition) hasPremiumNFT() bool {
+	if st.msg == nil {
+		return false
+	}
+	owner := st.msg.From()
 
-func (st *StateTransition) buyGas() error {
+	// mapping(address => uint256) balances; // slot = 2
+	// key = keccak256(pad32(owner) . pad32(slot))
+	var slot [32]byte
+	slot[31] = 2
 
-	// Gasless USDS tx:
-	if st.isUSDSFreeTx() {
+	var padded [32]byte
+	copy(padded[12:], owner[:])
 
-		// Still reserve block gas (anti-spam)
-		if err := st.gp.SubGas(st.msg.Gas()); err != nil {
-			return err
+	key := crypto.Keccak256Hash(padded[:], slot[:])
+	h := st.state.GetState(params.PremiumNFTPrecompileAddress, key)
+	return h.Big().Sign() > 0
+}
+
+// --------------------------------------
+// EFFECTIVE GAS PRICE
+// - Non-USDS => tx gasPrice (nil treated as 0)
+// - USDS + PREMIUM holder => 0
+// - USDS + non-premium => max(txGasPrice, MinimalGasPrice)
+// --------------------------------------
+func (st *StateTransition) effectiveGasPrice() *big.Int {
+	// Default: use tx gas price (nil => 0)
+	if !st.isUSDSTx() {
+		if st.gasPrice == nil {
+			return new(big.Int) // 0
 		}
+		return st.gasPrice
+	}
 
-		st.gas += st.msg.Gas()
-		st.initialGas = st.msg.Gas()
+	// USDS: premium holder => gasless
+	if st.hasPremiumNFT() {
+		return new(big.Int) // 0
+	}
 
+	// USDS: non-premium must pay at least MinimalGasPrice
+	if st.gasPrice == nil || st.gasPrice.Sign() == 0 || st.gasPrice.Cmp(params.MinimalGasPrice) < 0 {
+		return new(big.Int).Set(params.MinimalGasPrice)
+	}
+	return st.gasPrice
+}
+
+// --------------------------------------
+// BUY GAS
+// --------------------------------------
+func (st *StateTransition) buyGas() error {
+	// Always reserve block gas (anti-spam)
+	if err := st.gp.SubGas(st.msg.Gas()); err != nil {
+		return err
+	}
+	st.gas += st.msg.Gas()
+	st.initialGas = st.msg.Gas()
+
+	// Prepay gas with effective price (0 for premium USDS)
+	gp := st.effectiveGasPrice()
+	if gp.Sign() == 0 {
 		return nil
 	}
 
-	// Normal transactions
-
-	mgval := new(big.Int).Mul(new(big.Int).SetUint64(st.msg.Gas()), st.gasPrice)
+	mgval := new(big.Int).Mul(new(big.Int).SetUint64(st.msg.Gas()), gp)
 	if have, want := st.state.GetBalance(st.msg.From()), mgval; have.Cmp(want) < 0 {
 		return fmt.Errorf("%w: address %v have %v want %v",
 			ErrInsufficientFunds,
@@ -173,22 +211,11 @@ func (st *StateTransition) buyGas() error {
 			want,
 		)
 	}
-
-	if err := st.gp.SubGas(st.msg.Gas()); err != nil {
-		return err
-	}
-
-	st.gas += st.msg.Gas()
-	st.initialGas = st.msg.Gas()
-
 	st.state.SubBalance(st.msg.From(), mgval)
 	return nil
 }
 
-// --------------------------------------
-
 func (st *StateTransition) preCheck() error {
-
 	if st.msg.CheckNonce() {
 		stNonce := st.state.GetNonce(st.msg.From())
 		if msgNonce := st.msg.Nonce(); stNonce < msgNonce {
@@ -196,25 +223,24 @@ func (st *StateTransition) preCheck() error {
 				ErrNonceTooHigh,
 				st.msg.From().Hex(),
 				msgNonce,
-				stNonce)
+				stNonce,
+			)
 		} else if stNonce > msgNonce {
 			return fmt.Errorf("%w: address %v, tx: %d state: %d",
 				ErrNonceTooLow,
 				st.msg.From().Hex(),
 				msgNonce,
-				stNonce)
+				stNonce,
+			)
 		}
 	}
-
 	return st.buyGas()
 }
 
 // --------------------------------------
-// MAIN STATE TRANSITION (PATCHED)
+// MAIN STATE TRANSITION
 // --------------------------------------
-
 func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
-
 	if err := st.preCheck(); err != nil {
 		return nil, err
 	}
@@ -226,21 +252,23 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 	istanbul := st.evm.ChainConfig().IsIstanbul(st.evm.Context.BlockNumber)
 	contractCreation := msg.To() == nil
 
-	// Intrinsic gas skip for USDS
+	// Intrinsic gas must ALWAYS be charged (consensus + anti-DoS)
+	intrinsic, err := IntrinsicGas(st.data, contractCreation, homestead, istanbul)
+	if err != nil {
+		return nil, err
+	}
+	if st.gas < intrinsic {
+		return nil, fmt.Errorf("%w: have %d, want %d", ErrIntrinsicGas, st.gas, intrinsic)
+	}
+	st.gas -= intrinsic
 
-	if !st.isUSDSFreeTx() {
-
-		gas, err := IntrinsicGas(st.data, contractCreation, homestead, istanbul)
-		if err != nil {
-			return nil, err
-		}
-		if st.gas < gas {
-			return nil, fmt.Errorf("%w: have %d, want %d", ErrIntrinsicGas, st.gas, gas)
-		}
-		st.gas -= gas
+	// Extra rule: USDS precompile calls must not transfer native value
+	if st.isUSDSTx() && msg.Value() != nil && msg.Value().Sign() != 0 {
+		return nil, fmt.Errorf("%w: USDS call cannot transfer native value", ErrInsufficientFundsForTransfer)
 	}
 
-	if msg.Value().Sign() > 0 && !st.evm.Context.CanTransfer(st.state, msg.From(), msg.Value()) {
+	// Normal value-transfer rule (still enforced)
+	if msg.Value() != nil && msg.Value().Sign() > 0 && !st.evm.Context.CanTransfer(st.state, msg.From(), msg.Value()) {
 		return nil, fmt.Errorf("%w: address %v", ErrInsufficientFundsForTransfer, msg.From().Hex())
 	}
 
@@ -250,43 +278,23 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 	)
 
 	if contractCreation {
-
 		ret, _, st.gas, vmerr = st.evm.Create(sender, st.data, st.gas, st.value)
-
 	} else {
-
-		st.state.SetNonce(msg.From(), st.state.GetNonce(sender.Address())+1)
-
+		// NOTE: Do NOT manually increment nonce here.
+		// The outer transaction processing handles nonce updates.
 		ret, st.gas, vmerr = st.evm.Call(sender, st.to(), st.data, st.gas, st.value)
 	}
 
 	st.refundGas()
 
-	// --------------------------------------
-	// Miner reward skip for USDS
-	// --------------------------------------
-
-	if !st.isUSDSFreeTx() {
-
+	// Credit fees using EFFECTIVE gas price.
+	gp := st.effectiveGasPrice()
+	fee := new(big.Int).Mul(new(big.Int).SetUint64(st.gasUsed()), gp)
+	if fee.Sign() > 0 {
 		if st.evm.ChainConfig().Sonium != nil {
-
-			st.state.AddBalance(
-				consensus.FeeRecoder,
-				new(big.Int).Mul(
-					new(big.Int).SetUint64(st.gasUsed()),
-					st.gasPrice,
-				),
-			)
-
+			st.state.AddBalance(consensus.FeeRecoder, fee)
 		} else {
-
-			st.state.AddBalance(
-				st.evm.Context.Coinbase,
-				new(big.Int).Mul(
-					new(big.Int).SetUint64(st.gasUsed()),
-					st.gasPrice,
-				),
-			)
+			st.state.AddBalance(st.evm.Context.Coinbase, fee)
 		}
 	}
 
@@ -298,33 +306,26 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 }
 
 // --------------------------------------
-// REFUND (PATCHED)
+// REFUND
 // --------------------------------------
-
 func (st *StateTransition) refundGas() {
-
+	// Apply refund counter, capped to half of the used gas.
 	refund := st.gasUsed() / 2
 	if refund > st.state.GetRefund() {
 		refund = st.state.GetRefund()
 	}
 	st.gas += refund
 
-	// Only refund SESA if it was prepaid
-	if !st.isUSDSFreeTx() {
-
-		remaining := new(big.Int).Mul(
-			new(big.Int).SetUint64(st.gas),
-			st.gasPrice,
-		)
-
+	// Return remaining fee only if it was prepaid (effective gas price > 0)
+	gp := st.effectiveGasPrice()
+	if gp.Sign() > 0 {
+		remaining := new(big.Int).Mul(new(big.Int).SetUint64(st.gas), gp)
 		st.state.AddBalance(st.msg.From(), remaining)
 	}
 
-	// Always return gas to block pool
+	// Always return gas to the block gas counter
 	st.gp.AddGas(st.gas)
 }
-
-// --------------------------------------
 
 func (st *StateTransition) gasUsed() uint64 {
 	return st.initialGas - st.gas

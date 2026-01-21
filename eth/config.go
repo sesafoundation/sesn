@@ -79,6 +79,10 @@ var DefaultConfig = Config{
 	RPCGasCap:   25000000,
 	GPO:         DefaultFullGPOConfig,
 	RPCTxFeeCap: 1, // 1 ether
+
+	// Custom: enable/disable USDS gasless policy at node level (default ON).
+	// NOTE: Consensus still enforces MinGasPrice for normal txs.
+	EnableUSDSGasless: true,
 }
 
 var DefaultTestnetConfig = Config{
@@ -112,6 +116,9 @@ var DefaultTestnetConfig = Config{
 	RPCGasCap:   25000000,
 	GPO:         DefaultFullGPOConfig,
 	RPCTxFeeCap: 1, // 1 ether
+
+	// Custom: enable/disable USDS gasless policy at node level (default ON).
+	EnableUSDSGasless: true,
 }
 
 func init() {
@@ -214,6 +221,11 @@ type Config struct {
 	// RPCTxFeeCap is the global transaction fee(price * gaslimit) cap for
 	// send-transction variants. The unit is ether.
 	RPCTxFeeCap float64 `toml:",omitempty"`
+
+	// Custom: toggle USDS "gasless for PREMIUM holders" behavior.
+	// If false, node should reject / not accept zero-gasPrice USDS txs via RPC/pool policy.
+	// (Consensus code should also consult chain config for determinism if you want network-level control.)
+	EnableUSDSGasless bool `toml:",omitempty"`
 
 	// Checkpoint is a hardcoded checkpoint which can be nil.
 	Checkpoint *params.TrustedCheckpoint `toml:",omitempty"`
