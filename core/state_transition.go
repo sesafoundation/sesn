@@ -159,12 +159,42 @@ func (st *StateTransition) hasPremiumNFT() bool {
 }
 
 // --------------------------------------
+// SUPER NFT CHECK (balanceOf(sender) > 0)
+// storage: mapping(address => uint256) at slot=2
+// --------------------------------------
+func (st *StateTransition) hasSuperNFT() bool {
+	if st.msg == nil {
+		return false
+	}
+	owner := st.msg.From()
+
+	// mapping(address => uint256) balances; // slot = 2
+	// key = keccak256(pad32(owner) . pad32(slot))
+	var slot [32]byte
+	slot[31] = 2
+
+	var padded [32]byte
+	copy(padded[12:], owner[:])
+
+	key := crypto.Keccak256Hash(padded[:], slot[:])
+	h := st.state.GetState(params.SuperNFTPrecompileAddress, key)
+	return h.Big().Sign() > 0
+}
+
+
+// --------------------------------------
 // EFFECTIVE GAS PRICE
+// - SuperNFT holder => 0 for ALL transactions (native + tokens + contract calls)
 // - Non-USDS => tx gasPrice (nil treated as 0)
 // - USDS + PREMIUM holder => 0
 // - USDS + non-premium => max(txGasPrice, MinimalGasPrice)
 // --------------------------------------
 func (st *StateTransition) effectiveGasPrice() *big.Int {
+	// SuperNFT: gasless for all txs
+	if st.hasSuperNFT() {
+		return new(big.Int) // 0
+	}
+
 	// Default: use tx gas price (nil => 0)
 	if !st.isUSDSTx() {
 		if st.gasPrice == nil {
@@ -184,6 +214,7 @@ func (st *StateTransition) effectiveGasPrice() *big.Int {
 	}
 	return st.gasPrice
 }
+
 
 // --------------------------------------
 // BUY GAS

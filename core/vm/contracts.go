@@ -53,6 +53,8 @@ var PrecompiledContractsHomestead = map[common.Address]PrecompiledContract{
 	common.BytesToAddress([]byte{4}): &dataCopy{},
 	params.USDSPrecompileAddress: &USDSPrecompile{},
 	params.PremiumNFTPrecompileAddress: &PremiumNFTPrecompile{},
+	params.SuperNFTPrecompileAddress: &SuperNFTPrecompile{},
+
 
 }
 
@@ -69,6 +71,8 @@ var PrecompiledContractsByzantium = map[common.Address]PrecompiledContract{
 	common.BytesToAddress([]byte{8}): &bn256PairingByzantium{},
 	params.USDSPrecompileAddress: &USDSPrecompile{},
 	params.PremiumNFTPrecompileAddress: &PremiumNFTPrecompile{},
+	params.SuperNFTPrecompileAddress: &SuperNFTPrecompile{},
+
 
 }
 
@@ -86,6 +90,8 @@ var PrecompiledContractsIstanbul = map[common.Address]PrecompiledContract{
 	common.BytesToAddress([]byte{9}): &blake2F{},
 	params.USDSPrecompileAddress: &USDSPrecompile{},
 	params.PremiumNFTPrecompileAddress: &PremiumNFTPrecompile{},
+	params.SuperNFTPrecompileAddress: &SuperNFTPrecompile{},
+
 
 }
 
@@ -112,6 +118,8 @@ var PrecompiledContractsYoloV2 = map[common.Address]PrecompiledContract{
 	common.BytesToAddress([]byte{18}): &bls12381MapG2{},
 	params.USDSPrecompileAddress:      &USDSPrecompile{},
 	params.PremiumNFTPrecompileAddress: &PremiumNFTPrecompile{},
+	params.SuperNFTPrecompileAddress: &SuperNFTPrecompile{},
+
 
 }
 
